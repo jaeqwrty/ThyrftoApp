@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class HomeScreen extends StatefulWidget {
   final Map<String, String> user;
@@ -95,17 +96,31 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Thryfto',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF8B5CF6),
-                      letterSpacing: 1.2,
+                  // Thryfto Logo
+                  ShaderMask(
+                    shaderCallback: (bounds) => LinearGradient(
+                      colors: const [
+                        Color(0xFF8B5CF6), // Purple
+                        Color(0xFFD946EF), // Magenta
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ).createShader(bounds),
+                    child: Text(
+                      'Thryfto',
+                      style: GoogleFonts.righteous(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white, // Required for ShaderMask
+                        letterSpacing: 1.2,
+                      ),
                     ),
                   ),
                   // IconButton(

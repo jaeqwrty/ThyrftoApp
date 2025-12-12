@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/pages/home_page.dart';
 import 'package:thryfto/pages/signup_page.dart';
@@ -34,8 +35,8 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // Use injected service or default mock implementation.
-    _authService = widget.authService ?? const MockAuthService();
+    // Use injected service or default to Firebase implementation.
+    _authService = widget.authService ?? FirebaseAuthService();
   }
 
   void _handleLogin() async {
@@ -85,14 +86,24 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Logo and tagline
-                    const Text(
-                      'Thryfto',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF8B5CF6),
-                        letterSpacing: 1.2,
+                    // Logo and tagline with Righteous font and purple gradient
+                    ShaderMask(
+                      shaderCallback: (bounds) => LinearGradient(
+                        colors: const [
+                          Color(0xFF8B5CF6), // Purple
+                          Color(0xFFD946EF), // Magenta
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ).createShader(bounds),
+                      child: Text(
+                        'Thryfto',
+                        style: GoogleFonts.righteous(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 1.2,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
