@@ -1,25 +1,43 @@
 name: thryfto
-description: "A new Flutter project."
+description: A thrift shopping mobile application
 publish_to: 'none'
-version: 0.1.0
+version: 1.0.0+1
 
 environment:
-  sdk: ^3.10.0
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  google_fonts: ^6.0.0
-  firebase_core: ^2.24.0
-  firebase_auth: ^4.15.0
-  cloud_firestore: ^4.14.0
+  
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.2.1
+  
+
+  image_picker: ^1.1.2
+  path_provider: ^2.1.4
+  path: ^1.9.0
+  
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  firebase_storage: ^12.3.2
+  cloud_firestore: ^5.4.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true
-  assets:
-    - images/
+  
+  # assets:
+  #   - assets/images/
+  #   - assets/icons/
+  
+  # fonts:
+  #   - family: CustomFont
+  #     fonts:
+  #       - asset: fonts/CustomFont-Regular.ttf
+  #       - asset: fonts/CustomFont-Bold.ttf
+  #         weight: 700

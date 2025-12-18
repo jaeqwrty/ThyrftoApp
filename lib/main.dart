@@ -4,13 +4,18 @@ import 'firebase_options.dart';
 import 'package:thryfto/pages/login_page.dart';
 
 void main() async {
+ 
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const ThriftoApp());
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  runApp(const MyApp());
 }
 
-class ThriftoApp extends StatelessWidget {
-  const ThriftoApp({Key? key}) : super(key: key);
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -18,8 +23,8 @@ class ThriftoApp extends StatelessWidget {
       title: 'Thryfto',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.purple,
-        scaffoldBackgroundColor: const Color(0xFFF5F5F7),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF8B5CF6)),
+        useMaterial3: true,
       ),
       home: const LoginScreen(),
     );
