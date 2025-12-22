@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/pages/home_page.dart';
-import 'package:thryfto/widgets/app_logo.dart';
-import 'package:thryfto/widgets/custom_text_field.dart';
-import 'package:thryfto/widgets/primary_button.dart';
+import 'package:thryfto/shared/app_logo.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -103,7 +101,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    CustomTextField(
+                    _CustomTextField(
                       controller: _fullNameController,
                       hintText: 'Full Name',
                       icon: Icons.person_outline,
@@ -115,7 +113,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    CustomTextField(
+                    _CustomTextField(
                       controller: _usernameController,
                       hintText: 'Username',
                       icon: Icons.person_outline,
@@ -127,7 +125,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    CustomTextField(
+                    _CustomTextField(
                       controller: _emailController,
                       hintText: 'Email',
                       icon: Icons.email_outlined,
@@ -142,7 +140,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    CustomTextField(
+                    _CustomTextField(
                       controller: _cityStateController,
                       hintText: 'City, State',
                       icon: Icons.location_on_outlined,
@@ -154,7 +152,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    CustomTextField(
+                    _CustomTextField(
                       controller: _passwordController,
                       hintText: 'Password',
                       icon: Icons.lock_outline,
@@ -170,7 +168,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    CustomTextField(
+                    _CustomTextField(
                       controller: _confirmPasswordController,
                       hintText: 'Confirm Password',
                       icon: Icons.lock_outline,
@@ -186,7 +184,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                     const SizedBox(height: 24),
-                    PrimaryButton(
+                    _PrimaryButton(
                       text: 'Sign Up',
                       isLoading: _isLoading,
                       onPressed: _handleSignUp,
@@ -219,6 +217,120 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ============ PRIVATE WIDGETS ============
+
+class _CustomTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hintText;
+  final IconData icon;
+  final bool isPassword;
+  final String? Function(String?)? validator;
+
+  const _CustomTextField({
+    required this.controller,
+    required this.hintText,
+    required this.icon,
+    this.isPassword = false,
+    this.validator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        obscureText: isPassword,
+        validator: validator,
+        maxLines: 1,
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.only(top: 0),
+            child: Icon(icon, color: Colors.grey, size: 20),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: BorderSide.none,
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: const BorderSide(color: Colors.red, width: 1),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: const BorderSide(color: Colors.red, width: 1),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PrimaryButton extends StatelessWidget {
+  final String text;
+  final VoidCallback? onPressed;
+  final bool isLoading;
+
+  const _PrimaryButton({
+    required this.text,
+    this.onPressed,
+    this.isLoading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF8B5CF6),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(25),
+          ),
+          elevation: 0,
+        ),
+        child: isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
       ),
     );
   }
