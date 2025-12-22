@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "41459314240",
+    "project_id": "thryfto-ab058",
+    "storage_bucket": "thryfto-ab058.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:41459314240:android:9fc52c60036ac3c39639a5",
+        "android_client_info": {
+          "package_name": "com.example.thryfto"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDblywVAJQ6DsI_KXBGUC2gKBUDdp0dosU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
