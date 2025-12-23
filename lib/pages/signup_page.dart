@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/pages/home_page.dart';
-import 'package:thryfto/widgets/app_logo.dart';
+import 'package:thryfto/shared/app_logo.dart';
 import 'package:thryfto/widgets/custom_text_field.dart';
 import 'package:thryfto/widgets/primary_button.dart';
 
