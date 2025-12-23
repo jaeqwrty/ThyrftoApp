@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/pages/home_page.dart';
 import 'package:thryfto/shared/app_logo.dart';
-import 'package:thryfto/widgets/custom_text_field.dart';
-import 'package:thryfto/widgets/primary_button.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -103,7 +101,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    CustomTextField(
+                    _buildCustomTextField(
                       controller: _fullNameController,
                       hintText: 'Full Name',
                       icon: Icons.person_outline,
@@ -115,7 +113,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    CustomTextField(
+                    _buildCustomTextField(
                       controller: _usernameController,
                       hintText: 'Username',
                       icon: Icons.person_outline,
@@ -127,7 +125,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    CustomTextField(
+                    _buildCustomTextField(
                       controller: _emailController,
                       hintText: 'Email',
                       icon: Icons.email_outlined,
@@ -142,7 +140,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    CustomTextField(
+                    _buildCustomTextField(
                       controller: _cityStateController,
                       hintText: 'City, State',
                       icon: Icons.location_on_outlined,
@@ -154,7 +152,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    CustomTextField(
+                    _buildCustomTextField(
                       controller: _passwordController,
                       hintText: 'Password',
                       icon: Icons.lock_outline,
@@ -170,7 +168,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    CustomTextField(
+                    _buildCustomTextField(
                       controller: _confirmPasswordController,
                       hintText: 'Confirm Password',
                       icon: Icons.lock_outline,
@@ -186,7 +184,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       },
                     ),
                     const SizedBox(height: 24),
-                    PrimaryButton(
+                    _buildPrimaryButton(
                       text: 'Sign Up',
                       isLoading: _isLoading,
                       onPressed: _handleSignUp,
@@ -219,6 +217,120 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCustomTextField({
+    required TextEditingController controller,
+    required String hintText,
+    required IconData icon,
+    bool isPassword = false,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+    int maxLines = 1,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        obscureText: isPassword,
+        keyboardType: keyboardType,
+        validator: validator,
+        maxLines: isPassword ? 1 : maxLines,
+        minLines: isPassword ? 1 : (maxLines == 1 ? 1 : 3),
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+          prefixIcon: Padding(
+            padding: EdgeInsets.only(
+              top: maxLines != null && maxLines > 1 ? 12 : 0,
+            ),
+            child: Icon(icon, color: Colors.grey, size: 20),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: BorderSide.none,
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: const BorderSide(color: Colors.red, width: 1),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: const BorderSide(color: Colors.red, width: 1),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrimaryButton({
+    required String text,
+    VoidCallback? onPressed,
+    bool isLoading = false,
+    IconData? icon,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF8B5CF6),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(25),
+          ),
+          elevation: 0,
+        ),
+        child: isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : icon != null
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(icon, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        text,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
       ),
     );
   }

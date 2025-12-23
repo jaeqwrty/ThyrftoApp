@@ -444,7 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 12),
               // Message seller button
-              if (listing['userId'] != _db.currentUserId)
+               if (listing['userId'] != _db.currentUserId)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12.0),
                   child: SizedBox(
