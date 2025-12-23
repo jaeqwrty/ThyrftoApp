@@ -134,19 +134,78 @@ class DatabaseService {
     }
   }
 
+  // Update an existing listing
+  Future<Map<String, dynamic>> updateListing({
+    required String listingId,
+    required String title,
+    required double price,
+    required String description,
+    required String category,
+    required String size,
+    required String condition,
+    required List<String> existingImageUrls,
+    required List<File> newImageFiles,
+  }) async {
+    try {
+      if (existingImageUrls.isEmpty && newImageFiles.isEmpty) {
+        return {
+          'success': false,
+          'message': 'At least one image is required',
+        };
+      }
+
+      // Upload new images if any
+      List<String> allImageUrls = List.from(existingImageUrls);
+      if (newImageFiles.isNotEmpty) {
+        final newUrls = await uploadImages(newImageFiles, listingId);
+        allImageUrls.addAll(newUrls);
+      }
+
+      // Update listing data
+      await _firestore.collection('listings').doc(listingId).update({
+        'title': title,
+        'price': price,
+        'description': description,
+        'category': category,
+        'size': size,
+        'condition': condition,
+        'image_urls': allImageUrls,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+
+      return {
+        'success': true,
+        'message': 'Listing updated successfully',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Failed to update listing: $e',
+      };
+    }
+  }
+
   // Get active listings stream
   Stream<List<Map<String, dynamic>>> getActiveListings() {
     return _firestore
         .collection('listings')
-        .where('status', isEqualTo: 'active') // Changed from isActive
-        .orderBy('created_at', descending: true) // Changed from createdAt
+        .where('status', isEqualTo: 'active')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
+      final listings = snapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
         return data;
       }).toList();
+      
+      // Sort client-side to avoid requiring composite index
+      listings.sort((a, b) {
+        final aTime = a['created_at']?.toDate() ?? DateTime(2000);
+        final bTime = b['created_at']?.toDate() ?? DateTime(2000);
+        return bTime.compareTo(aTime); // Descending
+      });
+      
+      return listings;
     });
   }
 
@@ -335,14 +394,22 @@ class DatabaseService {
     return _firestore
         .collection('listings')
         .where('seller_id', isEqualTo: userId)
-        .orderBy('created_at', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
+      final listings = snapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
         return data;
       }).toList();
+      
+      // Sort client-side to avoid requiring composite index
+      listings.sort((a, b) {
+        final aTime = a['created_at']?.toDate() ?? DateTime(2000);
+        final bTime = b['created_at']?.toDate() ?? DateTime(2000);
+        return bTime.compareTo(aTime); // Descending
+      });
+      
+      return listings;
     });
   }
 

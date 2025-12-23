@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:thryfto/services/auth_service.dart';
-import 'package:thryfto/pages/home_page.dart';
 import 'package:thryfto/pages/signup_page.dart';
+import 'package:thryfto/pages/forgot_password_page.dart';
 import 'package:thryfto/shared/app_logo.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -40,12 +40,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (result['success']) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomeScreen(user: result['user']),
-        ),
-      );
+      // The AuthWrapper will automatically redirect to HomeScreen
+      // as it listens to authStateChanges.
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -109,6 +105,28 @@ class _LoginScreenState extends State<LoginScreen> {
                         }
                         return null;
                       },
+                    ),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ForgotPasswordPage(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Forgot Password?',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF8B5CF6),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 24),
                     _buildPrimaryButton(

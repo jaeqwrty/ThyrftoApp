@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'package:thryfto/pages/login_page.dart';
+import 'package:thryfto/shared/auth_wrapper.dart';
 
 void main() async {
- 
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(
@@ -26,7 +25,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF8B5CF6)),
         useMaterial3: true,
       ),
-      home: const LoginScreen(),
+      home: const AuthWrapper(),
     );
   }
 }

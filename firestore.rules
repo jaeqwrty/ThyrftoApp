@@ -1,0 +1,113 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidListing() {
+      return request.resource.data.keys().hasAll(['title', 'price', 'seller_id']) 
+        && request.resource.data.title is string
+        && request.resource.data.price is number
+        && request.resource.data.price >= 0;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Anyone can read user profiles (for seller info display)
+      allow read: if isAuthenticated();
+      
+      // Users can only manage their own profile
+      // DEV BYPASS: Allow a@test.com to manage all users for reset/seeding
+      allow create, update, delete: if isOwner(userId) || request.auth.token.email == "a@test.com";
+    }
+    
+    // Listings collection
+    match /listings/{listingId} {
+      allow read: if isAuthenticated();
+      
+      // Users can only manage their own listings
+      // DEV BYPASS: Allow a@test.com to manage all listings for reset/seeding
+      allow create: if (isAuthenticated() && request.resource.data.seller_id == request.auth.uid)
+                    || request.auth.token.email == "a@test.com";
+      
+      allow update, delete: if (isAuthenticated() && resource.data.seller_id == request.auth.uid)
+                    || request.auth.token.email == "a@test.com";
+    }
+    
+    // Likes collection
+    match /likes/{likeId} {
+      // Anyone authenticated can read likes
+      allow read: if isAuthenticated();
+      
+      // Users can only create likes for themselves
+      allow create: if isAuthenticated() 
+        && request.resource.data.userId == request.auth.uid;
+      
+      // Users can only delete their own likes
+      allow delete: if isAuthenticated() 
+        && resource.data.userId == request.auth.uid;
+      
+      // Likes cannot be updated
+      allow update: if false;
+    }
+    
+    // Bookmarks collection
+    match /bookmarks/{bookmarkId} {
+      // Users can only read their own bookmarks
+      allow read: if isAuthenticated() 
+        && resource.data.userId == request.auth.uid;
+      
+      // Users can only create bookmarks for themselves
+      allow create: if isAuthenticated() 
+        && request.resource.data.userId == request.auth.uid;
+      
+      // Users can only delete their own bookmarks
+      allow delete: if isAuthenticated() 
+        && resource.data.userId == request.auth.uid;
+      
+      // Bookmarks cannot be updated
+      allow update: if false;
+    }
+    
+    // Chats collection
+    match /chats/{chatId} {
+      // Only chat participants can read/write
+      allow read: if isAuthenticated() 
+        && request.auth.uid in resource.data.participants;
+      
+      // Authenticated users can create chats if they are participants
+      allow create: if isAuthenticated() 
+        && request.auth.uid in request.resource.data.participants;
+      
+      // Only participants can update chat (for lastMessage updates)
+      allow update: if isAuthenticated() 
+        && request.auth.uid in resource.data.participants;
+      
+      // Chats cannot be deleted
+      allow delete: if false;
+      
+      // Messages subcollection
+      match /messages/{messageId} {
+        // Only chat participants can read messages
+        allow read: if isAuthenticated() 
+          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        
+        // Only chat participants can send messages
+        allow create: if isAuthenticated() 
+          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
+          && request.resource.data.senderId == request.auth.uid;
+        
+        // Messages cannot be updated or deleted
+        allow update, delete: if false;
+      }
+    }
+  }
+}
