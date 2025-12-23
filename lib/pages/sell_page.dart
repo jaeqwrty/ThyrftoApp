@@ -1,5 +1,3 @@
-// ============================================
-// File: lib/pages/sell_page.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -291,7 +289,7 @@ class _SellPageState extends State<SellPage> {
           hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
           prefixIcon: Padding(
             padding: EdgeInsets.only(
-              top: maxLines != null && maxLines > 1 ? 12 : 0,
+              top: maxLines > 1 ? 12 : 0,
             ),
             child: Icon(icon, color: Colors.grey, size: 20),
           ),

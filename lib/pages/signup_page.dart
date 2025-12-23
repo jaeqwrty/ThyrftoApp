@@ -254,7 +254,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
           prefixIcon: Padding(
             padding: EdgeInsets.only(
-              top: maxLines != null && maxLines > 1 ? 12 : 0,
+              top: maxLines > 1 ? 12 : 0,
             ),
             child: Icon(icon, color: Colors.grey, size: 20),
           ),

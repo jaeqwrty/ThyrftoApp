@@ -1,5 +1,3 @@
-// ============================================
-// File: lib/pages/login_page.dart
 import 'package:flutter/material.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/pages/home_page.dart';
@@ -189,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
           hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
           prefixIcon: Padding(
             padding: EdgeInsets.only(
-              top: maxLines != null && maxLines > 1 ? 12 : 0,
+              top: maxLines > 1 ? 12 : 0,
             ),
             child: Icon(icon, color: Colors.grey, size: 20),
           ),
