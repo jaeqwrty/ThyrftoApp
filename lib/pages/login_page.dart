@@ -35,9 +35,9 @@ class _LoginScreenState extends State<LoginScreen> {
       _passwordController.text,
     );
 
-    setState(() => _isLoading = false);
-
     if (!mounted) return;
+
+    setState(() => _isLoading = false);
 
     if (result['success']) {
       // The AuthWrapper will automatically redirect to HomeScreen

@@ -31,11 +31,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         email: _emailController.text.trim(),
       );
       
+      if (!mounted) return;
+
       setState(() {
         _emailSent = true;
         _isLoading = false;
       });
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       
       String message;
@@ -56,6 +59,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         );
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

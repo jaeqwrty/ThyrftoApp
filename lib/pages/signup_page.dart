@@ -46,9 +46,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       confirmPassword: _confirmPasswordController.text,
     );
 
-    setState(() => _isLoading = false);
-
     if (!mounted) return;
+
+    setState(() => _isLoading = false);
 
     if (result['success']) {
       ScaffoldMessenger.of(context).showSnackBar(
