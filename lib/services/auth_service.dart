@@ -70,8 +70,15 @@ class AuthService {
       }
 
       // Check if username is available
-      final isAvailable = await isUsernameAvailable(username);
-      if (!isAvailable) {
+      final availabilityResult = await isUsernameAvailable(username);
+      if (!availabilityResult['success']) {
+        return {
+          'success': false, 
+          'message': 'Network error checking username. Please check your connection.'
+        };
+      }
+      
+      if (!availabilityResult['available']) {
         return {'success': false, 'message': 'Username already taken'};
       }
 
@@ -127,7 +134,7 @@ class AuthService {
   }
 
   /// Check if username is available
-  Future<bool> isUsernameAvailable(String username) async {
+  Future<Map<String, dynamic>> isUsernameAvailable(String username) async {
     try {
       final querySnapshot = await _firestore
           .collection('users')
@@ -135,9 +142,15 @@ class AuthService {
           .limit(1)
           .get();
 
-      return querySnapshot.docs.isEmpty;
+      return {
+        'success': true,
+        'available': querySnapshot.docs.isEmpty,
+      };
     } catch (e) {
-      return false;
+      return {
+        'success': false,
+        'message': 'Error checking username availability: $e',
+      };
     }
   }
 
@@ -157,12 +170,38 @@ class AuthService {
         'username': username,
         'email': email,
         'cityState': cityState,
+        'onboardingCompleted': false,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
       return true;
     } catch (e) {
+      return false;
+    }
+  }
+
+  /// Complete onboarding
+  Future<bool> completeOnboarding({
+    required String uid,
+    required String bio,
+    String? profileImageUrl,
+  }) async {
+    try {
+      final data = {
+        'bio': bio,
+        'onboardingCompleted': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (profileImageUrl != null) {
+        data['profileImageUrl'] = profileImageUrl;
+      }
+
+      await _firestore.collection('users').doc(uid).update(data);
+      return true;
+    } catch (e) {
+      print('Error completing onboarding: $e');
       return false;
     }
   }

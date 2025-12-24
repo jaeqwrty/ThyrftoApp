@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/pages/home_page.dart';
 import 'package:thryfto/shared/app_logo.dart';
+import 'package:thryfto/shared/auth_wrapper.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -57,11 +58,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
           backgroundColor: Colors.green,
         ),
       );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomeScreen(user: result['user']),
-        ),
+      // Force navigation to AuthWrapper for Flutter Web reactivity
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const AuthWrapper()),
+        (route) => false,
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

@@ -7,6 +7,7 @@ import 'package:thryfto/pages/search_page.dart';
 import 'package:thryfto/pages/profile_page.dart';
 import 'package:thryfto/pages/listing_detail_page.dart';
 import 'package:thryfto/pages/chat_page.dart';
+import 'package:thryfto/shared/auth_wrapper.dart';
 
 class HomeScreen extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -157,7 +158,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (confirmed == true) {
       await _authService.signOut();
-      // AuthWrapper will handle navigation
+      if (mounted) {
+        // Force a complete navigation stack reset to show LoginScreen
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const AuthWrapper()),
+          (route) => false,
+        );
+      }
     }
   }
 

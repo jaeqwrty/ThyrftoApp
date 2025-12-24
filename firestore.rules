@@ -21,8 +21,8 @@ service cloud.firestore {
     
     // Users collection
     match /users/{userId} {
-      // Anyone can read user profiles (for seller info display)
-      allow read: if isAuthenticated();
+      // Anyone can read user profiles (for seller info display and username checks)
+      allow read: if true;
       
       // Users can only manage their own profile
       // DEV BYPASS: Allow a@test.com to manage all users for reset/seeding
@@ -31,7 +31,7 @@ service cloud.firestore {
     
     // Listings collection
     match /listings/{listingId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       
       // Users can only manage their own listings
       // DEV BYPASS: Allow a@test.com to manage all listings for reset/seeding

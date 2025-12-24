@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/pages/home_page.dart';
 import 'package:thryfto/pages/login_page.dart';
+import 'package:thryfto/pages/onboarding_page.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
@@ -41,8 +42,15 @@ class AuthWrapper extends StatelessWidget {
                 // If profile fetch fails, fallback to basic info or logout
                 return const LoginScreen();
               }
+              
+              final userData = profileSnapshot.data!;
+              final bool onboardingCompleted = userData['onboardingCompleted'] ?? true;
+              
+              if (!onboardingCompleted) {
+                 return const OnboardingPage();
+              }
 
-              return HomeScreen(user: profileSnapshot.data!);
+              return HomeScreen(user: userData);
             },
           );
         }

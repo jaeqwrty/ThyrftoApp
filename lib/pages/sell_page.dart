@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -22,7 +21,7 @@ class _SellPageState extends State<SellPage> {
   final _sizeController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
-  List<File> _selectedImages = [];
+  List<XFile> _selectedImages = [];
   String _selectedCondition = 'New';
   String _selectedCategory = 'Clothing';
   bool _isLoading = false;
@@ -557,7 +556,7 @@ class _SellPageState extends State<SellPage> {
     );
   }
 
-  Widget _buildImageItem(File image, int index) {
+  Widget _buildImageItem(XFile image, int index) {
     return Container(
       width: 100,
       margin: const EdgeInsets.only(right: 8),
@@ -572,11 +571,15 @@ class _SellPageState extends State<SellPage> {
                     height: 100,
                     fit: BoxFit.cover,
                   )
-                : Image.file(
-                    image,
+                : Image.network( // In Flutter 3.0+, Image.network works for XFile paths on mobile too if they are local paths, but for safety on mobile we usually use Image.file if possible. However kIsWeb is the main separator.
+                    image.path,
                     width: 100,
                     height: 100,
                     fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Fallback if needed
+                      return const Center(child: Icon(Icons.error));
+                    },
                   ),
           ),
           Positioned(
@@ -668,9 +671,7 @@ class _SellPageState extends State<SellPage> {
         final imagesToAdd = images.take(remainingSlots).toList();
 
         setState(() {
-          _selectedImages.addAll(
-            imagesToAdd.map((xFile) => File(xFile.path)).toList(),
-          );
+          _selectedImages.addAll(imagesToAdd);
         });
 
         if (images.length > remainingSlots) {
@@ -696,7 +697,7 @@ class _SellPageState extends State<SellPage> {
 
       if (image != null) {
         setState(() {
-          _selectedImages.add(File(image.path));
+          _selectedImages.add(image);
         });
       }
     } catch (e) {

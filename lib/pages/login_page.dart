@@ -37,12 +37,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!mounted) return;
 
-    setState(() => _isLoading = false);
-
     if (result['success']) {
+      setState(() => _isLoading = false);
       // The AuthWrapper will automatically redirect to HomeScreen
       // as it listens to authStateChanges.
     } else {
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result['message']),

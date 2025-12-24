@@ -1,8 +1,9 @@
-import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:path/path.dart' as path;
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart';
 
 class DatabaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -13,7 +14,7 @@ class DatabaseService {
 
   // Upload images to Firebase Storage
   Future<List<String>> uploadImages(
-    List<File> imageFiles,
+    List<XFile> imageFiles,
     String listingId,
   ) async {
     List<String> imageUrls = [];
@@ -26,10 +27,11 @@ class DatabaseService {
             _storage.ref().child('listings/$listingId/$fileName');
 
         // Upload file
-        final uploadTask = await storageRef.putFile(
-          file,
+        final bytes = await file.readAsBytes();
+        final uploadTask = await storageRef.putData(
+          bytes,
           SettableMetadata(
-            contentType: _getContentType(file.path),
+            contentType: _getContentType(file.name),
           ),
         );
 
@@ -69,7 +71,7 @@ class DatabaseService {
     required String size,
     required String condition,
     required String category,
-    required List<File> imageFiles,
+    required List<XFile> imageFiles,
   }) async {
     try {
       if (imageFiles.isEmpty) {
@@ -144,7 +146,7 @@ class DatabaseService {
     required String size,
     required String condition,
     required List<String> existingImageUrls,
-    required List<File> newImageFiles,
+    required List<XFile> newImageFiles,
   }) async {
     try {
       if (existingImageUrls.isEmpty && newImageFiles.isEmpty) {
@@ -440,5 +442,28 @@ class DatabaseService {
 
       return listings;
     });
+  }
+
+  // Upload profile image
+  Future<String?> uploadProfileImage(XFile imageFile, String userId) async {
+    try {
+      final ext = path.extension(imageFile.name).isEmpty 
+          ? '.jpg' 
+          : path.extension(imageFile.name);
+      final fileName = 'profile_$userId$ext';
+      final storageRef = _storage.ref().child('profiles/$userId/$fileName');
+
+      final bytes = await imageFile.readAsBytes();
+      final uploadTask = await storageRef.putData(
+        bytes,
+        SettableMetadata(
+          contentType: _getContentType(imageFile.name),
+        ),
+      );
+
+      return await uploadTask.ref.getDownloadURL();
+    } catch (e) {
+      return null;
+    }
   }
 }

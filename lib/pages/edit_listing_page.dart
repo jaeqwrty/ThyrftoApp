@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -32,7 +31,7 @@ class _EditListingPageState extends State<EditListingPage> {
   String _selectedCondition = 'Good';
   
   List<String> _existingImageUrls = [];
-  List<File> _newImageFiles = [];
+  List<XFile> _newImageFiles = [];
   bool _isLoading = false;
 
   final List<String> _categories = [
@@ -85,7 +84,7 @@ class _EditListingPageState extends State<EditListingPage> {
     final images = await _picker.pickMultiImage(limit: 5 - totalImages);
     if (images.isNotEmpty) {
       setState(() {
-        _newImageFiles.addAll(images.map((img) => File(img.path)));
+        _newImageFiles.addAll(images);
       });
     }
   }
@@ -339,7 +338,7 @@ class _EditListingPageState extends State<EditListingPage> {
     );
   }
 
-  Widget _buildNewImageTile(File file, int index) {
+  Widget _buildNewImageTile(XFile file, int index) {
     return Container(
       width: 100,
       height: 100,
@@ -347,7 +346,7 @@ class _EditListingPageState extends State<EditListingPage> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         image: DecorationImage(
-          image: kIsWeb ? NetworkImage(file.path) : FileImage(file) as ImageProvider,
+          image: NetworkImage(file.path),
           fit: BoxFit.cover,
         ),
       ),
