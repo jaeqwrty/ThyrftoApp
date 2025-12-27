@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:thryfto/services/auth_service.dart';
-import 'package:thryfto/pages/home_page.dart';
 import 'package:thryfto/shared/app_logo.dart';
 import 'package:thryfto/shared/auth_wrapper.dart';
 

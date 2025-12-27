@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/pages/chat_page.dart';
 import 'package:thryfto/pages/edit_listing_page.dart';
+import 'package:thryfto/modals/share_modal.dart';
 
 class ListingDetailPage extends StatefulWidget {
   final Map<String, dynamic> listing;
@@ -22,6 +23,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   int _currentImageIndex = 0;
   bool _isLiked = false;
   bool _isBookmarked = false;
+  int _likeCount = 0;
 
   @override
   void initState() {
@@ -32,13 +34,19 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   Future<void> _loadInteractionStatus() async {
     final listingId = widget.listing['id'];
     if (listingId != null) {
-      final liked = await _db.isListingLiked(listingId);
-      final bookmarked = await _db.isListingBookmarked(listingId);
-      if (mounted) {
-        setState(() {
-          _isLiked = liked;
-          _isBookmarked = bookmarked;
-        });
+      try {
+        final liked = await _db.isListingLiked(listingId);
+        final bookmarked = await _db.isListingBookmarked(listingId);
+        if (mounted) {
+          setState(() {
+            _isLiked = liked;
+            _isBookmarked = bookmarked;
+          });
+        }
+        print(
+            'Loaded interaction status - Liked: $liked, Bookmarked: $bookmarked');
+      } catch (e) {
+        print('Error loading interaction status: $e');
       }
     }
   }
@@ -80,29 +88,96 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                   child: const Icon(Icons.share, color: Colors.black87),
                 ),
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Share feature coming soon!')),
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => ShareModal(listing: widget.listing),
                   );
                 },
               ),
-              IconButton(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                    color: _isBookmarked ? const Color(0xFF8B5CF6) : Colors.black87,
-                  ),
-                ),
-                onPressed: () async {
-                  final listingId = widget.listing['id'];
-                  if (listingId != null) {
-                    await _db.toggleBookmark(listingId);
-                    setState(() => _isBookmarked = !_isBookmarked);
-                  }
+              // ---- Bookmark ---
+              StreamBuilder<bool>(
+                stream:
+                    _db.isListingBookmarkedStream(widget.listing['id'] ?? ''),
+                initialData: _isBookmarked,
+                builder: (context, snapshot) {
+                  return IconButton(
+                    icon: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                        color: _isBookmarked
+                            ? const Color(0xFF8B5CF6)
+                            : Colors.black87,
+                      ),
+                    ),
+                    onPressed: () async {
+                      final listingId = widget.listing['id'];
+                      print('Bookmark button tapped! Listing ID: $listingId');
+                      print('Current bookmark state: $_isBookmarked');
+
+                      if (listingId != null) {
+                        try {
+                          await _db.toggleBookmark(listingId);
+
+                          // Update local state
+                          setState(() {
+                            _isBookmarked = !_isBookmarked;
+                          });
+
+                          print(
+                              'Bookmark toggled successfully! New state: $_isBookmarked');
+
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Icon(
+                                      _isBookmarked
+                                          ? Icons.bookmark
+                                          : Icons.bookmark_border,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      _isBookmarked
+                                          ? 'Added to bookmarks'
+                                          : 'Removed from bookmarks',
+                                    ),
+                                  ],
+                                ),
+                                duration: const Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: _isBookmarked
+                                    ? const Color(0xFF8B5CF6)
+                                    : Colors.grey[700],
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          print('Error toggling bookmark: $e');
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to bookmark: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      }
+                    },
+                  );
                 },
               ),
             ],
@@ -134,7 +209,8 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                               children: List.generate(
                                 imageUrls.length,
                                 (index) => Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                                  margin:
+                                      const EdgeInsets.symmetric(horizontal: 4),
                                   width: 8,
                                   height: 8,
                                   decoration: BoxDecoration(
@@ -171,30 +247,50 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                           color: Color(0xFF8B5CF6),
                         ),
                       ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              _isLiked ? Icons.favorite : Icons.favorite_border,
-                              color: _isLiked ? Colors.red : Colors.grey,
-                              size: 28,
-                            ),
-                            onPressed: () async {
-                              final listingId = widget.listing['id'];
-                              if (listingId != null) {
-                                await _db.toggleLike(listingId);
-                                setState(() => _isLiked = !_isLiked);
-                              }
+                      StreamBuilder<bool>(
+                        stream: _db
+                            .isListingLikedStream(widget.listing['id'] ?? ''),
+                        initialData: _isLiked,
+                        builder: (context, likeSnapshot) {
+                          final isLiked = likeSnapshot.data ?? _isLiked;
+
+                          return StreamBuilder<Map<String, dynamic>?>(
+                            stream: _db
+                                .getListingStream(widget.listing['id'] ?? ''),
+                            builder: (context, listingSnapshot) {
+                              final currentLikes =
+                                  listingSnapshot.data?['likes'] ?? _likeCount;
+
+                              return Row(
+                                children: [
+                                  IconButton(
+                                    icon: Icon(
+                                      isLiked
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                      color: isLiked ? Colors.red : Colors.grey,
+                                      size: 28,
+                                    ),
+                                    onPressed: () async {
+                                      final listingId = widget.listing['id'];
+                                      if (listingId != null) {
+                                        await _db.toggleLike(listingId);
+                                      }
+                                    },
+                                  ),
+                                  Text(
+                                    '$currentLikes',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              );
                             },
-                          ),
-                          Text(
-                            '${widget.listing['likes'] ?? 0}',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -213,9 +309,12 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _buildTag(widget.listing['size'] ?? 'N/A', Colors.purple.shade50, const Color(0xFF8B5CF6)),
-                      _buildTag(widget.listing['condition'] ?? 'N/A', Colors.green.shade50, Colors.green.shade700),
-                      _buildTag(widget.listing['category'] ?? 'Other', Colors.blue.shade50, Colors.blue.shade700),
+                      _buildTag(widget.listing['size'] ?? 'N/A',
+                          Colors.purple.shade50, const Color(0xFF8B5CF6)),
+                      _buildTag(widget.listing['condition'] ?? 'N/A',
+                          Colors.green.shade50, Colors.green.shade700),
+                      _buildTag(widget.listing['category'] ?? 'Other',
+                          Colors.blue.shade50, Colors.blue.shade700),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -229,7 +328,8 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    widget.listing['description'] ?? 'No description available.',
+                    widget.listing['description'] ??
+                        'No description available.',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.grey[700],
@@ -258,7 +358,8 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                           radius: 25,
                           backgroundColor: const Color(0xFF8B5CF6),
                           child: Text(
-                            (widget.listing['seller_name'] ?? 'U')[0].toUpperCase(),
+                            (widget.listing['seller_name'] ?? 'U')[0]
+                                .toUpperCase(),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 20,
@@ -272,7 +373,8 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                widget.listing['seller_name'] ?? 'Unknown Seller',
+                                widget.listing['seller_name'] ??
+                                    'Unknown Seller',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -281,13 +383,19 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[500]),
+                                  Icon(Icons.location_on_outlined,
+                                      size: 14, color: Colors.grey[500]),
                                   const SizedBox(width: 4),
-                                  Text(
-                                    widget.listing['seller_location'] ?? 'Location not available',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[500],
+                                  Expanded(
+                                    child: Text(
+                                      widget.listing['seller_location'] ??
+                                          'Location not available',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[500],
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ],
@@ -322,7 +430,8 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
               child: SafeArea(
                 child: ElevatedButton.icon(
                   onPressed: () async {
-                    final chatId = await _db.getOrCreateChat(widget.listing['seller_id']);
+                    final chatId =
+                        await _db.getOrCreateChat(widget.listing['seller_id']);
                     if (chatId != null && mounted) {
                       Navigator.push(
                         context,
@@ -330,7 +439,8 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                           builder: (context) => ChatPage(
                             chatId: chatId,
                             otherUserId: widget.listing['seller_id'],
-                            otherUserName: widget.listing['seller_name'] ?? 'Seller',
+                            otherUserName:
+                                widget.listing['seller_name'] ?? 'Seller',
                             currentUser: widget.user,
                           ),
                         ),
@@ -382,7 +492,8 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                             ),
                           );
                           if (result == true && mounted) {
-                            Navigator.pop(context); // Go back to refresh listing
+                            Navigator.pop(
+                                context); // Go back to refresh listing
                           }
                         },
                         icon: const Icon(Icons.edit),
@@ -453,7 +564,8 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Listing'),
-        content: const Text('Are you sure you want to delete this listing? This action cannot be undone.'),
+        content: const Text(
+            'Are you sure you want to delete this listing? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

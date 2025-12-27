@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:path/path.dart' as path;
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter/foundation.dart';
 
 class DatabaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -105,19 +104,19 @@ class DatabaseService {
         'seller_id': userId,
         'seller_name':
             userData['full_name'] ?? userData['username'] ?? 'Unknown',
-        'seller_location': userData['city_state'] ?? '',
+        'seller_location': userData['cityState'] ?? 'Location not available',
         'title': title,
         'description': description,
         'price': price,
         'size': size,
         'condition': condition,
         'category': category,
-        'image_urls': imageUrls, // Changed from imageUrls to image_urls
-        'status': 'active', // Changed from isActive to status
+        'image_urls': imageUrls,
+        'status': 'active',
         'likes': 0,
         'views': 0,
-        'created_at': FieldValue.serverTimestamp(), // Changed from createdAt
-        'updated_at': FieldValue.serverTimestamp(), // Changed from updatedAt
+        'created_at': FieldValue.serverTimestamp(),
+        'updated_at': FieldValue.serverTimestamp(),
       };
 
       // Save to Firestore
@@ -199,14 +198,14 @@ class DatabaseService {
         data['id'] = doc.id;
         return data;
       }).toList();
-      
+
       // Sort client-side to avoid requiring composite index
       listings.sort((a, b) {
         final aTime = a['created_at']?.toDate() ?? DateTime(2000);
         final bTime = b['created_at']?.toDate() ?? DateTime(2000);
         return bTime.compareTo(aTime); // Descending
       });
-      
+
       return listings;
     });
   }
@@ -403,14 +402,14 @@ class DatabaseService {
         data['id'] = doc.id;
         return data;
       }).toList();
-      
+
       // Sort client-side to avoid requiring composite index
       listings.sort((a, b) {
         final aTime = a['created_at']?.toDate() ?? DateTime(2000);
         final bTime = b['created_at']?.toDate() ?? DateTime(2000);
         return bTime.compareTo(aTime); // Descending
       });
-      
+
       return listings;
     });
   }
@@ -447,8 +446,8 @@ class DatabaseService {
   // Upload profile image
   Future<String?> uploadProfileImage(XFile imageFile, String userId) async {
     try {
-      final ext = path.extension(imageFile.name).isEmpty 
-          ? '.jpg' 
+      final ext = path.extension(imageFile.name).isEmpty
+          ? '.jpg'
           : path.extension(imageFile.name);
       final fileName = 'profile_$userId$ext';
       final storageRef = _storage.ref().child('profiles/$userId/$fileName');
@@ -464,6 +463,254 @@ class DatabaseService {
       return await uploadTask.ref.getDownloadURL();
     } catch (e) {
       return null;
+    }
+  }
+
+  // Add a comment to a listing
+  Future<void> addComment({
+    required String listingId,
+    required String userId,
+    required String userName,
+    required String comment,
+  }) async {
+    try {
+      await _firestore
+          .collection('listings')
+          .doc(listingId)
+          .collection('comments')
+          .add({
+        'user_id': userId,
+        'user_name': userName,
+        'comment': comment,
+        'created_at': FieldValue.serverTimestamp(),
+      });
+
+      // Update comment count on listing
+      await _firestore.collection('listings').doc(listingId).update({
+        'comments_count': FieldValue.increment(1),
+      });
+    } catch (e) {
+      throw Exception('Failed to add comment: $e');
+    }
+  }
+
+  // Get comments for a listing
+  Stream<List<Map<String, dynamic>>> getComments(String listingId) {
+    return _firestore
+        .collection('listings')
+        .doc(listingId)
+        .collection('comments')
+        .orderBy('created_at', descending: false)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    });
+  }
+
+  // Delete a comment
+  Future<void> deleteComment(String listingId, String commentId) async {
+    try {
+      await _firestore
+          .collection('listings')
+          .doc(listingId)
+          .collection('comments')
+          .doc(commentId)
+          .delete();
+
+      // Update comment count on listing
+      await _firestore.collection('listings').doc(listingId).update({
+        'comments_count': FieldValue.increment(-1),
+      });
+    } catch (e) {
+      throw Exception('Failed to delete comment: $e');
+    }
+  }
+
+  // Get comment count for a listing
+  Future<int> getCommentCount(String listingId) async {
+    try {
+      final doc = await _firestore.collection('listings').doc(listingId).get();
+      return doc.data()?['comments_count'] ?? 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  // Get comment count as a stream
+  Stream<int> getCommentCountStream(String listingId) {
+    return _firestore
+        .collection('listings')
+        .doc(listingId)
+        .snapshots()
+        .map((doc) => doc.data()?['comments_count'] ?? 0);
+  }
+
+  Stream<bool> isListingLikedStream(String listingId) {
+    if (currentUserId == null) {
+      return Stream.value(false);
+    }
+
+    return _firestore
+        .collection('likes')
+        .doc('${currentUserId}_$listingId')
+        .snapshots()
+        .map((doc) => doc.exists);
+  }
+
+  // Stream to check if listing is bookmarked (real-time)
+  Stream<bool> isListingBookmarkedStream(String listingId) {
+    if (currentUserId == null) {
+      return Stream.value(false);
+    }
+
+    return _firestore
+        .collection('bookmarks')
+        .doc('${currentUserId}_$listingId')
+        .snapshots()
+        .map((doc) => doc.exists);
+  }
+
+  Stream<Map<String, dynamic>?> getListingStream(String listingId) {
+    return _firestore
+        .collection('listings')
+        .doc(listingId)
+        .snapshots()
+        .map((doc) {
+      if (doc.exists) {
+        final data = doc.data()!;
+        data['id'] = doc.id;
+        return data;
+      }
+      return null;
+    });
+  }
+
+  // IMPORTANT: Replace the existing getBookmarkedListings in database_service.dart with this:
+  // Get user's bookmarked listings with real-time updates and proper ordering
+  Stream<List<Map<String, dynamic>>> getBookmarkedListingsUpdated() {
+    if (currentUserId == null) {
+      return Stream.value([]);
+    }
+
+    return _firestore
+        .collection('bookmarks')
+        .where('userId', isEqualTo: currentUserId)
+        .snapshots()
+        .asyncMap((snapshot) async {
+      List<Map<String, dynamic>> listings = [];
+
+      for (var doc in snapshot.docs) {
+        final listingId = doc.data()['listingId'];
+        final listingDoc =
+            await _firestore.collection('listings').doc(listingId).get();
+
+        if (listingDoc.exists) {
+          final data = listingDoc.data()!;
+          data['id'] = listingDoc.id;
+          data['bookmarked_at'] = doc.data()['createdAt'];
+          listings.add(data);
+        }
+      }
+
+      // Sort by bookmark date (most recent first)
+      listings.sort((a, b) {
+        final aTime = a['bookmarked_at']?.toDate() ?? DateTime(2000);
+        final bTime = b['bookmarked_at']?.toDate() ?? DateTime(2000);
+        return bTime.compareTo(aTime);
+      });
+
+      return listings;
+    });
+  }
+  // Add these methods to your DatabaseService class
+
+  /// Increment the share count for a listing
+  Future<void> incrementShareCount(String listingId) async {
+    try {
+      await _firestore.collection('listings').doc(listingId).update({
+        'shares': FieldValue.increment(1),
+      });
+      print('Share count incremented for listing: $listingId');
+    } catch (e) {
+      print('Error incrementing share count: $e');
+      rethrow;
+    }
+  }
+
+  /// Get the share count for a listing as a stream (real-time updates)
+  Stream<int> getShareCountStream(String listingId) {
+    try {
+      return _firestore
+          .collection('listings')
+          .doc(listingId)
+          .snapshots()
+          .map((snapshot) {
+        if (!snapshot.exists) return 0;
+        final data = snapshot.data() ?? {};
+        final shares = data['shares'];
+
+        // Handle both int and double types
+        if (shares is int) {
+          return shares;
+        } else if (shares is double) {
+          return shares.toInt();
+        }
+        return 0;
+      }).handleError((error) {
+        print('Error in getShareCountStream: $error');
+        return 0;
+      });
+    } catch (e) {
+      print('Error creating share count stream: $e');
+      return Stream.value(0);
+    }
+  }
+
+  /// Get the share count for a listing (single fetch)
+  Future<int> getShareCount(String listingId) async {
+    try {
+      final snapshot =
+          await _firestore.collection('listings').doc(listingId).get();
+      if (!snapshot.exists) return 0;
+
+      final data = snapshot.data() ?? {};
+      final shares = data['shares'];
+
+      // Handle both int and double types
+      if (shares is int) {
+        return shares;
+      } else if (shares is double) {
+        return shares.toInt();
+      }
+      return 0;
+    } catch (e) {
+      print('Error getting share count: $e');
+      return 0;
+    }
+  }
+
+  /// Call this method when user shares a listing
+  Future<void> onListingShared(String listingId) async {
+    try {
+      // Increment the share count
+      await incrementShareCount(listingId);
+
+      // You can also track shares in a separate collection if needed
+      // This creates a record of who shared what and when
+      await _firestore.collection('listing_shares').add({
+        'listing_id': listingId,
+        'shared_by': currentUserId,
+        'shared_at': FieldValue.serverTimestamp(),
+      });
+
+      print('Listing shared and tracked: $listingId');
+    } catch (e) {
+      print('Error tracking share: $e');
+      rethrow;
     }
   }
 }
