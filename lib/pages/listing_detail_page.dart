@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/pages/conversation_page.dart';
 import 'package:thryfto/services/database_service.dart';
-import 'package:thryfto/pages/chat_page.dart';
 import 'package:thryfto/pages/edit_listing_page.dart';
 import 'package:thryfto/modals/share_modal.dart';
 
@@ -240,7 +240,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '₱${widget.listing['price']?.toStringAsFixed(2) ?? '0.00'}',
+                        '₱ ${widget.listing['price']?.toStringAsFixed(2) ?? '0.00'}',
                         style: const TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
@@ -274,7 +274,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                                     onPressed: () async {
                                       final listingId = widget.listing['id'];
                                       if (listingId != null) {
-                                        await _db.toggleLike(listingId);
+                                        await _db.toggleLikeWithNotification(listingId);
                                       }
                                     },
                                   ),
@@ -436,7 +436,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ChatPage(
+                          builder: (context) => ConversationPage(
                             chatId: chatId,
                             otherUserId: widget.listing['seller_id'],
                             otherUserName:

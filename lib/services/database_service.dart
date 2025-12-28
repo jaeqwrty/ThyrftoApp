@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:path/path.dart' as path;
 import 'package:image_picker/image_picker.dart';
+import 'package:thryfto/services/notification_service.dart';
 
 class DatabaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -98,7 +99,6 @@ class DatabaseService {
       // Upload images
       final imageUrls = await uploadImages(imageFiles, listingId);
 
-      // Create listing data (using snake_case to match listing_card.dart)
       final listingData = {
         'id': listingId,
         'seller_id': userId,
@@ -224,14 +224,25 @@ class DatabaseService {
   }
 
   // Toggle like
-  Future<void> toggleLike(String listingId) async {
+  Future<void> toggleLikeWithNotification(String listingId) async {
     if (currentUserId == null) return;
 
     try {
       final likeRef =
           _firestore.collection('likes').doc('${currentUserId}_$listingId');
-
       final likeDoc = await likeRef.get();
+
+      // Get listing document to find seller
+      final listingDoc =
+          await _firestore.collection('listings').doc(listingId).get();
+
+      if (!listingDoc.exists) {
+        throw Exception('Listing not found');
+      }
+
+      final listingData = listingDoc.data()!;
+      final sellerId = listingData['seller_id'];
+      final listingTitle = listingData['title'] ?? 'a listing';
 
       if (likeDoc.exists) {
         // Unlike
@@ -249,8 +260,21 @@ class DatabaseService {
         await _firestore.collection('listings').doc(listingId).update({
           'likes': FieldValue.increment(1),
         });
+
+        // Send notification only if seller is different from liker
+        if (sellerId != null && sellerId != currentUserId) {
+          await _createNotification(
+            recipientId: sellerId,
+            type: 'like',
+            title: 'Someone liked your listing',
+            body: 'Your listing "$listingTitle" received a like',
+            relatedListingId: listingId,
+            relatedUserId: currentUserId,
+          );
+        }
       }
     } catch (e) {
+      print('Error toggling like: $e');
       throw Exception('Failed to toggle like: $e');
     }
   }
@@ -467,13 +491,26 @@ class DatabaseService {
   }
 
   // Add a comment to a listing
-  Future<void> addComment({
+  Future<void> addCommentWithNotification({
     required String listingId,
     required String userId,
     required String userName,
     required String comment,
   }) async {
     try {
+      // Get listing info to find seller
+      final listingDoc =
+          await _firestore.collection('listings').doc(listingId).get();
+
+      if (!listingDoc.exists) {
+        throw Exception('Listing not found');
+      }
+
+      final listingData = listingDoc.data()!;
+      final sellerId = listingData['seller_id'];
+      final listingTitle = listingData['title'] ?? 'a listing';
+
+      // Add comment
       await _firestore
           .collection('listings')
           .doc(listingId)
@@ -485,11 +522,24 @@ class DatabaseService {
         'created_at': FieldValue.serverTimestamp(),
       });
 
-      // Update comment count on listing
+      // Update comment count
       await _firestore.collection('listings').doc(listingId).update({
         'comments_count': FieldValue.increment(1),
       });
+
+      // Send notification only if commenter is not the seller
+      if (sellerId != null && sellerId != userId) {
+        await _createNotification(
+          recipientId: sellerId,
+          type: 'comment',
+          title: '$userName commented on your listing',
+          body: 'Comment: "$comment"',
+          relatedListingId: listingId,
+          relatedUserId: userId,
+        );
+      }
     } catch (e) {
+      print('Error adding comment: $e');
       throw Exception('Failed to add comment: $e');
     }
   }
@@ -694,23 +744,163 @@ class DatabaseService {
   }
 
   /// Call this method when user shares a listing
-  Future<void> onListingShared(String listingId) async {
+  Future<void> onListingSharedWithNotification(String listingId) async {
     try {
-      // Increment the share count
+      // Get listing info
+      final listingDoc =
+          await _firestore.collection('listings').doc(listingId).get();
+
+      if (!listingDoc.exists) {
+        throw Exception('Listing not found');
+      }
+
+      final listingData = listingDoc.data()!;
+      final sellerId = listingData['seller_id'];
+      final listingTitle = listingData['title'] ?? 'a listing';
+
+      // Increment share count
       await incrementShareCount(listingId);
 
-      // You can also track shares in a separate collection if needed
-      // This creates a record of who shared what and when
+      // Track the share
       await _firestore.collection('listing_shares').add({
         'listing_id': listingId,
         'shared_by': currentUserId,
         'shared_at': FieldValue.serverTimestamp(),
       });
 
+      // Send notification only if sharer is not the seller
+      if (sellerId != null && sellerId != currentUserId) {
+        await _createNotification(
+          recipientId: sellerId,
+          type: 'share',
+          title: 'Someone shared your listing',
+          body: 'Your listing "$listingTitle" was shared',
+          relatedListingId: listingId,
+          relatedUserId: currentUserId,
+        );
+      }
+
       print('Listing shared and tracked: $listingId');
     } catch (e) {
       print('Error tracking share: $e');
       rethrow;
+    }
+  }
+
+  Future<void> sendMessageWithNotification({
+    required String recipientId,
+    required String messageText,
+  }) async {
+    try {
+      if (currentUserId == null) return;
+
+      await _createNotification(
+        recipientId: recipientId,
+        type: 'message',
+        title: 'You received a new message',
+        body: messageText.length > 50
+            ? '${messageText.substring(0, 50)}...'
+            : messageText,
+        relatedUserId: currentUserId,
+      );
+    } catch (e) {
+      print('Error sending message notification: $e');
+    }
+  }
+
+  /// Internal helper: Create notification in Firestore
+  Future<void> _createNotification({
+    required String recipientId,
+    required String type,
+    required String title,
+    required String body,
+    String? relatedListingId,
+    String? relatedUserId,
+    Map<String, dynamic>? additionalData,
+  }) async {
+    try {
+      await _firestore.collection('notifications').add({
+        'recipient_id': recipientId,
+        'sender_id': currentUserId,
+        'type': type,
+        'title': title,
+        'body': body,
+        'related_listing_id': relatedListingId,
+        'related_user_id': relatedUserId,
+        'is_read': false,
+        'created_at': FieldValue.serverTimestamp(),
+        'additional_data': additionalData ?? {},
+      });
+      print('Notification created: $title');
+    } catch (e) {
+      print('Error creating notification: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete a chat conversation and all its messages
+  Future<bool> deleteChat(String chatId) async {
+    try {
+      // Delete all messages in the chat
+      final messagesSnapshot = await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .get();
+
+      for (var doc in messagesSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      // Delete the chat document
+      await _firestore.collection('chats').doc(chatId).delete();
+
+      return true;
+    } catch (e) {
+      print('Error deleting chat: $e');
+      return false;
+    }
+  }
+
+  /// Delete a specific message from a chat
+  Future<bool> deleteMessage(String chatId, String messageId) async {
+    try {
+      await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc(messageId)
+          .delete();
+
+      // Update last message if needed
+      final remainingMessages = await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .orderBy('timestamp', descending: true)
+          .limit(1)
+          .get();
+
+      if (remainingMessages.docs.isEmpty) {
+        // No messages left, update chat
+        await _firestore.collection('chats').doc(chatId).update({
+          'lastMessage': '',
+          'lastMessageTime': FieldValue.serverTimestamp(),
+        });
+      } else {
+        // Update with the latest message
+        final lastMsg = remainingMessages.docs.first.data();
+        await _firestore.collection('chats').doc(chatId).update({
+          'lastMessage': lastMsg['text'] ?? '',
+          'lastMessageTime':
+              lastMsg['timestamp'] ?? FieldValue.serverTimestamp(),
+        });
+      }
+
+      return true;
+    } catch (e) {
+      print('Error deleting message: $e');
+      return false;
     }
   }
 }

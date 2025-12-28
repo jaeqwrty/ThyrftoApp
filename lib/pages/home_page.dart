@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/modals/comments.dart';
 import 'package:thryfto/modals/share_modal.dart';
+import 'package:thryfto/pages/conversation_page.dart';
+import 'package:thryfto/pages/notification_page.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/pages/sell_page.dart';
 import 'package:thryfto/pages/search_page.dart';
 import 'package:thryfto/pages/profile_page.dart';
 import 'package:thryfto/pages/listing_detail_page.dart';
 import 'package:thryfto/pages/chat_page.dart';
+import 'package:thryfto/services/notification_service.dart';
+import 'package:thryfto/shared/notification_bell.dart';
 
 class HomeScreen extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -17,6 +21,8 @@ class HomeScreen extends StatefulWidget {
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
+
+final NotificationService _notificationService = NotificationService();
 
 class _HomeScreenState extends State<HomeScreen> {
   final DatabaseService _db = DatabaseService();
@@ -201,7 +207,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+                actions: [
+                  NotificationBell(
+                    notificationService: _notificationService,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationsPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 16),
+                ],
               ),
+
               // Listings
               SliverList(
                 delegate: SliverChildBuilderDelegate(
@@ -332,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                               return InkWell(
                                 onTap: () async {
-                                  await _db.toggleLike(listing['id']);
+                                  await _db.toggleLikeWithNotification(listing['id']);
                                   // No need to setState - streams will update automatically
                                 },
                                 borderRadius: BorderRadius.circular(8),
@@ -587,7 +608,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => ChatPage(
+                                builder: (context) => ConversationPage(
                                   chatId: chatId,
                                   otherUserId: listing['seller_id'],
                                   otherUserName:

@@ -1,0 +1,156 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+class NotificationService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  String? get currentUserId => _auth.currentUser?.uid;
+
+  /// Create a notification
+  Future<void> createNotification({
+    required String recipientId,
+    required String type, // 'like', 'comment', 'share', 'message', 'follow'
+    required String title,
+    required String body,
+    String? relatedListingId,
+    String? relatedUserId,
+    Map<String, dynamic>? additionalData,
+  }) async {
+    try {
+      await _firestore.collection('notifications').add({
+        'recipient_id': recipientId,
+        'sender_id': currentUserId,
+        'type': type,
+        'title': title,
+        'body': body,
+        'related_listing_id': relatedListingId,
+        'related_user_id': relatedUserId,
+        'is_read': false,
+        'created_at': FieldValue.serverTimestamp(),
+        'additional_data': additionalData ?? {},
+      });
+    } catch (e) {
+      print('Error creating notification: $e');
+      rethrow;
+    }
+  }
+
+  /// Get all notifications for current user
+  Stream<List<Map<String, dynamic>>> getUserNotifications() {
+    if (currentUserId == null) {
+      return Stream.value([]);
+    }
+
+    return _firestore
+        .collection('notifications')
+        .where('recipient_id', isEqualTo: currentUserId)
+        .orderBy('created_at', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    });
+  }
+
+  /// Get unread notification count
+  Stream<int> getUnreadNotificationCount() {
+    if (currentUserId == null) {
+      return Stream.value(0);
+    }
+
+    return _firestore
+        .collection('notifications')
+        .where('recipient_id', isEqualTo: currentUserId)
+        .where('is_read', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  /// Mark notification as read
+  Future<void> markNotificationAsRead(String notificationId) async {
+    try {
+      await _firestore
+          .collection('notifications')
+          .doc(notificationId)
+          .update({
+        'is_read': true,
+      });
+    } catch (e) {
+      print('Error marking notification as read: $e');
+      rethrow;
+    }
+  }
+
+  /// Mark all notifications as read
+  Future<void> markAllNotificationsAsRead() async {
+    if (currentUserId == null) return;
+
+    try {
+      final unreadNotifications = await _firestore
+          .collection('notifications')
+          .where('recipient_id', isEqualTo: currentUserId)
+          .where('is_read', isEqualTo: false)
+          .get();
+
+      for (var doc in unreadNotifications.docs) {
+        await doc.reference.update({'is_read': true});
+      }
+    } catch (e) {
+      print('Error marking all notifications as read: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete a notification
+  Future<void> deleteNotification(String notificationId) async {
+    try {
+      await _firestore.collection('notifications').doc(notificationId).delete();
+    } catch (e) {
+      print('Error deleting notification: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete all notifications for current user
+  Future<void> deleteAllNotifications() async {
+    if (currentUserId == null) return;
+
+    try {
+      final userNotifications = await _firestore
+          .collection('notifications')
+          .where('recipient_id', isEqualTo: currentUserId)
+          .get();
+
+      for (var doc in userNotifications.docs) {
+        await doc.reference.delete();
+      }
+    } catch (e) {
+      print('Error deleting all notifications: $e');
+      rethrow;
+    }
+  }
+
+  /// Get notification details by ID
+  Future<Map<String, dynamic>?> getNotificationDetails(
+      String notificationId) async {
+    try {
+      final doc = await _firestore
+          .collection('notifications')
+          .doc(notificationId)
+          .get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        data['id'] = doc.id;
+        return data;
+      }
+      return null;
+    } catch (e) {
+      print('Error getting notification details: $e');
+      return null;
+    }
+  }
+}

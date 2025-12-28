@@ -18,16 +18,12 @@ class _SearchPageState extends State<SearchPage> {
   String _searchQuery = '';
   
   final List<String> _categories = [
-    'All',
-    'Clothing',
-    'Shoes',
-    'Accessories',
-    'Electronics',
-    'Home & Garden',
-    'Sports',
-    'Books',
-    'Other',
-  ];
+  'All',
+  'Clothing',
+  'Shoes',
+  'Accessories',
+  'Bags',
+];
 
   @override
   void dispose() {

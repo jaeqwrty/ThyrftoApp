@@ -36,15 +36,12 @@ class _SellPageState extends State<SellPage> {
   ];
 
   final List<String> _categories = [
-    'Clothing',
-    'Shoes',
-    'Accessories',
-    'Electronics',
-    'Home & Garden',
-    'Sports',
-    'Books',
-    'Other',
-  ];
+  'Clothing',
+  'Shoes',
+  'Accessories',
+  'Bags',
+];
+
 
   @override
   void dispose() {

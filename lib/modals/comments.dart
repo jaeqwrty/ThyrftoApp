@@ -52,7 +52,7 @@ class _CommentsModalState extends State<CommentsModal> {
                        (widget.user['email'] as String?)?.split('@')[0] ?? 
                        'User';
 
-      await _db.addComment(
+      await _db.addCommentWithNotification(
         listingId: widget.listingId,
         userId: userId,
         userName: userName,
