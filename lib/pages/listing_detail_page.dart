@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:thryfto/pages/conversation_page.dart';
+import 'package:thryfto/pages/user_profile_page.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/pages/edit_listing_page.dart';
 import 'package:thryfto/modals/share_modal.dart';
@@ -274,7 +275,8 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                                     onPressed: () async {
                                       final listingId = widget.listing['id'];
                                       if (listingId != null) {
-                                        await _db.toggleLikeWithNotification(listingId);
+                                        await _db.toggleLikeWithNotification(
+                                            listingId);
                                       }
                                     },
                                   ),
@@ -346,64 +348,82 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 25,
-                          backgroundColor: const Color(0xFF8B5CF6),
-                          child: Text(
-                            (widget.listing['seller_name'] ?? 'U')[0]
-                                .toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
+                  GestureDetector(
+                    onTap: () {
+                      // Navigate to seller's profile
+                      final sellerId = widget.listing['seller_id'];
+                      if (sellerId != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UserProfilePage(
+                              userId: sellerId,
+                              currentUser: widget.user,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.listing['seller_name'] ??
-                                    'Unknown Seller',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 25,
+                            backgroundColor: const Color(0xFF8B5CF6),
+                            child: Text(
+                              (widget.listing['seller_name'] ?? 'U')[0]
+                                  .toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
                               ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Icon(Icons.location_on_outlined,
-                                      size: 14, color: Colors.grey[500]),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      widget.listing['seller_location'] ??
-                                          'Location not available',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[500],
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.listing['seller_name'] ??
+                                      'Unknown Seller',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(Icons.location_on_outlined,
+                                        size: 14, color: Colors.grey[500]),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        widget.listing['seller_location'] ??
+                                            'Location not available',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey[500],
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right, color: Colors.grey[400]),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 100), // Space for bottom button

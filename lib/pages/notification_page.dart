@@ -185,16 +185,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   void _handleNotificationTap(Map<String, dynamic> notification) {
     // Implement navigation based on notification type
-    final type = notification['type'];
-    final relatedListingId = notification['related_listing_id'];
-    final relatedUserId = notification['related_user_id'];
-
-    // Add your navigation logic here based on the notification type
-    // For example:
-    // if (type == 'like' && relatedListingId != null) {
-    //   Navigator.push(context, MaterialPageRoute(
-    //     builder: (context) => ListingDetailsPage(listingId: relatedListingId),
-    //   ));
-    // }
+    // final type = notification['type'];
+    // final relatedListingId = notification['related_listing_id'];
+    // final relatedUserId = notification['related_user_id'];
   }
 }

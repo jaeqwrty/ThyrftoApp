@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:path/path.dart' as path;
 import 'package:image_picker/image_picker.dart';
-import 'package:thryfto/services/notification_service.dart';
 
 class DatabaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -508,7 +507,6 @@ class DatabaseService {
 
       final listingData = listingDoc.data()!;
       final sellerId = listingData['seller_id'];
-      final listingTitle = listingData['title'] ?? 'a listing';
 
       // Add comment
       await _firestore

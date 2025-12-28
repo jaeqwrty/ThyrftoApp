@@ -4,6 +4,7 @@ import 'package:thryfto/modals/comments.dart';
 import 'package:thryfto/modals/share_modal.dart';
 import 'package:thryfto/pages/conversation_page.dart';
 import 'package:thryfto/pages/notification_page.dart';
+import 'package:thryfto/pages/user_profile_page.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/pages/sell_page.dart';
 import 'package:thryfto/pages/search_page.dart';
@@ -265,40 +266,62 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // User info header
+                // User info header
                 Padding(
                   padding: const EdgeInsets.all(12.0),
                   child: Row(
                     children: [
-                      CircleAvatar(
-                        radius: 18,
-                        backgroundColor: const Color(0xFF8B5CF6),
-                        child: Text(
-                          username.isNotEmpty ? username[0].toUpperCase() : '?',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      // Clickable profile area
+                      GestureDetector(
+                        onTap: () {
+                          // Navigate to user's profile
+                          final sellerId = listing['seller_id'];
+                          if (sellerId != null && sellerId != _db.currentUserId) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => UserProfilePage(
+                                  userId: sellerId,
+                                  currentUser: widget.user,
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        child: Row(
                           children: [
-                            Text(
-                              username,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 14),
+                            CircleAvatar(
+                              radius: 18,
+                              backgroundColor: const Color(0xFF8B5CF6),
+                              child: Text(
+                                username.isNotEmpty ? username[0].toUpperCase() : '?',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              location,
-                              style: TextStyle(
-                                  color: Colors.grey[600], fontSize: 12),
+                            const SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  username,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  location,
+                                  style: TextStyle(
+                                      color: Colors.grey[600], fontSize: 12),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
+                      const Spacer(),
                     ],
                   ),
                 ),
@@ -419,7 +442,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: Row(
                                 children: [
                                   const Icon(
-                                    Icons.chat_bubble_outline,
+                                    Icons.mode_comment_outlined,
                                     size: 24,
                                   ),
                                   if (commentCount > 0) ...[
