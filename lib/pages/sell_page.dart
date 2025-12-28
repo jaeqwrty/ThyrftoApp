@@ -1,6 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:thryfto/commonWidgets/category_condition_selection.dart';
+import 'package:thryfto/commonWidgets/custom_elevated_button.dart';
+import 'package:thryfto/commonWidgets/custom_textfield.dart';
+import 'package:thryfto/commonWidgets/section_labels.dart';
 import 'package:thryfto/services/database_service.dart';
 
 class SellPage extends StatefulWidget {
@@ -36,12 +40,11 @@ class _SellPageState extends State<SellPage> {
   ];
 
   final List<String> _categories = [
-  'Clothing',
-  'Shoes',
-  'Accessories',
-  'Bags',
-];
-
+    'Clothing',
+    'Shoes',
+    'Accessories',
+    'Bags',
+  ];
 
   @override
   void dispose() {
@@ -140,13 +143,13 @@ class _SellPageState extends State<SellPage> {
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             children: [
-              _buildSectionLabel('Photos'),
+              const SectionLabel(text: 'Photos'),
               const SizedBox(height: 8),
               _buildImagePicker(),
               const SizedBox(height: 12),
-              _buildSectionLabel('Title'),
+              const SectionLabel(text: 'Title'),
               const SizedBox(height: 4),
-              _buildCustomTextField(
+              CustomTextField(
                 controller: _titleController,
                 hintText: 'e.g., Vintage Denim Jacket',
                 icon: Icons.title,
@@ -166,70 +169,9 @@ class _SellPageState extends State<SellPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionLabel('Price'),
+                        const SectionLabel(text: 'Price'),
                         const SizedBox(height: 4),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: TextFormField(
-                            controller: _priceController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF8B5CF6),
-                            ),
-                            decoration: InputDecoration(
-                              hintText: '0.00',
-                              hintStyle: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[300],
-                              ),
-                              prefixIcon: const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 12),
-                                child: Text(
-                                  '₱',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                    height: 1.25,
-                                  ),
-                                ),
-                              ),
-                              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 12,
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Required';
-                              }
-                              if (double.tryParse(value) == null) {
-                                return 'Invalid';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
+                        _buildPriceField(),
                       ],
                     ),
                   ),
@@ -239,9 +181,9 @@ class _SellPageState extends State<SellPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionLabel('Size'),
+                        const SectionLabel(text: 'Size'),
                         const SizedBox(height: 4),
-                        _buildCustomTextField(
+                        CustomTextField(
                           controller: _sizeController,
                           hintText: 'M, L, XL...',
                           icon: Icons.straighten,
@@ -258,25 +200,25 @@ class _SellPageState extends State<SellPage> {
                 ],
               ),
               const SizedBox(height: 12),
-              _buildSectionLabel('Category'),
+              const SectionLabel(text: 'Category'),
               const SizedBox(height: 8),
-              _buildChoiceChips(
+              CustomChoiceChips(
                 options: _categories,
                 selectedValue: _selectedCategory,
                 onSelected: (value) => setState(() => _selectedCategory = value),
               ),
               const SizedBox(height: 12),
-              _buildSectionLabel('Condition'),
+              const SectionLabel(text: 'Condition'),
               const SizedBox(height: 8),
-              _buildChoiceChips(
+              CustomChoiceChips(
                 options: _conditions,
                 selectedValue: _selectedCondition,
                 onSelected: (value) => setState(() => _selectedCondition = value),
               ),
               const SizedBox(height: 12),
-              _buildSectionLabel('Description'),
+              const SectionLabel(text: 'Description'),
               const SizedBox(height: 4),
-              _buildCustomTextField(
+              CustomTextField(
                 controller: _descriptionController,
                 hintText: 'Describe your item...',
                 icon: Icons.description,
@@ -289,7 +231,7 @@ class _SellPageState extends State<SellPage> {
                 },
               ),
               const SizedBox(height: 20),
-              _buildPrimaryButton(
+              PrimaryButton(
                 text: 'Create Listing',
                 isLoading: _isLoading,
                 onPressed: _handleCreateListing,
@@ -302,167 +244,67 @@ class _SellPageState extends State<SellPage> {
     );
   }
 
-  Widget _buildSectionLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: Colors.black87,
-      ),
-    );
-  }
-
-  Widget _buildCustomTextField({
-    required TextEditingController controller,
-    required String hintText,
-    required IconData icon,
-    bool isPassword = false,
-    TextInputType? keyboardType,
-    String? Function(String?)? validator,
-    int maxLines = 1,
-    String? prefixText,
-  }) {
+  Widget _buildPriceField() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: TextFormField(
-        controller: controller,
-        obscureText: isPassword,
-        keyboardType: keyboardType,
-        validator: validator,
-        maxLines: isPassword ? 1 : maxLines,
-        minLines: isPassword ? 1 : (maxLines == 1 ? 1 : 3),
+        controller: _priceController,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF8B5CF6),
+        ),
         decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
-          prefixIcon: Padding(
-            padding: EdgeInsets.only(
-              top: maxLines > 1 ? 12 : 0,
-            ),
-            child: Icon(icon, color: Colors.grey, size: 20),
+          hintText: '0.00',
+          hintStyle: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[300],
           ),
-          prefixText: prefixText,
+          prefixIcon: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              '₱',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+                height: 1.25,
+              ),
+            ),
+          ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.red, width: 1),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.red, width: 1),
-          ),
           filled: true,
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
+            horizontal: 12,
             vertical: 12,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildChoiceChips({
-    required List<String> options,
-    required String selectedValue,
-    required ValueChanged<String> onSelected,
-  }) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: options.map((option) {
-        final isSelected = selectedValue == option;
-        return ChoiceChip(
-          label: Text(
-            option,
-            style: TextStyle(
-              color: isSelected ? Colors.white : Colors.black87,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              fontSize: 13,
-            ),
-          ),
-          selected: isSelected,
-          onSelected: (selected) {
-            if (selected) onSelected(option);
-          },
-          selectedColor: const Color(0xFF8B5CF6),
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: isSelected
-                ? BorderSide.none
-                : BorderSide(color: Colors.grey[300]!),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          elevation: isSelected ? 2 : 0,
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildPrimaryButton({
-    required String text,
-    VoidCallback? onPressed,
-    bool isLoading = false,
-    IconData? icon,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF8B5CF6),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(25),
-          ),
-          elevation: 0,
-        ),
-        child: isLoading
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
-            : icon != null
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(icon, size: 18),
-                      const SizedBox(width: 8),
-                      Text(
-                        text,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  )
-                : Text(
-                    text,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Required';
+          }
+          if (double.tryParse(value) == null) {
+            return 'Invalid';
+          }
+          return null;
+        },
       ),
     );
   }
@@ -561,20 +403,19 @@ class _SellPageState extends State<SellPage> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: kIsWeb 
+            child: kIsWeb
                 ? Image.network(
                     image.path,
                     width: 100,
                     height: 100,
                     fit: BoxFit.cover,
                   )
-                : Image.network( // In Flutter 3.0+, Image.network works for XFile paths on mobile too if they are local paths, but for safety on mobile we usually use Image.file if possible. However kIsWeb is the main separator.
+                : Image.network(
                     image.path,
                     width: 100,
                     height: 100,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
-                      // Fallback if needed
                       return const Center(child: Icon(Icons.error));
                     },
                   ),

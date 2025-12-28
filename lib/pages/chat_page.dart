@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:thryfto/commonWidgets/empty_state.dart';
+import 'package:thryfto/commonWidgets/error.dart';
+import 'package:thryfto/commonWidgets/search_bar.dart';
+import 'package:thryfto/commonWidgets/user_avatar.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/pages/conversation_page.dart';
 
@@ -124,43 +128,17 @@ class _ChatListPageState extends State<ChatListPage> {
           // Search Bar
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(25),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() => _searchQuery = value.toLowerCase());
-                },
-                decoration: InputDecoration(
-                  hintText: 'Search conversations...',
-                  hintStyle: TextStyle(color: Colors.grey[500]),
-                  prefixIcon: Icon(Icons.search, color: Colors.grey[500]),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.grey),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                      : null,
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 15,
-                  ),
-                ),
-              ),
+            child: CustomSearchBar(
+              controller: _searchController,
+              hintText: 'Search conversations...',
+              onChanged: (value) {
+                setState(() => _searchQuery = value.toLowerCase());
+              },
+              onClear: () {
+                _searchController.clear();
+                setState(() => _searchQuery = '');
+              },
+              showClearButton: _searchQuery.isNotEmpty,
             ),
           ),
           // Chat List
@@ -184,19 +162,7 @@ class _ChatListPageState extends State<ChatListPage> {
         }
 
         if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
-                const SizedBox(height: 16),
-                Text(
-                  'Unable to load messages',
-                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          );
+          return const ErrorState(message: 'Unable to load messages');
         }
 
         final chatDocs = snapshot.data?.docs ?? [];
@@ -214,31 +180,10 @@ class _ChatListPageState extends State<ChatListPage> {
         });
 
         if (chats.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.chat_bubble_outline,
-                    size: 80, color: Colors.grey[400]),
-                const SizedBox(height: 16),
-                Text(
-                  'No messages yet',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Start a conversation by messaging a seller',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
-            ),
+          return const EmptyState(
+            icon: Icons.chat_bubble_outline,
+            title: 'No messages yet',
+            subtitle: 'Start a conversation by messaging a seller',
           );
         }
 
@@ -316,18 +261,7 @@ class _ChatListPageState extends State<ChatListPage> {
                 child: Row(
                   children: [
                     // Avatar
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: const Color(0xFF8B5CF6),
-                      child: Text(
-                        username.isNotEmpty ? username[0].toUpperCase() : '?',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                    UserAvatar(username: username),
                     const SizedBox(width: 16),
                     // Chat Info
                     Expanded(

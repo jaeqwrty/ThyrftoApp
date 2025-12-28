@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:thryfto/commonWidgets/empty_state.dart';
+import 'package:thryfto/commonWidgets/error.dart';
+import 'package:thryfto/commonWidgets/image_placeholder.dart';
+import 'package:thryfto/commonWidgets/tag.dart';
 import 'package:thryfto/pages/listing_detail_page.dart';
 
 class SearchPage extends StatefulWidget {
@@ -16,14 +20,14 @@ class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = 'All';
   String _searchQuery = '';
-  
+
   final List<String> _categories = [
-  'All',
-  'Clothing',
-  'Shoes',
-  'Accessories',
-  'Bags',
-];
+    'All',
+    'Clothing',
+    'Shoes',
+    'Accessories',
+    'Bags',
+  ];
 
   @override
   void dispose() {
@@ -134,14 +138,14 @@ class _SearchPageState extends State<SearchPage> {
     }
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: query.snapshots(), // Removed orderBy to avoid composite index requirement
+      stream: query.snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return ErrorState(message: 'Error: ${snapshot.error}');
         }
 
         var listings = snapshot.data?.docs ?? [];
@@ -157,32 +161,12 @@ class _SearchPageState extends State<SearchPage> {
         }
 
         if (listings.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.search_off, size: 60, color: Colors.grey[400]),
-                const SizedBox(height: 16),
-                Text(
-                  _searchQuery.isNotEmpty ? 'No results found' : 'No items in this category',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _searchQuery.isNotEmpty
-                      ? 'Try a different search term'
-                      : 'Check back later for new items',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
-            ),
+          return EmptyState(
+            icon: Icons.search_off,
+            title: _searchQuery.isNotEmpty ? 'No results found' : 'No items in this category',
+            subtitle: _searchQuery.isNotEmpty
+                ? 'Try a different search term'
+                : 'Check back later for new items',
           );
         }
 
@@ -245,9 +229,9 @@ class _SearchPageState extends State<SearchPage> {
                         imageUrls[0],
                         width: double.infinity,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => _buildImagePlaceholder(),
+                        errorBuilder: (context, error, stackTrace) => const ImagePlaceholder(),
                       )
-                    : _buildImagePlaceholder(),
+                    : const ImagePlaceholder(),
               ),
             ),
             // Details
@@ -277,39 +261,10 @@ class _SearchPageState extends State<SearchPage> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.purple.shade50,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          listing['size'] ?? 'N/A',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Color(0xFF8B5CF6),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
+                      TagBadge.size(listing['size'] ?? 'N/A'),
                       const SizedBox(width: 6),
                       Flexible(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            listing['condition'] ?? 'N/A',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.green.shade700,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
+                        child: TagBadge.condition(listing['condition'] ?? 'N/A'),
                       ),
                     ],
                   ),
@@ -318,15 +273,6 @@ class _SearchPageState extends State<SearchPage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildImagePlaceholder() {
-    return Container(
-      color: Colors.grey[200],
-      child: Center(
-        child: Icon(Icons.image, size: 40, color: Colors.grey[400]),
       ),
     );
   }
