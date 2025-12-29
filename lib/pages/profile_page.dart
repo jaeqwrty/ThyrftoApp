@@ -267,8 +267,8 @@ Future<void> _handleEditProfile() async {
             ),
             SettingsMenuItem(
               icon: Icons.refresh,
-              title: 'Reset & Re-seed Database',
-              subtitle: 'Clears all listings and re-seeds (Dev Only)',
+              title: 'Reset Database',
+              subtitle: 'Clears all listings (Dev Only)',
               onTap: () => _handleResetDatabase(),
             ),
             const Divider(),
