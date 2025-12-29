@@ -212,17 +212,21 @@ class DatabaseService {
   }
 
   // Get user profile
-  Future<Map<String, dynamic>?> getUserProfile(String userId) async {
-    try {
-      final doc = await _firestore.collection('users').doc(userId).get();
-      if (doc.exists) {
-        return doc.data();
-      }
-      return null;
-    } catch (e) {
-      return null;
+ Stream<Map<String, dynamic>?> getUserProfileStream(String userId) {
+  return _firestore
+      .collection('users')
+      .doc(userId)
+      .snapshots()
+      .map((doc) {
+    if (doc.exists) {
+      final data = doc.data()!;
+      data['id'] = doc.id;
+      return data;
     }
-  }
+    return null;
+  });
+}
+
 
   // Toggle like
   Future<void> toggleLikeWithNotification(String listingId) async {

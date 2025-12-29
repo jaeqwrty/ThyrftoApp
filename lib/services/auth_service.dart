@@ -72,11 +72,12 @@ class AuthService {
       final availabilityResult = await isUsernameAvailable(username);
       if (!availabilityResult['success']) {
         return {
-          'success': false, 
-          'message': 'Network error checking username. Please check your connection.'
+          'success': false,
+          'message':
+              'Network error checking username. Please check your connection.'
         };
       }
-      
+
       if (!availabilityResult['available']) {
         return {'success': false, 'message': 'Username already taken'};
       }
@@ -249,7 +250,12 @@ class AuthService {
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      if (fullName != null) updates['fullName'] = fullName.trim();
+      if (fullName != null) {
+        updates['fullName'] = fullName.trim();
+        updates['full_name'] =
+            fullName.trim(); // Support both naming conventions
+      }
+
       if (username != null) {
         // Check if username is already taken by another user
         final usernameQuery = await _firestore
@@ -264,9 +270,20 @@ class AuthService {
         }
         updates['username'] = username.trim().toLowerCase();
       }
+
       if (bio != null) updates['bio'] = bio.trim();
       if (cityState != null) updates['cityState'] = cityState.trim();
-      if (profileImageUrl != null) updates['profileImageUrl'] = profileImageUrl;
+
+      // Handle profile image URL - this is the important fix
+      if (profileImageUrl != null) {
+        if (profileImageUrl.isEmpty) {
+          // Explicitly remove the profile image by setting to empty string
+          updates['profileImageUrl'] = '';
+        } else {
+          // Update with new image URL
+          updates['profileImageUrl'] = profileImageUrl;
+        }
+      }
 
       await _firestore.collection('users').doc(uid).update(updates);
       return true;
@@ -302,10 +319,7 @@ class AuthService {
       }
       return {'success': false, 'message': errorMessage};
     } catch (e) {
-      return {
-        'success': false,
-        'message': 'An unexpected error occurred: $e'
-      };
+      return {'success': false, 'message': 'An unexpected error occurred: $e'};
     }
   }
 
@@ -316,7 +330,7 @@ class AuthService {
       if (user != null) {
         // Delete user document from Firestore
         await _firestore.collection('users').doc(user.uid).delete();
-        
+
         // Delete user from Firebase Auth
         await user.delete();
         return true;

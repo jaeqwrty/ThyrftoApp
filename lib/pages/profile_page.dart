@@ -6,10 +6,8 @@ import 'package:thryfto/pages/edit_profile_page.dart';
 import 'package:thryfto/profileWidgets/profile_widgets.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/services/database_service.dart';
-import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/services/seeding_service.dart';
 import 'package:thryfto/shared/auth_wrapper.dart';
-import 'package:thryfto/pages/set_location_page.dart';
 
 class ProfilePage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -24,7 +22,6 @@ class _ProfilePageState extends State<ProfilePage>
     with SingleTickerProviderStateMixin {
   final DatabaseService _db = DatabaseService();
   final AuthService _authService = AuthService();
-  final LocationService _locationService = LocationService();
   late TabController _tabController;
 
   @override

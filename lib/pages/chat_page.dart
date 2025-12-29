@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/commonWidgets/empty_state.dart';
 import 'package:thryfto/commonWidgets/error.dart';
 import 'package:thryfto/commonWidgets/search_bar.dart';
-import 'package:thryfto/commonWidgets/user_avatar.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/pages/conversation_page.dart';
 
@@ -207,18 +206,78 @@ class _ChatListPageState extends State<ChatListPage> {
       orElse: () => '',
     );
 
-    return FutureBuilder<Map<String, dynamic>?>(
-      future: _db.getUserProfile(otherUserId),
+    // Changed from FutureBuilder to StreamBuilder for real-time updates
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: _db.getUserProfileStream(otherUserId),
       builder: (context, userSnapshot) {
+        if (userSnapshot.connectionState == ConnectionState.waiting) {
+          // Show loading state
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: Colors.grey[300],
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 100,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          width: 150,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         final otherUser = userSnapshot.data;
-        final username =
-            otherUser?['username'] ?? otherUser?['fullName'] ?? 'Unknown';
+        final fullName = otherUser?['fullName'] ?? otherUser?['full_name'];
+        final username = otherUser?['username'];
+        final profileImageUrl = otherUser?['profileImageUrl'] as String?;
+
+        // Display full name if available, otherwise username
+        final displayName = fullName ?? username ?? 'Unknown';
+
         final lastMessage = chatData['lastMessage'] ?? '';
         final lastMessageTime = chatData['lastMessageTime'] as Timestamp?;
 
         // Filter by search query
         if (_searchQuery.isNotEmpty &&
-            !username.toLowerCase().contains(_searchQuery)) {
+            !displayName.toLowerCase().contains(_searchQuery)) {
           return const SizedBox.shrink();
         }
 
@@ -245,14 +304,14 @@ class _ChatListPageState extends State<ChatListPage> {
                     builder: (context) => ConversationPage(
                       chatId: chatId,
                       otherUserId: otherUserId,
-                      otherUserName: username,
+                      otherUserName: displayName,
                       currentUser: widget.user,
                     ),
                   ),
                 );
               },
               onLongPress: () {
-                _showChatOptions(chatId, username);
+                _showChatOptions(chatId, displayName);
               },
               borderRadius: BorderRadius.circular(12),
               child: Padding(
@@ -260,8 +319,26 @@ class _ChatListPageState extends State<ChatListPage> {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
-                    // Avatar
-                    UserAvatar(username: username),
+                    // Avatar with profile image
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: const Color(0xFF8B5CF6),
+                      backgroundImage: (profileImageUrl != null &&
+                              profileImageUrl.isNotEmpty)
+                          ? NetworkImage(profileImageUrl)
+                          : null,
+                      child:
+                          (profileImageUrl == null || profileImageUrl.isEmpty)
+                              ? Text(
+                                  displayName[0].toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              : null,
+                    ),
                     const SizedBox(width: 16),
                     // Chat Info
                     Expanded(
@@ -269,7 +346,7 @@ class _ChatListPageState extends State<ChatListPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            username,
+                            displayName,
                             style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 16,

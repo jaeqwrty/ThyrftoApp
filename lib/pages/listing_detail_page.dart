@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:thryfto/pages/conversation_page.dart';
+import 'package:thryfto/pages/profile_page.dart';
 import 'package:thryfto/pages/user_profile_page.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/pages/edit_listing_page.dart';
@@ -351,12 +352,29 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  FutureBuilder<Map<String, dynamic>?>(
-                    future: _db.getUserProfile(widget.listing['seller_id']),
+                  StreamBuilder<Map<String, dynamic>?>(
+                    stream:
+                        _db.getUserProfileStream(widget.listing['seller_id']),
                     builder: (context, sellerSnapshot) {
+                      if (sellerSnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      }
+
                       final seller = sellerSnapshot.data;
-                      final sellerName = widget.listing['seller_name'] ??
+                      final sellerName = seller?['fullName'] ??
+                          seller?['full_name'] ??
                           seller?['username'] ??
+                          widget.listing['seller_name'] ??
                           'Unknown Seller';
                       final profileImageUrl =
                           seller?['profileImageUrl'] as String?;
@@ -386,15 +404,24 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                             onTap: () {
                               final sellerId = widget.listing['seller_id'];
                               if (sellerId != null) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => UserProfilePage(
-                                      userId: sellerId,
-                                      currentUser: widget.user,
+                                // Check if the seller is the current user
+                                if (sellerId == _db.currentUserId) {
+                                  // Navigate to ProfilePage (the current user's own profile)
+                                  // Since we're already in the app, we can just switch to the Profile tab
+                                  // or you can pop to go back if this is coming from the profile
+                                  Navigator.push(context, MaterialPageRoute(builder: (context) => ProfilePage(user: widget.user)));
+                                } else {
+                                  // Navigate to UserProfilePage for other users
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => UserProfilePage(
+                                        userId: sellerId,
+                                        currentUser: widget.user,
+                                      ),
                                     ),
-                                  ),
-                                );
+                                  );
+                                }
                               }
                             },
                             child: Container(

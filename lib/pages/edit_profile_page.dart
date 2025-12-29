@@ -19,7 +19,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _authService = AuthService();
   final _databaseService = DatabaseService();
   final _locationService = LocationService();
-  
+
   final _fullNameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _bioController = TextEditingController();
@@ -28,11 +28,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
   XFile? _imageFile;
   Uint8List? _imageBytes;
   final _picker = ImagePicker();
-  
+
   bool _isLoading = false;
   bool _isLoadingLocation = false;
   String? _locationError;
-  
+
   double? _selectedLatitude;
   double? _selectedLongitude;
   String? _currentProfileImageUrl;
@@ -45,12 +45,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   void _loadUserData() {
     final userId = widget.user['id'] ?? widget.user['uid'];
-    
-    _fullNameController.text = widget.user['fullName'] ?? widget.user['full_name'] ?? '';
+
+    _fullNameController.text =
+        widget.user['fullName'] ?? widget.user['full_name'] ?? '';
     _usernameController.text = widget.user['username'] ?? '';
     _bioController.text = widget.user['bio'] ?? '';
     _currentProfileImageUrl = widget.user['profileImageUrl'];
-    
+
     // Load current location
     _loadCurrentLocation(userId);
   }
@@ -110,7 +111,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_library, color: Color(0xFF8B5CF6)),
+              leading:
+                  const Icon(Icons.photo_library, color: Color(0xFF8B5CF6)),
               title: const Text('Choose from Gallery'),
               onTap: () {
                 Navigator.pop(context);
@@ -162,7 +164,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       if (position == null) {
         setState(() {
-          _locationError = 'Could not get your location. Please check settings.';
+          _locationError =
+              'Could not get your location. Please check settings.';
           _isLoadingLocation = false;
         });
         return;
@@ -266,10 +269,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
     try {
       final userId = widget.user['id'] ?? widget.user['uid'];
 
-      // Upload new profile image if selected
-      String? newImageUrl = _currentProfileImageUrl;
+      // Handle profile image
+      String? newImageUrl;
+
       if (_imageFile != null) {
-        newImageUrl = await _databaseService.uploadProfileImage(_imageFile!, userId);
+        // User selected a new image - upload it
+        newImageUrl =
+            await _databaseService.uploadProfileImage(_imageFile!, userId);
+      } else if (_currentProfileImageUrl == null && _imageBytes == null) {
+        // User removed the photo - explicitly set to null/empty
+        newImageUrl = null;
+      } else {
+        // Keep existing image
+        newImageUrl = _currentProfileImageUrl;
       }
 
       // Update profile
@@ -278,7 +290,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         fullName: _fullNameController.text.trim(),
         username: _usernameController.text.trim(),
         bio: _bioController.text.trim(),
-        profileImageUrl: newImageUrl,
+        profileImageUrl: newImageUrl ?? '', // Pass empty string if null
       );
 
       if (!success) {
@@ -377,14 +389,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                       image: MemoryImage(_imageBytes!),
                                       fit: BoxFit.cover,
                                     )
-                                  : (_currentProfileImageUrl != null && _currentProfileImageUrl!.isNotEmpty)
+                                  : (_currentProfileImageUrl != null &&
+                                          _currentProfileImageUrl!.isNotEmpty)
                                       ? DecorationImage(
-                                          image: NetworkImage(_currentProfileImageUrl!),
+                                          image: NetworkImage(
+                                              _currentProfileImageUrl!),
                                           fit: BoxFit.cover,
                                         )
                                       : null,
                             ),
-                            child: (_imageBytes == null && (_currentProfileImageUrl == null || _currentProfileImageUrl!.isEmpty))
+                            child: (_imageBytes == null &&
+                                    (_currentProfileImageUrl == null ||
+                                        _currentProfileImageUrl!.isEmpty))
                                 ? Icon(
                                     Icons.person_outline,
                                     size: 60,
@@ -525,7 +541,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 10),
 
                   // Location Section
                   Row(
@@ -564,7 +580,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.check_circle, color: Colors.green.shade700),
+                          Icon(Icons.check_circle,
+                              color: Colors.green.shade700),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -602,7 +619,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.info_outline, color: Colors.orange.shade700),
+                          Icon(Icons.info_outline,
+                              color: Colors.orange.shade700),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -617,7 +635,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ),
                     ),
 
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 16),
 
                   // Address Input
                   TextField(
@@ -640,7 +658,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       filled: true,
                       fillColor: Colors.grey[50],
                       helperText: 'This will be shown to other users',
-                      helperStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      helperStyle:
+                          TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                   ),
 
@@ -651,7 +670,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     width: double.infinity,
                     height: 50,
                     child: OutlinedButton.icon(
-                      onPressed: _isLoadingLocation ? null : _getCurrentDeviceLocation,
+                      onPressed:
+                          _isLoadingLocation ? null : _getCurrentDeviceLocation,
                       icon: _isLoadingLocation
                           ? const SizedBox(
                               width: 20,

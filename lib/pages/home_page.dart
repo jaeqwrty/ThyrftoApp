@@ -209,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
               return CustomScrollView(
                 slivers: [
                   _buildAppBar(), // Use the reusable method
-                  
+
                   // Empty state content
                   SliverFillRemaining(
                     child: Center(
@@ -241,7 +241,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => SellPage(user: widget.user),
+                                  builder: (context) =>
+                                      SellPage(user: widget.user),
                                 ),
                               );
                             },
@@ -291,12 +292,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPostCard(Map<String, dynamic> listing) {
-    return FutureBuilder<Map<String, dynamic>?>(
-      future: _db.getUserProfile(listing['seller_id']),
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: _db.getUserProfileStream(listing['seller_id']),
       builder: (context, userSnapshot) {
         final seller = userSnapshot.data;
-        final username =
-            listing['seller_name'] ?? seller?['username'] ?? 'Unknown';
+        // Use real-time data from the seller's profile, not static listing data
+        final username = seller?['username'] ??
+            seller?['fullName'] ??
+            seller?['full_name'] ??
+            'Unknown';
         final profileImageUrl = seller?['profileImageUrl'] as String?;
 
         // Get distance text if available
@@ -467,7 +471,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             )
                           : _buildImagePlaceholder(),
                     ),
-                    // Action buttons
+                    // Action buttons and rest of the card...
+                    // (Keep all the existing action buttons, price, description, etc.)
                     Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12.0, vertical: 8.0),
@@ -756,7 +761,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       chatId: chatId,
                                       otherUserId: listing['seller_id'],
                                       otherUserName:
-                                          listing['seller_name'] ?? 'Seller',
+                                          username, // Use real-time username
                                       currentUser: widget.user,
                                     ),
                                   ),
@@ -795,13 +800,13 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
+}
 
-  Widget _buildImagePlaceholder() {
-    return Container(
-      color: Colors.grey[300],
-      child: const Center(
-        child: Icon(Icons.image, size: 50, color: Colors.grey),
-      ),
-    );
-  }
+Widget _buildImagePlaceholder() {
+  return Container(
+    color: Colors.grey[300],
+    child: const Center(
+      child: Icon(Icons.image, size: 50, color: Colors.grey),
+    ),
+  );
 }
