@@ -344,7 +344,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             // Bio
             TextField(
               controller: _bioController,
-              maxLines: 4,
+              maxLines: 2,
               maxLength: 150,
               decoration: InputDecoration(
                 labelText: 'Bio (Optional)',

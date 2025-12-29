@@ -520,7 +520,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   const SizedBox(height: 8),
                   TextField(
                     controller: _bioController,
-                    maxLines: 4,
+                    maxLines: 2,
                     maxLength: 150,
                     decoration: InputDecoration(
                       hintText: 'Tell us a bit about yourself...',
