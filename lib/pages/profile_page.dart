@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:thryfto/commonWidgets/empty_state.dart';
 import 'package:thryfto/commonWidgets/error.dart';
+import 'package:thryfto/pages/edit_profile_page.dart';
 import 'package:thryfto/profileWidgets/profile_widgets.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/services/database_service.dart';
+import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/services/seeding_service.dart';
 import 'package:thryfto/shared/auth_wrapper.dart';
+import 'package:thryfto/pages/set_location_page.dart';
 
 class ProfilePage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -21,6 +24,7 @@ class _ProfilePageState extends State<ProfilePage>
     with SingleTickerProviderStateMixin {
   final DatabaseService _db = DatabaseService();
   final AuthService _authService = AuthService();
+  final LocationService _locationService = LocationService();
   late TabController _tabController;
 
   @override
@@ -55,11 +59,42 @@ class _ProfilePageState extends State<ProfilePage>
     }
   }
 
-  void _handleEditProfile() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Edit profile coming soon!')),
-    );
+Future<void> _handleEditProfile() async {
+  final result = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => EditProfilePage(user: widget.user),
+    ),
+  );
+
+  // If profile was updated, refresh the entire user data
+  if (result == true && mounted) {
+    // Reload user data from Firestore
+    final userId = widget.user['id'] ?? widget.user['uid'] ?? FirebaseAuth.instance.currentUser?.uid;
+    if (userId != null) {
+      final updatedUser = await _authService.getUserProfile(userId);
+      if (updatedUser != null && mounted) {
+        // Update the user data and rebuild
+        setState(() {
+          // Merge the updated data with existing user data
+          widget.user.clear();
+          widget.user.addAll(updatedUser);
+        });
+      }
+    }
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated successfully!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +124,7 @@ class _ProfilePageState extends State<ProfilePage>
             user: widget.user,
             onEditProfile: _handleEditProfile,
           ),
+          
           // Tab Bar
           Container(
             color: Colors.white,
@@ -203,6 +239,7 @@ class _ProfilePageState extends State<ProfilePage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            
             SettingsMenuItem(
               icon: Icons.help_outline,
               title: 'Help & Support',

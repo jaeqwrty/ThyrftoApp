@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:thryfto/services/database_service.dart';
+import 'package:thryfto/services/location_service.dart'; // Make sure this import is here
 import 'package:thryfto/pages/listing_detail_page.dart';
 import 'package:thryfto/pages/conversation_page.dart';
 
@@ -19,6 +20,7 @@ class UserProfilePage extends StatefulWidget {
 
 class _UserProfilePageState extends State<UserProfilePage> {
   final DatabaseService _db = DatabaseService();
+  final LocationService _locationService = LocationService();
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
 
@@ -78,6 +80,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
       );
     }
 
+    final profileImageUrl = _userData!['profileImageUrl'] as String?;
+    final fullName = _userData!['fullName'] ?? _userData!['full_name'] ?? 'User';
+    final username = _userData!['username'] ?? 'unknown';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F7),
       appBar: AppBar(
@@ -106,17 +112,23 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 // Avatar and name
                 Row(
                   children: [
+                    // Profile Avatar with Image
                     CircleAvatar(
                       radius: 40,
                       backgroundColor: const Color(0xFF8B5CF6),
-                      child: Text(
-                        (_userData!['fullName'] ?? _userData!['username'] ?? _userData!['full_name'] ?? 'U')[0].toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      backgroundImage: (profileImageUrl != null && profileImageUrl.isNotEmpty)
+                          ? NetworkImage(profileImageUrl)
+                          : null,
+                      child: (profileImageUrl == null || profileImageUrl.isEmpty)
+                          ? Text(
+                              fullName[0].toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            )
+                          : null,
                     ),
                     const SizedBox(width: 20),
                     Expanded(
@@ -124,7 +136,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _userData!['fullName'] ?? _userData!['full_name'] ?? 'User',
+                            fullName,
                             style: const TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -132,29 +144,83 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '@${_userData!['username'] ?? 'unknown'}',
+                            '@$username',
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.grey[600],
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(Icons.location_on_outlined, size: 16, color: Colors.grey[500]),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  _userData!['cityState'] ?? 'Location not set',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[500],
+                          const SizedBox(height: 8),
+                          // Location from LocationService
+                          FutureBuilder<Map<String, dynamic>?>(
+                            future: _locationService.getUserLocation(widget.userId),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.grey[400],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Loading location...',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[500],
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
+
+                              String locationDisplay = 'Location not set';
+                              IconData locationIcon = Icons.location_off;
+                              Color locationColor = Colors.grey[500]!;
+
+                              if (snapshot.hasData && snapshot.data != null) {
+                                final locationData = snapshot.data!;
+                                final address = locationData['address'] as String?;
+                                
+                                if (address != null && address.isNotEmpty && 
+                                    !address.startsWith('Lat:') && 
+                                    address != 'Location set' && 
+                                    address != 'Location detected') {
+                                  locationDisplay = address;
+                                  locationIcon = Icons.location_on;
+                                  locationColor = const Color(0xFF8B5CF6);
+                                }
+                              }
+
+                              return Row(
+                                children: [
+                                  Icon(
+                                    locationIcon,
+                                    size: 16,
+                                    color: locationColor,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      locationDisplay,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: locationColor,
+                                        fontWeight: locationIcon == Icons.location_on
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -175,7 +241,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             builder: (context) => ConversationPage(
                               chatId: chatId,
                               otherUserId: widget.userId,
-                              otherUserName: _userData!['fullName'] ?? _userData!['full_name'] ?? 'User',
+                              otherUserName: fullName,
                               currentUser: widget.currentUser,
                             ),
                           ),

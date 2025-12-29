@@ -12,7 +12,7 @@ class AuthService {
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final userCredential = await _auth.signInWithEmailAndPassword(
-        email: email,
+        email: email.trim(),
         password: password,
       );
 
@@ -35,7 +35,7 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       return {'success': false, 'message': _getErrorMessage(e.code)};
     } catch (e) {
-      return {'success': false, 'message': 'An unexpected error occurred'};
+      return {'success': false, 'message': 'An unexpected error occurred: $e'};
     }
   }
 
@@ -44,16 +44,15 @@ class AuthService {
     required String fullName,
     required String username,
     required String email,
-    required String cityState,
+    String cityState = '', // Optional with default empty string
     required String password,
     required String confirmPassword,
   }) async {
     try {
-      // Validate inputs
+      // Validate inputs (cityState removed from validation)
       if (fullName.isEmpty ||
           username.isEmpty ||
           email.isEmpty ||
-          cityState.isEmpty ||
           password.isEmpty) {
         return {'success': false, 'message': 'Please fill in all fields'};
       }
@@ -84,7 +83,7 @@ class AuthService {
 
       // Create user account
       final userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
+        email: email.trim(),
         password: password,
       );
 
@@ -138,7 +137,7 @@ class AuthService {
     try {
       final querySnapshot = await _firestore
           .collection('users')
-          .where('username', isEqualTo: username)
+          .where('username', isEqualTo: username.toLowerCase())
           .limit(1)
           .get();
 
@@ -177,6 +176,7 @@ class AuthService {
 
       return true;
     } catch (e) {
+      print('Error creating user profile: $e');
       return false;
     }
   }
@@ -211,11 +211,120 @@ class AuthService {
     try {
       final doc = await _firestore.collection('users').doc(userId).get();
       if (doc.exists) {
-        return doc.data();
+        final data = doc.data();
+        if (data != null) {
+          data['id'] = doc.id;
+          data['uid'] = userId;
+          return data;
+        }
       }
       return null;
     } catch (e) {
+      print('Error getting user profile: $e');
       return null;
+    }
+  }
+
+  /// Check if user has completed onboarding
+  Future<bool> hasCompletedOnboarding(String uid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      return doc.data()?['onboardingCompleted'] == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Update user profile
+  Future<bool> updateUserProfile({
+    required String uid,
+    String? fullName,
+    String? username,
+    String? bio,
+    String? cityState,
+    String? profileImageUrl,
+  }) async {
+    try {
+      final Map<String, dynamic> updates = {
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (fullName != null) updates['fullName'] = fullName.trim();
+      if (username != null) {
+        // Check if username is already taken by another user
+        final usernameQuery = await _firestore
+            .collection('users')
+            .where('username', isEqualTo: username.toLowerCase())
+            .limit(1)
+            .get();
+
+        if (usernameQuery.docs.isNotEmpty &&
+            usernameQuery.docs.first.id != uid) {
+          return false; // Username taken
+        }
+        updates['username'] = username.trim().toLowerCase();
+      }
+      if (bio != null) updates['bio'] = bio.trim();
+      if (cityState != null) updates['cityState'] = cityState.trim();
+      if (profileImageUrl != null) updates['profileImageUrl'] = profileImageUrl;
+
+      await _firestore.collection('users').doc(uid).update(updates);
+      return true;
+    } catch (e) {
+      print('Error updating user profile: $e');
+      return false;
+    }
+  }
+
+  /// Reset password
+  Future<Map<String, dynamic>> resetPassword(String email) async {
+    try {
+      if (email.isEmpty) {
+        return {'success': false, 'message': 'Please enter your email'};
+      }
+
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      return {
+        'success': true,
+        'message': 'Password reset email sent. Please check your inbox.',
+      };
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'No user found with this email';
+          break;
+        case 'invalid-email':
+          errorMessage = 'Invalid email address';
+          break;
+        default:
+          errorMessage = 'Failed to send reset email: ${e.message}';
+      }
+      return {'success': false, 'message': errorMessage};
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'An unexpected error occurred: $e'
+      };
+    }
+  }
+
+  /// Delete user account
+  Future<bool> deleteAccount() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        // Delete user document from Firestore
+        await _firestore.collection('users').doc(user.uid).delete();
+        
+        // Delete user from Firebase Auth
+        await user.delete();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error deleting account: $e');
+      return false;
     }
   }
 
@@ -238,6 +347,8 @@ class AuthService {
         return 'Email/password authentication is not enabled';
       case 'invalid-credential':
         return 'Invalid email or password';
+      case 'too-many-requests':
+        return 'Too many failed attempts. Please try again later';
       default:
         return 'Authentication error occurred';
     }

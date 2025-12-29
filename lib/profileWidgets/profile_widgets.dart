@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/commonWidgets/image_placeholder.dart';
 import 'package:thryfto/commonWidgets/tag.dart';
 import 'package:thryfto/pages/listing_detail_page.dart';
 
+/// Profile header with avatar, name, username, and location
 /// Profile header with avatar, name, username, and location
 class ProfileHeader extends StatelessWidget {
   final Map<String, dynamic> user;
@@ -16,6 +19,12 @@ class ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // CRITICAL: Use Firebase Auth user ID to match Firestore document
+    final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final fullName = user['fullName'] ?? user['full_name'] ?? 'User';
+    final username = user['username'] ?? 'unknown';
+    final profileImageUrl = user['profileImageUrl'] as String?; // Get profile image URL
+
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.all(20),
@@ -24,17 +33,23 @@ class ProfileHeader extends StatelessWidget {
           // Avatar and name
           Row(
             children: [
+              // Profile Avatar - Now shows image if available
               CircleAvatar(
                 radius: 40,
                 backgroundColor: const Color(0xFF8B5CF6),
-                child: Text(
-                  (user['fullName'] ?? user['username'] ?? 'U')[0].toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                backgroundImage: (profileImageUrl != null && profileImageUrl.isNotEmpty)
+                    ? NetworkImage(profileImageUrl)
+                    : null,
+                child: (profileImageUrl == null || profileImageUrl.isEmpty)
+                    ? Text(
+                        fullName[0].toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    : null, // Don't show text if image is present
               ),
               const SizedBox(width: 20),
               Expanded(
@@ -42,7 +57,7 @@ class ProfileHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      user['fullName'] ?? 'User',
+                      fullName,
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -50,25 +65,94 @@ class ProfileHeader extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '@${user['username'] ?? 'unknown'}',
+                      '@$username',
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey[600],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.location_on_outlined, size: 16, color: Colors.grey[500]),
-                        const SizedBox(width: 4),
-                        Text(
-                          user['cityState'] ?? 'Location not set',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 8),
+                    // LOCATION DISPLAY - Fetches from Firestore
+                    FutureBuilder<Map<String, dynamic>?>(
+                      future: LocationService().getUserLocation(userId),
+                      builder: (context, snapshot) {
+                        // Debug output
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Row(
+                            children: [
+                              SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.grey[400],
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Loading location...',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+
+                        // Check if location data exists
+                        final locationData = snapshot.data;
+                        final hasLocation = locationData != null &&
+                            locationData['latitude'] != null &&
+                            locationData['longitude'] != null;
+
+                        String displayText;
+                        Color textColor;
+                        IconData iconData;
+
+                        if (hasLocation) {
+                          // Show address or coordinates
+                          final address = locationData['address'] as String?;
+                          if (address != null && !address.startsWith('Lat:')) {
+                            displayText = address;
+                          } else {
+                            final lat = locationData['latitude'];
+                            final lon = locationData['longitude'];
+                            displayText = 'Lat: ${lat.toStringAsFixed(4)}, Lon: ${lon.toStringAsFixed(4)}';
+                          }
+                          textColor = const Color(0xFF8B5CF6);
+                          iconData = Icons.location_on;
+                        } else {
+                          displayText = 'Location not set';
+                          textColor = Colors.grey[500]!;
+                          iconData = Icons.location_off;
+                        }
+
+                        return Row(
+                          children: [
+                            Icon(
+                              iconData,
+                              size: 16,
+                              color: textColor,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                displayText,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: textColor,
+                                  fontWeight: hasLocation 
+                                      ? FontWeight.w600 
+                                      : FontWeight.normal,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),

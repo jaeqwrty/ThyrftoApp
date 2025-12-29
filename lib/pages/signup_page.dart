@@ -15,7 +15,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _fullNameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _cityStateController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -26,7 +25,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _fullNameController.dispose();
     _usernameController.dispose();
     _emailController.dispose();
-    _cityStateController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -41,7 +39,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       fullName: _fullNameController.text.trim(),
       username: _usernameController.text.trim(),
       email: _emailController.text.trim(),
-      cityState: _cityStateController.text.trim(),
+      cityState: '', // Will be set during profile setup
       password: _passwordController.text,
       confirmPassword: _confirmPasswordController.text,
     );
@@ -86,7 +84,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 20),
-                     AppLogo(
+                    AppLogo(
                       fontSize: 32,
                       subtitle: 'Start your thrifting journey',
                     ),
@@ -115,10 +113,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     _buildCustomTextField(
                       controller: _usernameController,
                       hintText: 'Username',
-                      icon: Icons.person_outline,
+                      icon: Icons.person,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter a username';
+                        }
+                        if (value.length < 3) {
+                          return 'Username must be at least 3 characters';
                         }
                         return null;
                       },
@@ -127,25 +128,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     _buildCustomTextField(
                       controller: _emailController,
                       hintText: 'Email',
-                      icon: Icons.email_outlined,
+                      icon: Icons.alternate_email,
+                      keyboardType: TextInputType.emailAddress,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your email';
                         }
                         if (!value.contains('@')) {
                           return 'Please enter a valid email';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _buildCustomTextField(
-                      controller: _cityStateController,
-                      hintText: 'City, State',
-                      icon: Icons.location_on_outlined,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your city and state';
                         }
                         return null;
                       },
@@ -187,6 +177,36 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       text: 'Sign Up',
                       isLoading: _isLoading,
                       onPressed: _handleSignUp,
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.info_outline,
+                            color: Color(0xFF8B5CF6),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'By signing up, you agree to our Terms of Service and Privacy Policy.',
+                              style: TextStyle(
+                                color: Colors.grey.shade800,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 24),
                     Row(

@@ -71,6 +71,7 @@ class DatabaseService {
     required String condition,
     required String category,
     required List<XFile> imageFiles,
+     Map<String, dynamic>? location, 
   }) async {
     try {
       if (imageFiles.isEmpty) {
@@ -116,6 +117,7 @@ class DatabaseService {
         'views': 0,
         'created_at': FieldValue.serverTimestamp(),
         'updated_at': FieldValue.serverTimestamp(),
+        'location': location, 
       };
 
       // Save to Firestore

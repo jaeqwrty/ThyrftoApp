@@ -4,6 +4,7 @@ import 'package:thryfto/pages/user_profile_page.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/pages/edit_listing_page.dart';
 import 'package:thryfto/modals/share_modal.dart';
+import 'package:thryfto/services/location_service.dart';
 
 class ListingDetailPage extends StatefulWidget {
   final Map<String, dynamic> listing;
@@ -339,7 +340,9 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  // Seller Info
+// Replace the "Seller Info" section in your listing_detail_page.dart with this:
+
+// Seller Info
                   const Text(
                     'Seller',
                     style: TextStyle(
@@ -348,83 +351,184 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  GestureDetector(
-                    onTap: () {
-                      // Navigate to seller's profile
-                      final sellerId = widget.listing['seller_id'];
-                      if (sellerId != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => UserProfilePage(
-                              userId: sellerId,
-                              currentUser: widget.user,
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 25,
-                            backgroundColor: const Color(0xFF8B5CF6),
-                            child: Text(
-                              (widget.listing['seller_name'] ?? 'U')[0]
-                                  .toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
+                  FutureBuilder<Map<String, dynamic>?>(
+                    future: _db.getUserProfile(widget.listing['seller_id']),
+                    builder: (context, sellerSnapshot) {
+                      final seller = sellerSnapshot.data;
+                      final sellerName = widget.listing['seller_name'] ??
+                          seller?['username'] ??
+                          'Unknown Seller';
+                      final profileImageUrl =
+                          seller?['profileImageUrl'] as String?;
+
+                      return FutureBuilder<Map<String, dynamic>?>(
+                        future: LocationService()
+                            .getUserLocation(widget.listing['seller_id']),
+                        builder: (context, locationSnapshot) {
+                          String locationDisplay = 'Location not set';
+
+                          if (locationSnapshot.hasData &&
+                              locationSnapshot.data != null) {
+                            final locationData = locationSnapshot.data!;
+                            final address = locationData['address'] as String?;
+
+                            // Use the address from API if available
+                            if (address != null &&
+                                address.isNotEmpty &&
+                                !address.startsWith('Lat:') &&
+                                address != 'Location set' &&
+                                address != 'Location detected') {
+                              locationDisplay = address;
+                            }
+                          }
+
+                          return GestureDetector(
+                            onTap: () {
+                              final sellerId = widget.listing['seller_id'];
+                              if (sellerId != null) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => UserProfilePage(
+                                      userId: sellerId,
+                                      currentUser: widget.user,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      // Profile Avatar with Image
+                                      CircleAvatar(
+                                        radius: 25,
+                                        backgroundColor:
+                                            const Color(0xFF8B5CF6),
+                                        backgroundImage:
+                                            (profileImageUrl != null &&
+                                                    profileImageUrl.isNotEmpty)
+                                                ? NetworkImage(profileImageUrl)
+                                                : null,
+                                        child: (profileImageUrl == null ||
+                                                profileImageUrl.isEmpty)
+                                            ? Text(
+                                                sellerName[0].toUpperCase(),
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              )
+                                            : null,
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              sellerName,
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(Icons.location_on_outlined,
+                                                    size: 14,
+                                                    color: Colors.grey[500]),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    locationDisplay,
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      color: Colors.grey[500],
+                                                    ),
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Icon(Icons.chevron_right,
+                                          color: Colors.grey[400]),
+                                    ],
+                                  ),
+
+                                  // Show distance if available
+                                  FutureBuilder<String?>(
+                                    future:
+                                        LocationService().getDistanceToListing(
+                                      userId: _db.currentUserId ?? '',
+                                      listing: widget.listing,
+                                    ),
+                                    builder: (context, distanceSnapshot) {
+                                      if (distanceSnapshot.hasData &&
+                                          distanceSnapshot.data != null) {
+                                        return Container(
+                                          margin:
+                                              const EdgeInsets.only(top: 12),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF8B5CF6)
+                                                .withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                              color: const Color(0xFF8B5CF6)
+                                                  .withOpacity(0.3),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.near_me,
+                                                size: 16,
+                                                color: Color(0xFF8B5CF6),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                distanceSnapshot.data!,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  color: Color(0xFF8B5CF6),
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }
+                                      return const SizedBox.shrink();
+                                    },
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.listing['seller_name'] ??
-                                      'Unknown Seller',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Icon(Icons.location_on_outlined,
-                                        size: 14, color: Colors.grey[500]),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        widget.listing['seller_location'] ??
-                                            'Location not available',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.grey[500],
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(Icons.chevron_right, color: Colors.grey[400]),
-                        ],
-                      ),
-                    ),
+                          );
+                        },
+                      );
+                    },
                   ),
                   const SizedBox(height: 100), // Space for bottom button
                 ],
