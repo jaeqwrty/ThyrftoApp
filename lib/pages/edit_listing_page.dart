@@ -38,11 +38,7 @@ class _EditListingPageState extends State<EditListingPage> {
     'Clothing',
     'Shoes',
     'Accessories',
-    'Electronics',
-    'Home & Garden',
-    'Sports',
-    'Books',
-    'Other',
+    'Bags',
   ];
 
   final List<String> _sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size'];

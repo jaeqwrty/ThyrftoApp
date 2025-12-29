@@ -19,6 +19,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
 
   @override
   void dispose() {
@@ -51,11 +53,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (result['success']) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result['message']),
+          content: Text(
+            result['message'],
+            style: const TextStyle(fontFamily: 'SF Pro Display'),
+          ),
           backgroundColor: Colors.green,
         ),
       );
-      // Force navigation to AuthWrapper for Flutter Web reactivity
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const AuthWrapper()),
         (route) => false,
@@ -63,7 +67,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result['message']),
+          content: Text(
+            result['message'],
+            style: const TextStyle(fontFamily: 'SF Pro Display'),
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -84,9 +91,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 20),
-                    AppLogo(
+                    const AppLogo(
                       fontSize: 32,
                       subtitle: 'Start your thrifting journey',
+                      fontFamily: 'SF Pro Display',
                     ),
                     const SizedBox(height: 40),
                     const Text(
@@ -95,6 +103,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         fontSize: 24,
                         fontWeight: FontWeight.w600,
                         color: Colors.black87,
+                        fontFamily: 'SF Pro Display',
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -146,6 +155,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       hintText: 'Password',
                       icon: Icons.lock_outline,
                       isPassword: true,
+                      isPasswordVisible: _isPasswordVisible,
+                      onTogglePasswordVisibility: () {
+                        setState(() {
+                          _isPasswordVisible = !_isPasswordVisible;
+                        });
+                      },
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter a password';
@@ -162,6 +177,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       hintText: 'Confirm Password',
                       icon: Icons.lock_outline,
                       isPassword: true,
+                      isPasswordVisible: _isConfirmPasswordVisible,
+                      onTogglePasswordVisibility: () {
+                        setState(() {
+                          _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                        });
+                      },
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please confirm your password';
@@ -202,6 +223,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               style: TextStyle(
                                 color: Colors.grey.shade800,
                                 fontSize: 13,
+                                fontFamily: 'SF Pro Display',
                               ),
                             ),
                           ),
@@ -214,7 +236,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       children: [
                         const Text(
                           'Already have an account? ',
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                          style: TextStyle(
+                            fontSize: 14, 
+                            color: Colors.grey,
+                            fontFamily: 'SF Pro Display',
+                          ),
                         ),
                         GestureDetector(
                           onTap: () => Navigator.pop(context),
@@ -224,6 +250,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               fontSize: 14,
                               color: Color(0xFF8B5CF6),
                               fontWeight: FontWeight.w600,
+                              fontFamily: 'SF Pro Display',
                             ),
                           ),
                         ),
@@ -245,6 +272,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
     required String hintText,
     required IconData icon,
     bool isPassword = false,
+    bool isPasswordVisible = false,
+    VoidCallback? onTogglePasswordVisibility,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
     int maxLines = 1,
@@ -263,20 +292,46 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ),
       child: TextFormField(
         controller: controller,
-        obscureText: isPassword,
+        obscureText: isPassword && !isPasswordVisible,
         keyboardType: keyboardType,
         validator: validator,
         maxLines: isPassword ? 1 : maxLines,
         minLines: isPassword ? 1 : (maxLines == 1 ? 1 : 3),
+        // Added text style for the actual input text
+        style: const TextStyle(
+          fontFamily: 'SF Pro Display',
+          fontSize: 14,
+          color: Colors.black87,
+        ),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+          hintStyle: const TextStyle(
+            color: Colors.grey, 
+            fontSize: 14,
+            fontFamily: 'SF Pro Display',
+          ),
+          // Added error text style
+          errorStyle: const TextStyle(
+            fontFamily: 'SF Pro Display',
+          ),
           prefixIcon: Padding(
             padding: EdgeInsets.only(
               top: maxLines > 1 ? 12 : 0,
             ),
             child: Icon(icon, color: Colors.grey, size: 20),
           ),
+          suffixIcon: isPassword
+              ? IconButton(
+                  icon: Icon(
+                    isPasswordVisible
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    color: Colors.grey,
+                    size: 20,
+                  ),
+                  onPressed: onTogglePasswordVisibility,
+                )
+              : null,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(25),
             borderSide: BorderSide.none,
@@ -339,6 +394,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
+                          fontFamily: 'SF Pro Display',
                         ),
                       ),
                     ],
@@ -348,6 +404,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
+                      fontFamily: 'SF Pro Display',
                     ),
                   ),
       ),

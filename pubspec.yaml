@@ -40,9 +40,16 @@ flutter:
   #   - assets/images/
   #   - assets/icons/
   
-  # fonts:
-  #   - family: CustomFont
-  #     fonts:
-  #       - asset: fonts/CustomFont-Regular.ttf
-  #       - asset: fonts/CustomFont-Bold.ttf
-  #         weight: 700
+  fonts:
+    - family: SF Pro Display
+      fonts:
+        - asset: fonts/SF-Pro-Display-Regular.otf
+          weight: 400
+        - asset: fonts/SF-Pro-Display-Bold.otf
+          weight: 700
+        - asset: fonts/SF-Pro-Display-Semibold.otf
+          weight: 600
+        - asset: fonts/SF-Pro-Display-Medium.otf
+          weight: 500
+        - asset: fonts/SF-Pro-Display-Light.otf
+          weight: 300

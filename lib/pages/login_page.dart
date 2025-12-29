@@ -65,9 +65,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    AppLogo(
+                    const AppLogo(
                       fontSize: 32,
                       subtitle: 'Find your next favorite piece',
+                      fontFamily: 'SF Pro Display',
                     ),
                     const SizedBox(height: 48),
                     const Text(
@@ -76,6 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         fontSize: 24,
                         fontWeight: FontWeight.w600,
                         color: Colors.black87,
+                        fontFamily: 'SF Pro Display',
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -124,6 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             fontSize: 14,
                             color: Color(0xFF8B5CF6),
                             fontWeight: FontWeight.w500,
+                            fontFamily: 'SF Pro Display',
                           ),
                         ),
                       ),
@@ -140,7 +143,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         const Text(
                           'New to Thryfto? ',
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                          style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                              fontFamily: 'SF Pro Display'),
                         ),
                         GestureDetector(
                           onTap: () {
@@ -157,6 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               fontSize: 14,
                               color: Color(0xFF8B5CF6),
                               fontWeight: FontWeight.w600,
+                              fontFamily: 'SF Pro Display',
                             ),
                           ),
                         ),
@@ -202,7 +209,8 @@ class _LoginScreenState extends State<LoginScreen> {
         minLines: isPassword ? 1 : (maxLines == 1 ? 1 : 3),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+          hintStyle: const TextStyle(
+              color: Colors.grey, fontSize: 14, fontFamily: 'SF Pro Display'),
           prefixIcon: Padding(
             padding: EdgeInsets.only(
               top: maxLines > 1 ? 12 : 0,
@@ -271,6 +279,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
+                          fontFamily: 'SF Pro Display',
                         ),
                       ),
                     ],
@@ -280,6 +289,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
+                      fontFamily: 'SF Pro Display',
                     ),
                   ),
       ),

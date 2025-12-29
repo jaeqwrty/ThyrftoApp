@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/modals/comments.dart';
 import 'package:thryfto/modals/share_modal.dart';
-import 'package:thryfto/pages/conversation_page.dart';
 import 'package:thryfto/pages/notification_page.dart';
 import 'package:thryfto/pages/user_profile_page.dart';
 import 'package:thryfto/services/database_service.dart';
@@ -208,9 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
             if (listings.isEmpty) {
               return CustomScrollView(
                 slivers: [
-                  _buildAppBar(), // Use the reusable method
-
-                  // Empty state content
+                  _buildAppBar(),
                   SliverFillRemaining(
                     child: Center(
                       child: Column(
@@ -225,6 +222,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               fontSize: 18,
                               color: Colors.grey[600],
                               fontWeight: FontWeight.w500,
+                              fontFamily: 'SF Pro Display',
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -233,6 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey[500],
+                              fontFamily: 'SF Pro Display',
                             ),
                           ),
                           const SizedBox(height: 24),
@@ -273,9 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onRefresh: () async => setState(() {}),
               child: CustomScrollView(
                 slivers: [
-                  _buildAppBar(), // Use the reusable method
-
-                  // Listings
+                  _buildAppBar(),
                   SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) => _buildPostCard(listings[index]),
@@ -296,17 +293,17 @@ class _HomeScreenState extends State<HomeScreen> {
       stream: _db.getUserProfileStream(listing['seller_id']),
       builder: (context, userSnapshot) {
         final seller = userSnapshot.data;
-        // Use real-time data from the seller's profile, not static listing data
         final username = seller?['username'] ??
             seller?['fullName'] ??
             seller?['full_name'] ??
             'Unknown';
         final profileImageUrl = seller?['profileImageUrl'] as String?;
-
-        // Get distance text if available
         final distanceText = listing['distance_text'] as String?;
+        
+        // Get image count
+        final imageUrls = listing['image_urls'] as List?;
+        final imageCount = imageUrls?.length ?? 0;
 
-        // Get seller location
         return FutureBuilder<Map<String, dynamic>?>(
           future: LocationService().getUserLocation(listing['seller_id']),
           builder: (context, locationSnapshot) {
@@ -316,7 +313,6 @@ class _HomeScreenState extends State<HomeScreen> {
               final locationData = locationSnapshot.data!;
               final address = locationData['address'] as String?;
 
-              // Use the address from API if available
               if (address != null &&
                   address.isNotEmpty &&
                   !address.startsWith('Lat:') &&
@@ -343,9 +339,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // User info header with profile image
+                    // User info header - more compact
                     Padding(
-                      padding: const EdgeInsets.all(12.0),
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                       child: Row(
                         children: [
                           GestureDetector(
@@ -366,9 +362,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                             child: Row(
                               children: [
-                                // Profile Avatar with Image
                                 CircleAvatar(
-                                  radius: 18,
+                                  radius: 16,
                                   backgroundColor: const Color(0xFF8B5CF6),
                                   backgroundImage: (profileImageUrl != null &&
                                           profileImageUrl.isNotEmpty)
@@ -383,102 +378,152 @@ class _HomeScreenState extends State<HomeScreen> {
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.bold,
+                                            fontSize: 12,
                                           ),
                                         )
                                       : null,
                                 ),
-                                const SizedBox(width: 10),
+                                const SizedBox(width: 8),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       username,
                                       style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14),
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                        fontFamily: 'SF Pro Display',
+                                      ),
                                     ),
-                                    const SizedBox(height: 2),
-                                    Row(
-                                      children: [
-                                        if (distanceText != null &&
-                                            distanceText !=
-                                                'Location unavailable') ...[
+                                    if (distanceText != null &&
+                                        distanceText != 'Location unavailable')
+                                      Row(
+                                        children: [
                                           const Icon(
                                             Icons.location_on,
-                                            size: 12,
+                                            size: 11,
                                             color: Color(0xFF8B5CF6),
                                           ),
-                                          const SizedBox(width: 4),
+                                          const SizedBox(width: 2),
                                           Text(
                                             distanceText,
                                             style: const TextStyle(
                                               color: Color(0xFF8B5CF6),
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                              fontFamily: 'SF Pro Display',
                                             ),
                                           ),
-                                        ] else ...[
+                                        ],
+                                      )
+                                    else
+                                      Row(
+                                        children: [
                                           const Icon(
                                             Icons.location_on_outlined,
-                                            size: 12,
+                                            size: 11,
                                             color: Colors.grey,
                                           ),
-                                          const SizedBox(width: 4),
+                                          const SizedBox(width: 2),
                                           Text(
                                             locationDisplay,
                                             style: TextStyle(
-                                                color: Colors.grey[600],
-                                                fontSize: 12),
+                                              color: Colors.grey[600],
+                                              fontSize: 11,
+                                              fontFamily: 'SF Pro Display',
+                                            ),
                                           ),
                                         ],
-                                      ],
-                                    ),
+                                      ),
                                   ],
                                 ),
                               ],
                             ),
                           ),
-                          const Spacer(),
                         ],
                       ),
                     ),
-                    // Item image
-                    Container(
-                      height: 400,
-                      width: double.infinity,
-                      color: Colors.grey[200],
-                      child: listing['image_urls'] != null &&
-                              (listing['image_urls'] as List).isNotEmpty
-                          ? Image.network(
-                              listing['image_urls'][0],
-                              fit: BoxFit.cover,
-                              loadingBuilder:
-                                  (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Center(
-                                  child: CircularProgressIndicator(
-                                    value: loadingProgress.expectedTotalBytes !=
-                                            null
-                                        ? loadingProgress
-                                                .cumulativeBytesLoaded /
-                                            loadingProgress.expectedTotalBytes!
-                                        : null,
+                    
+                    // Item image with indicator
+                    Stack(
+                      children: [
+                        Container(
+                          height: 400,
+                          width: double.infinity,
+                          color: Colors.grey[200],
+                          child: listing['image_urls'] != null &&
+                                  (listing['image_urls'] as List).isNotEmpty
+                              ? Image.network(
+                                  listing['image_urls'][0],
+                                  fit: BoxFit.cover,
+                                  loadingBuilder:
+                                      (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        value: loadingProgress
+                                                    .expectedTotalBytes !=
+                                                null
+                                            ? loadingProgress
+                                                    .cumulativeBytesLoaded /
+                                                loadingProgress
+                                                    .expectedTotalBytes!
+                                            : null,
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      _buildImagePlaceholder(),
+                                )
+                              : _buildImagePlaceholder(),
+                        ),
+                        
+                        // Image count indicator (top right)
+                        if (imageCount > 1)
+                          Positioned(
+                            top: 12,
+                            right: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.photo_library,
+                                    color: Colors.white,
+                                    size: 14,
                                   ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) =>
-                                  _buildImagePlaceholder(),
-                            )
-                          : _buildImagePlaceholder(),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '$imageCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                    // Action buttons and rest of the card...
-                    // (Keep all the existing action buttons, price, description, etc.)
+                    
+                    // Action buttons - more compact
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12.0, vertical: 8.0),
+                          horizontal: 10, vertical: 6),
                       child: Row(
                         children: [
-                          // Like button with count
+                          // Like button
                           StreamBuilder<bool>(
                             stream: _db.isListingLikedStream(listing['id']),
                             initialData: false,
@@ -502,8 +547,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     borderRadius: BorderRadius.circular(8),
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 8.0,
-                                        vertical: 4.0,
+                                        horizontal: 6,
+                                        vertical: 4,
                                       ),
                                       child: Row(
                                         children: [
@@ -514,15 +559,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                             color: isLiked
                                                 ? Colors.red
                                                 : Colors.black,
-                                            size: 24,
+                                            size: 22,
                                           ),
                                           if (likeCount > 0) ...[
-                                            const SizedBox(width: 6),
+                                            const SizedBox(width: 4),
                                             Text(
                                               _formatCount(likeCount),
                                               style: const TextStyle(
-                                                fontSize: 14,
+                                                fontSize: 13,
                                                 fontWeight: FontWeight.w600,
+                                                fontFamily: 'SF Pro Display',
                                               ),
                                             ),
                                           ],
@@ -535,9 +581,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                           ),
 
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 4),
 
-                          // Comment button with count
+                          // Comment button
                           StreamBuilder<int>(
                             stream: _db.getCommentCountStream(listing['id']),
                             builder: (context, snapshot) {
@@ -557,22 +603,23 @@ class _HomeScreenState extends State<HomeScreen> {
                                 borderRadius: BorderRadius.circular(8),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 8.0,
-                                    vertical: 4.0,
+                                    horizontal: 6,
+                                    vertical: 4,
                                   ),
                                   child: Row(
                                     children: [
                                       const Icon(
                                         Icons.mode_comment_outlined,
-                                        size: 24,
+                                        size: 22,
                                       ),
                                       if (commentCount > 0) ...[
-                                        const SizedBox(width: 6),
+                                        const SizedBox(width: 4),
                                         Text(
                                           _formatCount(commentCount),
                                           style: const TextStyle(
-                                            fontSize: 14,
+                                            fontSize: 13,
                                             fontWeight: FontWeight.w600,
+                                            fontFamily: 'SF Pro Display',
                                           ),
                                         ),
                                       ],
@@ -582,7 +629,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               );
                             },
                           ),
-                          const SizedBox(width: 8),
+                          
+                          const SizedBox(width: 4),
 
                           // Share button
                           InkWell(
@@ -597,18 +645,19 @@ class _HomeScreenState extends State<HomeScreen> {
                             borderRadius: BorderRadius.circular(8),
                             child: const Padding(
                               padding: EdgeInsets.symmetric(
-                                horizontal: 8.0,
-                                vertical: 4.0,
+                                horizontal: 6,
+                                vertical: 4,
                               ),
                               child: Icon(
                                 Icons.share,
-                                size: 24,
+                                size: 22,
                               ),
                             ),
                           ),
 
-                          // Bookmark button (right side)
                           const Spacer(),
+                          
+                          // Bookmark button
                           StreamBuilder<bool>(
                             stream:
                                 _db.isListingBookmarkedStream(listing['id']),
@@ -646,8 +695,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 borderRadius: BorderRadius.circular(8),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 8.0,
-                                    vertical: 4.0,
+                                    horizontal: 6,
+                                    vertical: 4,
                                   ),
                                   child: Icon(
                                     isBookmarked
@@ -656,7 +705,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     color: isBookmarked
                                         ? const Color(0xFF8B5CF6)
                                         : Colors.black,
-                                    size: 24,
+                                    size: 22,
                                   ),
                                 ),
                               );
@@ -665,39 +714,54 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    // Price and title
+                    
+                    // Price and title - more compact
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
                       child: Row(
                         children: [
                           Text(
-                            '₱ ${listing['price']?.toStringAsFixed(2) ?? '0.00'} • ',
+                            '₱ ${listing['price']?.toStringAsFixed(2) ?? '0.00'}',
                             style: const TextStyle(
-                              fontSize: 16,
+                              fontSize: 15,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF8B5CF6),
+                              fontFamily: 'SF Pro Display',
                             ),
                           ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '•',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                          const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               listing['title'] ?? 'No title',
                               style: const TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    // Size and condition
+                    
+                    // Size and condition - more compact
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
                       child: Row(
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
+                                horizontal: 6, vertical: 3),
                             decoration: BoxDecoration(
                               color: Colors.purple.shade50,
                               borderRadius: BorderRadius.circular(4),
@@ -705,16 +769,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Text(
                               listing['size'] ?? 'N/A',
                               style: const TextStyle(
-                                fontSize: 11,
+                                fontSize: 10,
                                 color: Color(0xFF8B5CF6),
                                 fontWeight: FontWeight.w600,
+                                fontFamily: 'SF Pro Display',
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
+                                horizontal: 6, vertical: 3),
                             decoration: BoxDecoration(
                               color: Colors.green.shade50,
                               borderRadius: BorderRadius.circular(4),
@@ -722,73 +787,25 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Text(
                               listing['condition'] ?? 'N/A',
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 10,
                                 color: Colors.green.shade700,
                                 fontWeight: FontWeight.w600,
+                                fontFamily: 'SF Pro Display',
                               ),
                             ),
                           ),
                         ],
                       ),
                     ),
+                    
+                    // Description with "see more"
+                    _buildDescription(listing),
+                    
                     const SizedBox(height: 8),
-                    // Description
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                      child: Text(
-                        listing['description'] ?? '',
-                        style: const TextStyle(fontSize: 14),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Message seller button
-                    if (listing['seller_id'] != _db.currentUserId)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () async {
-                              final chatId = await _db
-                                  .getOrCreateChat(listing['seller_id']);
-                              if (chatId != null && mounted) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ConversationPage(
-                                      chatId: chatId,
-                                      otherUserId: listing['seller_id'],
-                                      otherUserName:
-                                          username, // Use real-time username
-                                      currentUser: widget.user,
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                            icon: const Icon(Icons.send, size: 18),
-                            label: const Text(
-                              'Message Seller',
-                              style: TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w600),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF8B5CF6),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(25)),
-                              elevation: 0,
-                            ),
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 12),
+                    
                     // Divider between posts
                     Container(
-                      height: 8,
+                      height: 6,
                       color: const Color(0xFFF5F5F7),
                     ),
                   ],
@@ -798,6 +815,93 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildDescription(Map<String, dynamic> listing) {
+    final description = listing['description'] ?? '';
+    final maxLines = 2;
+    final maxLength = 120; // Character limit before showing "see more"
+    
+    if (description.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final textSpan = TextSpan(
+            text: description,
+            style: const TextStyle(
+              fontSize: 13,
+              height: 1.3,
+              fontFamily: 'SF Pro Display',
+            ),
+          );
+
+          final textPainter = TextPainter(
+            text: textSpan,
+            maxLines: maxLines,
+            textDirection: TextDirection.ltr,
+          )..layout(maxWidth: constraints.maxWidth);
+
+          final isOverflowing = textPainter.didExceedMaxLines || 
+                                description.length > maxLength;
+
+          if (isOverflowing) {
+            return GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ListingDetailPage(
+                      listing: listing,
+                      user: widget.user,
+                    ),
+                  ),
+                );
+              },
+              child: RichText(
+                maxLines: maxLines,
+                overflow: TextOverflow.ellipsis,
+                text: TextSpan(
+                  style: const TextStyle(
+                    fontSize: 13,
+                    height: 1.3,
+                    color: Colors.black87,
+                    fontFamily: 'SF Pro Display',
+                  ),
+                  children: [
+                    TextSpan(text: description),
+                    const TextSpan(
+                      text: '... ',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                    const TextSpan(
+                      text: 'see more',
+                      style: TextStyle(
+                        color: Color(0xFF8B5CF6),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return Text(
+            description,
+            style: const TextStyle(
+              fontSize: 13,
+              height: 1.3,
+              fontFamily: 'SF Pro Display',
+            ),
+            maxLines: maxLines,
+          );
+        },
+      ),
     );
   }
 }

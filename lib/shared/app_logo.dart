@@ -8,7 +8,7 @@ class AppLogo extends StatelessWidget {
   const AppLogo({
     super.key,
     this.fontSize = 32,
-    this.subtitle,
+    this.subtitle, required String fontFamily,
   });
 
   @override

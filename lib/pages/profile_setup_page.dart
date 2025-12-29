@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,6 +25,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   final _addressController = TextEditingController();
 
   XFile? _imageFile;
+  Uint8List? _imageBytes; // For web support
   final _picker = ImagePicker();
   bool _isLoading = false;
   bool _isLoadingLocation = false;
@@ -42,8 +45,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     try {
       final pickedFile = await _picker.pickImage(source: source);
       if (pickedFile != null) {
+        // Load image bytes for preview
+        final bytes = await pickedFile.readAsBytes();
         setState(() {
           _imageFile = pickedFile;
+          _imageBytes = bytes;
         });
       }
     } catch (e) {
@@ -75,14 +81,15 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 _pickImage(ImageSource.gallery);
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: Color(0xFF8B5CF6)),
-              title: const Text('Take a Photo'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.camera);
-              },
-            ),
+            if (!kIsWeb) // Camera only available on mobile
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Color(0xFF8B5CF6)),
+                title: const Text('Take a Photo'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
             const SizedBox(height: 10),
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -258,6 +265,53 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     return 'Lat: ${_selectedLatitude!.toStringAsFixed(4)}, Lon: ${_selectedLongitude!.toStringAsFixed(4)}';
   }
 
+  Widget _buildProfileImage() {
+    if (_imageBytes != null) {
+      // Show image from bytes (works on both web and mobile)
+      return Container(
+        width: 120,
+        height: 120,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.grey[200],
+          image: DecorationImage(
+            image: MemoryImage(_imageBytes!),
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    } else if (!kIsWeb && _imageFile != null) {
+      // Fallback for mobile using File (though _imageBytes should handle this)
+      return Container(
+        width: 120,
+        height: 120,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.grey[200],
+          image: DecorationImage(
+            image: FileImage(File(_imageFile!.path)),
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    } else {
+      // No image selected
+      return Container(
+        width: 120,
+        height: 120,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.grey[200],
+        ),
+        child: Icon(
+          Icons.person_outline,
+          size: 60,
+          color: Colors.grey[400],
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -287,27 +341,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 onTap: _showImageSourceDialog,
                 child: Stack(
                   children: [
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.grey[200],
-                        image: _imageFile != null
-                            ? DecorationImage(
-                                image: FileImage(File(_imageFile!.path)),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                      ),
-                      child: _imageFile == null
-                          ? Icon(
-                              Icons.person_outline,
-                              size: 60,
-                              color: Colors.grey[400],
-                            )
-                          : null,
-                    ),
+                    _buildProfileImage(),
                     Positioned(
                       bottom: 0,
                       right: 0,
@@ -367,7 +401,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
               ),
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 20 ),
 
             // Location Section Header
             Row(
