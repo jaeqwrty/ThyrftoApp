@@ -317,14 +317,13 @@ Future<void> _handleEditProfile() async {
         FirebaseAuth.instance.currentUser?.uid;
     if (userId != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Resetting and re-seeding database...')),
+        const SnackBar(content: Text('Resetting database...')),
       );
       await SeedingService().clearAllData();
-      await SeedingService().seedDatabase(userId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Database reset and seeded successfully!')),
+              content: Text('Database reset successfully!')),
         );
       }
     }
