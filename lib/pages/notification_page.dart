@@ -15,14 +15,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        centerTitle: false,
         title: const Text(
           'Notifications',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Colors.black87,
           ),
@@ -36,11 +37,16 @@ class _NotificationsPageState extends State<NotificationsPage> {
               'Mark all read',
               style: TextStyle(
                 color: Color(0xFF8B5CF6),
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(height: 1, color: Colors.grey[100]),
+        ),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: _notificationService.getUserNotifications(),
@@ -50,186 +56,129 @@ class _NotificationsPageState extends State<NotificationsPage> {
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Error loading notifications',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            );
+            return _buildErrorState();
           }
 
           final notifications = snapshot.data ?? [];
 
           if (notifications.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.notifications_none,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No notifications yet',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            );
+            return _buildEmptyState();
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+          return ListView.separated(
+            padding: EdgeInsets.zero,
             itemCount: notifications.length,
+            separatorBuilder: (context, index) => Divider(
+              height: 1,
+              indent: 72, // Aligns divider with the start of the text
+              color: Colors.grey[50],
+            ),
             itemBuilder: (context, index) {
               final notification = notifications[index];
               final isRead = notification['is_read'] ?? false;
               final createdAt = notification['created_at']?.toDate();
-              final senderName = notification['sender_name'] ?? 'Someone';
-              final senderProfileImage =
-                  notification['sender_profile_image'] as String?;
+              final senderProfileImage = notification['sender_profile_image'] as String?;
 
               return Dismissible(
                 key: Key(notification['id']),
                 direction: DismissDirection.endToStart,
                 background: Container(
-                  color: Colors.red,
+                  color: Colors.red[400],
                   alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 16),
-                  child: const Icon(Icons.delete, color: Colors.white),
+                  padding: const EdgeInsets.only(right: 20),
+                  child: const Icon(Icons.delete_outline, color: Colors.white),
                 ),
                 onDismissed: (direction) {
                   _notificationService.deleteNotification(notification['id']);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Notification deleted'),
-                      backgroundColor: Colors.grey[800],
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  );
                 },
-                child: Container(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isRead
-                        ? Colors.white
-                        : const Color(0xFF8B5CF6).withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () async {
-                        if (!isRead) {
-                          await _notificationService.markNotificationAsRead(
-                            notification['id'],
-                          );
-                        }
-                        // Handle navigation based on notification type
-                        _handleNotificationTap(notification);
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                child: InkWell(
+                  onTap: () async {
+                    if (!isRead) {
+                      await _notificationService.markNotificationAsRead(notification['id']);
+                    }
+                    _handleNotificationTap(notification);
+                  },
+                  child: Container(
+                    color: isRead ? Colors.transparent : const Color(0xFF8B5CF6).withOpacity(0.04),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Compact Avatar with Unread Badge
+                        Stack(
                           children: [
-                            // Profile Image or Icon
                             CircleAvatar(
-                              radius: 24,
-                              backgroundColor:
-                                  _getNotificationColor(notification['type']),
-                              backgroundImage: (senderProfileImage != null &&
-                                      senderProfileImage.isNotEmpty)
+                              radius: 20,
+                              backgroundColor: _getNotificationColor(notification['type']).withOpacity(0.1),
+                              backgroundImage: (senderProfileImage != null && senderProfileImage.isNotEmpty)
                                   ? NetworkImage(senderProfileImage)
                                   : null,
-                              child: (senderProfileImage == null ||
-                                      senderProfileImage.isEmpty)
+                              child: (senderProfileImage == null || senderProfileImage.isEmpty)
                                   ? Icon(
-                                      _getNotificationIcon(
-                                          notification['type']),
-                                      color: Colors.white,
-                                      size: 20,
+                                      _getNotificationIcon(notification['type']),
+                                      color: _getNotificationColor(notification['type']),
+                                      size: 18,
                                     )
                                   : null,
                             ),
-                            const SizedBox(width: 12),
-                            // Notification Content
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    notification['title'] ?? '',
-                                    style: TextStyle(
-                                      fontWeight: isRead
-                                          ? FontWeight.w500
-                                          : FontWeight.bold,
-                                      fontSize: 15,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    notification['body'] ?? '',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[600],
-                                      height: 1.3,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  if (createdAt != null) ...[
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      timeago.format(createdAt),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[500],
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            // Unread indicator
                             if (!isRead)
-                              Container(
-                                margin: const EdgeInsets.only(left: 8, top: 4),
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF8B5CF6),
-                                  shape: BoxShape.circle,
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF8B5CF6),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2),
+                                  ),
                                 ),
                               ),
                           ],
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        // Compact Text Content
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              RichText(
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                text: TextSpan(
+                                  style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.3),
+                                  children: [
+                                    TextSpan(
+                                      text: "${notification['title'] ?? ''} ",
+                                      style: TextStyle(
+                                        fontWeight: isRead ? FontWeight.w500 : FontWeight.bold,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: notification['body'] ?? '',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontWeight: FontWeight.normal,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (createdAt != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  timeago.format(createdAt),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -241,58 +190,63 @@ class _NotificationsPageState extends State<NotificationsPage> {
     );
   }
 
+  // --- Helper Methods ---
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.notifications_none, size: 48, color: Colors.grey[300]),
+          const SizedBox(height: 12),
+          Text(
+            'No notifications yet',
+            style: TextStyle(fontSize: 15, color: Colors.grey[500]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 48, color: Colors.red[200]),
+          const SizedBox(height: 12),
+          const Text('Error loading notifications'),
+        ],
+      ),
+    );
+  }
+
   IconData _getNotificationIcon(String type) {
     switch (type) {
-      case 'like':
-        return Icons.favorite;
-      case 'comment':
-        return Icons.comment;
-      case 'reply':
-        return Icons.reply;
-      case 'share':
-        return Icons.share;
-      case 'message':
-        return Icons.message;
-      case 'follow':
-        return Icons.person_add;
-      default:
-        return Icons.notifications;
+      case 'like': return Icons.favorite;
+      case 'comment': return Icons.comment;
+      case 'reply': return Icons.reply;
+      case 'share': return Icons.share;
+      case 'message': return Icons.message;
+      case 'follow': return Icons.person_add;
+      default: return Icons.notifications;
     }
   }
 
   Color _getNotificationColor(String type) {
     switch (type) {
-      case 'like':
-        return Colors.red;
-      case 'comment':
-        return Colors.blue;
-      case 'reply':
-        return Colors.teal;
-      case 'share':
-        return Colors.green;
-      case 'message':
-        return Colors.orange;
-      case 'follow':
-        return const Color(0xFF8B5CF6);
-      default:
-        return Colors.grey;
+      case 'like': return Colors.red;
+      case 'comment': return Colors.blue;
+      case 'reply': return Colors.teal;
+      case 'share': return Colors.green;
+      case 'message': return Colors.orange;
+      case 'follow': return const Color(0xFF8B5CF6);
+      default: return Colors.grey;
     }
   }
 
   void _handleNotificationTap(Map<String, dynamic> notification) {
-    // Implement navigation based on notification type
-    // final type = notification['type'];
-    // final relatedListingId = notification['related_listing_id'];
-    // final relatedUserId = notification['related_user_id'];
-
-    // Example: Navigate to listing detail page
-    // if (relatedListingId != null) {
-    //   Navigator.push(
-    //     context,
-    //     MaterialPageRoute(
-    //       builder: (context) => ListingDetailPage(listingId: relatedListingId),
-    //     ),
-    //   );
-    // }
+    // Navigation logic goes here
+    // Example: if (notification['type'] == 'message') { ... }
   }
 }

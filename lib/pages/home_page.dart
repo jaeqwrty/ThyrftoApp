@@ -185,7 +185,7 @@ class _HomePageState extends State<HomePage> {
             );
           },
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 7),
       ],
     );
   }
@@ -293,7 +293,7 @@ class _HomePageState extends State<HomePage> {
                                       username,
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w600,
-                                        fontSize: 15,
+                                        fontSize: 15
                                       ),
                                     ),
                                     if (distanceText != null &&
