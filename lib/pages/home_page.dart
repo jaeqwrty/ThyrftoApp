@@ -293,7 +293,7 @@ class _HomePageState extends State<HomePage> {
                                       username,
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w600,
-                                        fontSize: 13,
+                                        fontSize: 15,
                                       ),
                                     ),
                                     if (distanceText != null &&
@@ -310,7 +310,7 @@ class _HomePageState extends State<HomePage> {
                                             distanceText,
                                             style: const TextStyle(
                                               color: Color(0xFF8B5CF6),
-                                              fontSize: 11,
+                                              fontSize: 14,
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
@@ -457,7 +457,7 @@ class _HomePageState extends State<HomePage> {
                                             color: isLiked
                                                 ? Colors.red
                                                 : Colors.black,
-                                            size: 22,
+                                            size: 26,
                                           ),
                                           if (likeCount > 0) ...[
                                             const SizedBox(width: 4),
@@ -507,7 +507,7 @@ class _HomePageState extends State<HomePage> {
                                     children: [
                                       const Icon(
                                         Icons.mode_comment_outlined,
-                                        size: 22,
+                                        size: 26,
                                       ),
                                       if (commentCount > 0) ...[
                                         const SizedBox(width: 4),
@@ -546,7 +546,7 @@ class _HomePageState extends State<HomePage> {
                               ),
                               child: Icon(
                                 Icons.share,
-                                size: 22,
+                                size: 26,
                               ),
                             ),
                           ),

@@ -159,7 +159,6 @@ class ProfileHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 0),
           // Edit Profile Button
          
         ],

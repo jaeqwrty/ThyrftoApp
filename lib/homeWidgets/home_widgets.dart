@@ -214,7 +214,7 @@ class ListingUserHeader extends StatelessWidget {
             child: Row(
               children: [
                 UserAvatar(username: username, radius: 18),
-                const SizedBox(width: 12), // Increased from 10
+                const SizedBox(width: 15), // Increased from 10
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

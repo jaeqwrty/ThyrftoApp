@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/location_service.dart';
-import 'package:thryfto/pages/home_page.dart';
+import 'package:thryfto/commonWidgets/main_navigation.dart'; // UPDATED: Changed from home_page.dart
 import 'package:thryfto/services/map_location.dart';
 
 class ProfileSetupPage extends StatefulWidget {
@@ -248,10 +248,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         if (!mounted) return;
 
         if (userProfile != null) {
-          Navigator.pushReplacement(
+          // UPDATED: Navigating to MainNavigation and clearing navigation stack
+          Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
-                builder: (context) => HomePage(user: userProfile)),
+                builder: (context) => MainNavigation(user: userProfile)),
+            (route) => false,
           );
         }
       } else {
@@ -560,7 +562,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 onPressed: _openMapPicker,
                 icon: const Icon(Icons.map_outlined),
                 label: const Text(
-                  'Seach location',
+                  'Search location',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,

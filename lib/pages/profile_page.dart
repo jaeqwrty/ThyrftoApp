@@ -127,7 +127,7 @@ class _ProfilePageState extends State<ProfilePage>
           // 2. Bio Section (Now directly below image/location and ABOVE the button)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
+            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 5),
             child: Text(
               displayBio,
               style: TextStyle(
@@ -145,7 +145,7 @@ class _ProfilePageState extends State<ProfilePage>
 
           // 3. Edit Profile Button (Now below the Bio)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
             child: SizedBox(
               width: double.infinity,
               child: OutlinedButton(

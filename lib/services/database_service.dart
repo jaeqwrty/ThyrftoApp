@@ -232,7 +232,6 @@ class DatabaseService {
           _firestore.collection('likes').doc('${currentUserId}_$listingId');
       final likeDoc = await likeRef.get();
 
-      // Get listing document to find seller
       final listingDoc =
           await _firestore.collection('listings').doc(listingId).get();
 
@@ -263,11 +262,19 @@ class DatabaseService {
 
         // Send notification only if seller is different from liker
         if (sellerId != null && sellerId != currentUserId) {
+          // Get current user's name
+          final currentUserDoc =
+              await _firestore.collection('users').doc(currentUserId).get();
+          final currentUserName = currentUserDoc.data()?['fullName'] ??
+              currentUserDoc.data()?['full_name'] ??
+              currentUserDoc.data()?['username'] ??
+              'Someone';
+
           await _createNotification(
             recipientId: sellerId,
             type: 'like',
-            title: 'Someone liked your listing',
-            body: 'Your listing "$listingTitle" received a like',
+            title: '$currentUserName liked your listing',
+            body: '"$listingTitle"',
             relatedListingId: listingId,
             relatedUserId: currentUserId,
           );
@@ -498,11 +505,9 @@ class DatabaseService {
     required String comment,
   }) async {
     try {
-      // Get user's profile image
       final userDoc = await _firestore.collection('users').doc(userId).get();
       final userProfileImage = userDoc.data()?['profileImageUrl'] as String?;
 
-      // Get listing info to find seller
       final listingDoc =
           await _firestore.collection('listings').doc(listingId).get();
 
@@ -512,8 +517,8 @@ class DatabaseService {
 
       final listingData = listingDoc.data()!;
       final sellerId = listingData['seller_id'];
+      final listingTitle = listingData['title'] ?? 'your listing';
 
-      // Add comment
       await _firestore
           .collection('listings')
           .doc(listingId)
@@ -527,7 +532,6 @@ class DatabaseService {
         'reply_count': 0,
       });
 
-      // Update comment count
       await _firestore.collection('listings').doc(listingId).update({
         'comments_count': FieldValue.increment(1),
       });
@@ -538,7 +542,7 @@ class DatabaseService {
           recipientId: sellerId,
           type: 'comment',
           title: '$userName commented on your listing',
-          body: 'Comment: "$comment"',
+          body: '"$comment"',
           relatedListingId: listingId,
           relatedUserId: userId,
         );
@@ -628,7 +632,6 @@ class DatabaseService {
     required String reply,
   }) async {
     try {
-      // Add reply to the comment's replies subcollection
       await _firestore
           .collection('listings')
           .doc(listingId)
@@ -642,7 +645,6 @@ class DatabaseService {
         'created_at': FieldValue.serverTimestamp(),
       });
 
-      // Update reply count on the comment
       await _firestore
           .collection('listings')
           .doc(listingId)
@@ -652,7 +654,6 @@ class DatabaseService {
         'reply_count': FieldValue.increment(1),
       });
 
-      // Get comment info for notification
       final commentDoc = await _firestore
           .collection('listings')
           .doc(listingId)
@@ -664,13 +665,12 @@ class DatabaseService {
         final commentData = commentDoc.data()!;
         final commentOwnerId = commentData['user_id'];
 
-        // Send notification to comment owner if replier is not the comment owner
         if (commentOwnerId != null && commentOwnerId != userId) {
           await _createNotification(
             recipientId: commentOwnerId,
             type: 'reply',
             title: '$userName replied to your comment',
-            body: 'Reply: "$reply"',
+            body: '"$reply"',
             relatedListingId: listingId,
             relatedUserId: userId,
           );
@@ -875,7 +875,6 @@ class DatabaseService {
   /// Call this method when user shares a listing
   Future<void> onListingSharedWithNotification(String listingId) async {
     try {
-      // Get listing info
       final listingDoc =
           await _firestore.collection('listings').doc(listingId).get();
 
@@ -887,23 +886,28 @@ class DatabaseService {
       final sellerId = listingData['seller_id'];
       final listingTitle = listingData['title'] ?? 'a listing';
 
-      // Increment share count
       await incrementShareCount(listingId);
 
-      // Track the share
       await _firestore.collection('listing_shares').add({
         'listing_id': listingId,
         'shared_by': currentUserId,
         'shared_at': FieldValue.serverTimestamp(),
       });
 
-      // Send notification only if sharer is not the seller
       if (sellerId != null && sellerId != currentUserId) {
+        // Get current user's name
+        final currentUserDoc =
+            await _firestore.collection('users').doc(currentUserId!).get();
+        final currentUserName = currentUserDoc.data()?['fullName'] ??
+            currentUserDoc.data()?['full_name'] ??
+            currentUserDoc.data()?['username'] ??
+            'Someone';
+
         await _createNotification(
           recipientId: sellerId,
           type: 'share',
-          title: 'Someone shared your listing',
-          body: 'Your listing "$listingTitle" was shared',
+          title: '$currentUserName shared your listing',
+          body: '"$listingTitle"',
           relatedListingId: listingId,
           relatedUserId: currentUserId,
         );
@@ -923,10 +927,18 @@ class DatabaseService {
     try {
       if (currentUserId == null) return;
 
+      // Get current user's name
+      final currentUserDoc =
+          await _firestore.collection('users').doc(currentUserId!).get();
+      final currentUserName = currentUserDoc.data()?['fullName'] ??
+          currentUserDoc.data()?['full_name'] ??
+          currentUserDoc.data()?['username'] ??
+          'Someone';
+
       await _createNotification(
         recipientId: recipientId,
         type: 'message',
-        title: 'You received a new message',
+        title: 'New message from $currentUserName',
         body: messageText.length > 50
             ? '${messageText.substring(0, 50)}...'
             : messageText,
@@ -938,6 +950,7 @@ class DatabaseService {
   }
 
   /// Internal helper: Create notification in Firestore
+  /// Internal helper: Create notification in Firestore with sender details
   Future<void> _createNotification({
     required String recipientId,
     required String type,
@@ -948,9 +961,28 @@ class DatabaseService {
     Map<String, dynamic>? additionalData,
   }) async {
     try {
+      // Get sender's information
+      String senderName = 'Someone';
+      String? senderProfileImage;
+
+      if (currentUserId != null) {
+        final senderDoc =
+            await _firestore.collection('users').doc(currentUserId).get();
+        if (senderDoc.exists) {
+          final senderData = senderDoc.data()!;
+          senderName = senderData['fullName'] ??
+              senderData['full_name'] ??
+              senderData['username'] ??
+              'Someone';
+          senderProfileImage = senderData['profileImageUrl'] as String?;
+        }
+      }
+
       await _firestore.collection('notifications').add({
         'recipient_id': recipientId,
         'sender_id': currentUserId,
+        'sender_name': senderName,
+        'sender_profile_image': senderProfileImage,
         'type': type,
         'title': title,
         'body': body,

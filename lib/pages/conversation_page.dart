@@ -41,6 +41,7 @@ class _ConversationPageState extends State<ConversationPage> {
     _messageController.clear();
 
     try {
+      // Send the message
       await _firestore
           .collection('chats')
           .doc(widget.chatId)
@@ -52,15 +53,23 @@ class _ConversationPageState extends State<ConversationPage> {
         'read': false,
       });
 
+      // Update last message
       await _firestore.collection('chats').doc(widget.chatId).update({
         'lastMessage': text,
         'lastMessageTime': FieldValue.serverTimestamp(),
       });
 
+      // Send notification to the other user
+      await _db.sendMessageWithNotification(
+        recipientId: widget.otherUserId,
+        messageText: text,
+      );
+
       _scrollToBottom();
     } catch (e) {
       if (mounted) {
-        _showErrorDialog('Failed to Send', 'Could not send your message. Please try again.');
+        _showErrorDialog(
+            'Failed to Send', 'Could not send your message. Please try again.');
       }
     }
   }
@@ -79,7 +88,7 @@ class _ConversationPageState extends State<ConversationPage> {
 
   Future<void> _markMessagesAsRead() async {
     if (_hasMarkedAsRead) return;
-    
+
     try {
       final messagesSnapshot = await _firestore
           .collection('chats')
@@ -92,7 +101,7 @@ class _ConversationPageState extends State<ConversationPage> {
       for (final doc in messagesSnapshot.docs) {
         await doc.reference.update({'read': true});
       }
-      
+
       _hasMarkedAsRead = true;
     } catch (e) {
       print('Error marking messages as read: $e');
@@ -114,7 +123,8 @@ class _ConversationPageState extends State<ConversationPage> {
                 color: Colors.red.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              child:
+                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
             ),
             const SizedBox(height: 20),
             Text(
@@ -141,7 +151,9 @@ class _ConversationPageState extends State<ConversationPage> {
                   ),
                   elevation: 0,
                 ),
-                child: const Text('OK', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                child: const Text('OK',
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               ),
             ),
           ],
@@ -159,7 +171,7 @@ class _ConversationPageState extends State<ConversationPage> {
 
     if (confirm == true) {
       _showLoadingDialog();
-      
+
       try {
         // Delete the message
         await _firestore
@@ -169,7 +181,7 @@ class _ConversationPageState extends State<ConversationPage> {
             .doc(messageId)
             .delete();
 
-        // Update last message if needed
+        // Check if there are any remaining messages
         final remainingMessages = await _firestore
             .collection('chats')
             .doc(widget.chatId)
@@ -179,29 +191,45 @@ class _ConversationPageState extends State<ConversationPage> {
             .get();
 
         if (remainingMessages.docs.isEmpty) {
-          // No messages left
-          await _firestore.collection('chats').doc(widget.chatId).update({
-            'lastMessage': '',
-            'lastMessageTime': FieldValue.serverTimestamp(),
-          });
+          // No messages left - delete the entire chat
+          await _firestore.collection('chats').doc(widget.chatId).delete();
+
+          if (mounted) {
+            Navigator.pop(context); // Close loading dialog
+            Navigator.pop(context); // Go back to chat list
+
+            Future.delayed(const Duration(milliseconds: 300), () {
+              if (mounted) {
+                _showResultDialog(
+                  success: true,
+                  successTitle: 'Message Deleted',
+                  successMessage:
+                      'The conversation has been removed as there are no messages left.',
+                  failTitle: '',
+                  failMessage: '',
+                );
+              }
+            });
+          }
         } else {
           // Update with the latest message
           final lastMsg = remainingMessages.docs.first.data();
           await _firestore.collection('chats').doc(widget.chatId).update({
             'lastMessage': lastMsg['text'] ?? '',
-            'lastMessageTime': lastMsg['timestamp'] ?? FieldValue.serverTimestamp(),
+            'lastMessageTime':
+                lastMsg['timestamp'] ?? FieldValue.serverTimestamp(),
           });
-        }
 
-        if (mounted) {
-          Navigator.pop(context); // Close loading dialog
-          _showResultDialog(
-            success: true,
-            successTitle: 'Message Deleted',
-            successMessage: 'The message has been successfully deleted.',
-            failTitle: '',
-            failMessage: '',
-          );
+          if (mounted) {
+            Navigator.pop(context); // Close loading dialog
+            _showResultDialog(
+              success: true,
+              successTitle: 'Message Deleted',
+              successMessage: 'The message has been successfully deleted.',
+              failTitle: '',
+              failMessage: '',
+            );
+          }
         }
       } catch (e) {
         print('Error deleting message: $e');
@@ -222,13 +250,14 @@ class _ConversationPageState extends State<ConversationPage> {
   Future<void> _deleteEntireChat() async {
     final confirm = await _showFloatingDeleteDialog(
       title: 'Delete Conversation',
-      message: 'Are you sure you want to delete your entire conversation with ${widget.otherUserName}? This action cannot be undone.',
+      message:
+          'Are you sure you want to delete your entire conversation with ${widget.otherUserName}? This action cannot be undone.',
       icon: Icons.forum_outlined,
     );
 
     if (confirm == true) {
       _showLoadingDialog();
-      
+
       try {
         // Delete all messages first
         final messagesSnapshot = await _firestore
@@ -247,13 +276,14 @@ class _ConversationPageState extends State<ConversationPage> {
         if (mounted) {
           Navigator.pop(context); // Close loading dialog
           Navigator.pop(context); // Go back to chat list
-          
+
           Future.delayed(const Duration(milliseconds: 300), () {
             if (mounted) {
               _showResultDialog(
                 success: true,
                 successTitle: 'Conversation Deleted',
-                successMessage: 'The conversation has been successfully deleted.',
+                successMessage:
+                    'The conversation has been successfully deleted.',
                 failTitle: '',
                 failMessage: '',
               );
@@ -357,7 +387,8 @@ class _ConversationPageState extends State<ConversationPage> {
                       ),
                       child: const Text(
                         'Delete',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
@@ -495,14 +526,16 @@ class _ConversationPageState extends State<ConversationPage> {
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.red.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.delete_outline, color: Colors.red, size: 24),
+                    child: const Icon(Icons.delete_outline,
+                        color: Colors.red, size: 24),
                   ),
                   title: const Text(
                     'Delete Entire Conversation',
@@ -555,9 +588,10 @@ class _ConversationPageState extends State<ConversationPage> {
                 CircleAvatar(
                   radius: 18,
                   backgroundColor: const Color(0xFF8B5CF6),
-                  backgroundImage: (profileImageUrl != null && profileImageUrl.isNotEmpty)
-                      ? NetworkImage(profileImageUrl)
-                      : null,
+                  backgroundImage:
+                      (profileImageUrl != null && profileImageUrl.isNotEmpty)
+                          ? NetworkImage(profileImageUrl)
+                          : null,
                   child: (profileImageUrl == null || profileImageUrl.isEmpty)
                       ? Text(
                           displayName.isNotEmpty
@@ -855,14 +889,16 @@ class _MessageBubble extends StatelessWidget {
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.red.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.delete_outline, color: Colors.red, size: 24),
+                    child: const Icon(Icons.delete_outline,
+                        color: Colors.red, size: 24),
                   ),
                   title: const Text(
                     'Delete Message',
@@ -1041,8 +1077,7 @@ class _MessageInputState extends State<_MessageInput> {
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color:
-                      _isTyping ? const Color(0xFF8B5CF6) : Colors.grey[300],
+                  color: _isTyping ? const Color(0xFF8B5CF6) : Colors.grey[300],
                   shape: BoxShape.circle,
                 ),
                 child: Icon(

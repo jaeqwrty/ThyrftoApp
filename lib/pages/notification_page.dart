@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:thryfto/services/notification_service.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class NotificationsPage extends StatefulWidget {
@@ -16,12 +15,16 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F7),
       appBar: AppBar(
-        title: Text(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
           'Notifications',
-          style: GoogleFonts.righteous(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
+            color: Colors.black87,
           ),
         ),
         actions: [
@@ -29,7 +32,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
             onPressed: () async {
               await _notificationService.markAllNotificationsAsRead();
             },
-            child: const Text('Mark all read'),
+            child: const Text(
+              'Mark all read',
+              style: TextStyle(
+                color: Color(0xFF8B5CF6),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -41,7 +50,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading notifications',
+                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            );
           }
 
           final notifications = snapshot.data ?? [];
@@ -70,11 +91,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
           }
 
           return ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: notifications.length,
             itemBuilder: (context, index) {
               final notification = notifications[index];
               final isRead = notification['is_read'] ?? false;
               final createdAt = notification['created_at']?.toDate();
+              final senderName = notification['sender_name'] ?? 'Someone';
+              final senderProfileImage =
+                  notification['sender_profile_image'] as String?;
 
               return Dismissible(
                 key: Key(notification['id']),
@@ -88,58 +113,125 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 onDismissed: (direction) {
                   _notificationService.deleteNotification(notification['id']);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Notification deleted')),
+                    SnackBar(
+                      content: const Text('Notification deleted'),
+                      backgroundColor: Colors.grey[800],
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
                   );
                 },
-                child: ListTile(
-                  tileColor: isRead ? null : Colors.purple.withOpacity(0.05),
-                  leading: CircleAvatar(
-                    backgroundColor: _getNotificationColor(notification['type']),
-                    child: Icon(
-                      _getNotificationIcon(notification['type']),
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  title: Text(
-                    notification['title'] ?? '',
-                    style: TextStyle(
-                      fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
-                    ),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(notification['body'] ?? ''),
-                      if (createdAt != null)
-                        Text(
-                          timeago.format(createdAt),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
+                child: Container(
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isRead
+                        ? Colors.white
+                        : const Color(0xFF8B5CF6).withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
                     ],
                   ),
-                  trailing: !isRead
-                      ? Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Colors.purple,
-                            shape: BoxShape.circle,
-                          ),
-                        )
-                      : null,
-                  onTap: () async {
-                    if (!isRead) {
-                      await _notificationService.markNotificationAsRead(
-                        notification['id'],
-                      );
-                    }
-                    // Handle navigation based on notification type
-                    _handleNotificationTap(notification);
-                  },
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () async {
+                        if (!isRead) {
+                          await _notificationService.markNotificationAsRead(
+                            notification['id'],
+                          );
+                        }
+                        // Handle navigation based on notification type
+                        _handleNotificationTap(notification);
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Profile Image or Icon
+                            CircleAvatar(
+                              radius: 24,
+                              backgroundColor:
+                                  _getNotificationColor(notification['type']),
+                              backgroundImage: (senderProfileImage != null &&
+                                      senderProfileImage.isNotEmpty)
+                                  ? NetworkImage(senderProfileImage)
+                                  : null,
+                              child: (senderProfileImage == null ||
+                                      senderProfileImage.isEmpty)
+                                  ? Icon(
+                                      _getNotificationIcon(
+                                          notification['type']),
+                                      color: Colors.white,
+                                      size: 20,
+                                    )
+                                  : null,
+                            ),
+                            const SizedBox(width: 12),
+                            // Notification Content
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    notification['title'] ?? '',
+                                    style: TextStyle(
+                                      fontWeight: isRead
+                                          ? FontWeight.w500
+                                          : FontWeight.bold,
+                                      fontSize: 15,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    notification['body'] ?? '',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                      height: 1.3,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (createdAt != null) ...[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      timeago.format(createdAt),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[500],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            // Unread indicator
+                            if (!isRead)
+                              Container(
+                                margin: const EdgeInsets.only(left: 8, top: 4),
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF8B5CF6),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               );
             },
@@ -155,7 +247,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return Icons.favorite;
       case 'comment':
         return Icons.comment;
-      case 'reply':  // NEW: Add reply icon
+      case 'reply':
         return Icons.reply;
       case 'share':
         return Icons.share;
@@ -174,14 +266,14 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return Colors.red;
       case 'comment':
         return Colors.blue;
-      case 'reply':  // NEW: Add reply color
+      case 'reply':
         return Colors.teal;
       case 'share':
         return Colors.green;
       case 'message':
         return Colors.orange;
       case 'follow':
-        return Colors.purple;
+        return const Color(0xFF8B5CF6);
       default:
         return Colors.grey;
     }
@@ -192,7 +284,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     // final type = notification['type'];
     // final relatedListingId = notification['related_listing_id'];
     // final relatedUserId = notification['related_user_id'];
-    
+
     // Example: Navigate to listing detail page
     // if (relatedListingId != null) {
     //   Navigator.push(
