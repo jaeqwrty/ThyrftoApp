@@ -232,7 +232,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-                builder: (context) => HomeScreen(user: userProfile)),
+                builder: (context) => HomePage(user: userProfile)),
           );
         }
       } else {

@@ -5,29 +5,24 @@ import 'package:thryfto/modals/share_modal.dart';
 import 'package:thryfto/pages/notification_page.dart';
 import 'package:thryfto/pages/user_profile_page.dart';
 import 'package:thryfto/services/database_service.dart';
-import 'package:thryfto/pages/sell_page.dart';
-import 'package:thryfto/pages/search_page.dart';
-import 'package:thryfto/pages/profile_page.dart';
 import 'package:thryfto/pages/listing_detail_page.dart';
-import 'package:thryfto/pages/chat_page.dart';
 import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/services/notification_service.dart';
 import 'package:thryfto/shared/notification_bell.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomePage extends StatefulWidget {
   final Map<String, dynamic> user;
 
-  const HomeScreen({super.key, required this.user});
+  const HomePage({super.key, required this.user});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomePage> createState() => _HomePageState();
 }
 
 final NotificationService _notificationService = NotificationService();
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomePageState extends State<HomePage> {
   final DatabaseService _db = DatabaseService();
-  int _selectedIndex = 0;
 
   String _formatCount(int count) {
     if (count >= 1000000) {
@@ -39,120 +34,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Reusable AppBar method to avoid duplication
-  SliverAppBar _buildAppBar() {
-    return SliverAppBar(
-      floating: true,
-      snap: true,
-      elevation: 0,
-      backgroundColor: Colors.white,
-      automaticallyImplyLeading: false,
-      title: ShaderMask(
-        shaderCallback: (bounds) => const LinearGradient(
-          colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ).createShader(bounds),
-        child: Text(
-          'Thryfto',
-          style: GoogleFonts.righteous(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            letterSpacing: 1.2,
-          ),
-        ),
-      ),
-      actions: [
-        NotificationBell(
-          notificationService: _notificationService,
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const NotificationsPage(),
-              ),
-            );
-          },
-        ),
-        const SizedBox(width: 16),
-      ],
-    );
-  }
-
-  void _onItemTapped(int index) {
-    if (index == 2) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => SellPage(user: widget.user),
-        ),
-      );
-    } else {
-      setState(() => _selectedIndex = index);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F7),
       body: SafeArea(
-        child: _buildContent(),
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: const Color(0xFF8B5CF6),
-          unselectedItemColor: Colors.grey,
-          elevation: 0,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.add_box_outlined),
-              label: 'Sell',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble_outline),
-              label: 'Chats',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              label: 'Profile',
-            ),
-          ],
-        ),
+        child: _buildHomeFeed(),
       ),
     );
-  }
-
-  Widget _buildContent() {
-    switch (_selectedIndex) {
-      case 0:
-        return _buildHomeFeed();
-      case 1:
-        return SearchPage(user: widget.user);
-      case 3:
-        return ChatListPage(user: widget.user);
-      case 4:
-        return ProfilePage(user: widget.user);
-      default:
-        return _buildHomeFeed();
-    }
   }
 
   Widget _buildHomeFeed() {
@@ -222,7 +111,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               fontSize: 18,
                               color: Colors.grey[600],
                               fontWeight: FontWeight.w500,
-                              fontFamily: 'SF Pro Display',
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -231,32 +119,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey[500],
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      SellPage(user: widget.user),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.add),
-                            label: const Text('Create Listing'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF8B5CF6),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(25),
-                              ),
                             ),
                           ),
                         ],
@@ -288,6 +150,46 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  SliverAppBar _buildAppBar() {
+    return SliverAppBar(
+      floating: true,
+      snap: true,
+      elevation: 0,
+      backgroundColor: Colors.white,
+      automaticallyImplyLeading: false,
+      title: ShaderMask(
+        shaderCallback: (bounds) => const LinearGradient(
+          colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ).createShader(bounds),
+        child: Text(
+          'Thryfto',
+          style: GoogleFonts.righteous(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ),
+      actions: [
+        NotificationBell(
+          notificationService: _notificationService,
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const NotificationsPage(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(width: 16),
+      ],
+    );
+  }
+
   Widget _buildPostCard(Map<String, dynamic> listing) {
     return StreamBuilder<Map<String, dynamic>?>(
       stream: _db.getUserProfileStream(listing['seller_id']),
@@ -299,7 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
             'Unknown';
         final profileImageUrl = seller?['profileImageUrl'] as String?;
         final distanceText = listing['distance_text'] as String?;
-        
+
         // Get image count
         final imageUrls = listing['image_urls'] as List?;
         final imageCount = imageUrls?.length ?? 0;
@@ -339,7 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // User info header - more compact
+                    // User info header
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                       child: Row(
@@ -392,7 +294,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 13,
-                                        fontFamily: 'SF Pro Display',
                                       ),
                                     ),
                                     if (distanceText != null &&
@@ -411,7 +312,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                               color: Color(0xFF8B5CF6),
                                               fontSize: 11,
                                               fontWeight: FontWeight.w500,
-                                              fontFamily: 'SF Pro Display',
                                             ),
                                           ),
                                         ],
@@ -430,7 +330,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                             style: TextStyle(
                                               color: Colors.grey[600],
                                               fontSize: 11,
-                                              fontFamily: 'SF Pro Display',
                                             ),
                                           ),
                                         ],
@@ -443,7 +342,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-                    
+
                     // Item image with indicator
                     Stack(
                       children: [
@@ -477,7 +376,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 )
                               : _buildImagePlaceholder(),
                         ),
-                        
+
                         // Image count indicator (top right)
                         if (imageCount > 1)
                           Positioned(
@@ -507,7 +406,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                       color: Colors.white,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
-                                      fontFamily: 'SF Pro Display',
                                     ),
                                   ),
                                 ],
@@ -516,8 +414,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                       ],
                     ),
-                    
-                    // Action buttons - more compact
+
+                    // Action buttons
                     Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 6),
@@ -568,7 +466,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                               style: const TextStyle(
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.w600,
-                                                fontFamily: 'SF Pro Display',
                                               ),
                                             ),
                                           ],
@@ -619,7 +516,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                           style: const TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w600,
-                                            fontFamily: 'SF Pro Display',
                                           ),
                                         ),
                                       ],
@@ -629,7 +525,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               );
                             },
                           ),
-                          
+
                           const SizedBox(width: 4),
 
                           // Share button
@@ -656,7 +552,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
 
                           const Spacer(),
-                          
+
                           // Bookmark button
                           StreamBuilder<bool>(
                             stream:
@@ -714,8 +610,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-                    
-                    // Price and title - more compact
+
+                    // Price and title
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
                       child: Row(
@@ -726,7 +622,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF8B5CF6),
-                              fontFamily: 'SF Pro Display',
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -744,7 +639,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
-                                fontFamily: 'SF Pro Display',
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -753,8 +647,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-                    
-                    // Size and condition - more compact
+
+                    // Size and condition
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
                       child: Row(
@@ -772,7 +666,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 fontSize: 10,
                                 color: Color(0xFF8B5CF6),
                                 fontWeight: FontWeight.w600,
-                                fontFamily: 'SF Pro Display',
                               ),
                             ),
                           ),
@@ -790,19 +683,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                 fontSize: 10,
                                 color: Colors.green.shade700,
                                 fontWeight: FontWeight.w600,
-                                fontFamily: 'SF Pro Display',
                               ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    
+
                     // Description with "see more"
                     _buildDescription(listing),
-                    
+
                     const SizedBox(height: 8),
-                    
+
                     // Divider between posts
                     Container(
                       height: 6,
@@ -820,9 +712,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildDescription(Map<String, dynamic> listing) {
     final description = listing['description'] ?? '';
-    final maxLines = 2;
-    final maxLength = 120; // Character limit before showing "see more"
-    
+    const maxLines = 2;
+    const maxLength = 30;
+
     if (description.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -846,8 +738,8 @@ class _HomeScreenState extends State<HomeScreen> {
             textDirection: TextDirection.ltr,
           )..layout(maxWidth: constraints.maxWidth);
 
-          final isOverflowing = textPainter.didExceedMaxLines || 
-                                description.length > maxLength;
+          final isOverflowing =
+              textPainter.didExceedMaxLines || description.length > maxLength;
 
           if (isOverflowing) {
             return GestureDetector(
@@ -904,13 +796,13 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-}
 
-Widget _buildImagePlaceholder() {
-  return Container(
-    color: Colors.grey[300],
-    child: const Center(
-      child: Icon(Icons.image, size: 50, color: Colors.grey),
-    ),
-  );
+  Widget _buildImagePlaceholder() {
+    return Container(
+      color: Colors.grey[300],
+      child: const Center(
+        child: Icon(Icons.image, size: 50, color: Colors.grey),
+      ),
+    );
+  }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -23,6 +22,11 @@ class _CommentsModalState extends State<CommentsModal> {
   final ScrollController _scrollController = ScrollController();
   bool _isSubmitting = false;
 
+  // Reply state
+  String? _replyingToCommentId;
+  String? _replyingToUserName;
+  final Map<String, bool> _showAllReplies = {};
+
   @override
   void dispose() {
     _commentController.dispose();
@@ -36,31 +40,42 @@ class _CommentsModalState extends State<CommentsModal> {
     setState(() => _isSubmitting = true);
 
     try {
-      // Get user ID - try multiple possible field names
-      final userId = (widget.user['uid'] as String?) ?? 
-                     (widget.user['id'] as String?) ?? 
-                     _db.currentUserId;
-      
+      final userId = (widget.user['uid'] as String?) ??
+          (widget.user['id'] as String?) ??
+          _db.currentUserId;
+
       if (userId == null) {
         throw Exception('User ID is required');
       }
 
-      // Get username safely with fallback
-      final userName = (widget.user['fullName'] as String?) ?? 
-                       (widget.user['full_name'] as String?) ?? 
-                       (widget.user['username'] as String?) ?? 
-                       (widget.user['email'] as String?)?.split('@')[0] ?? 
-                       'User';
+      final userName = (widget.user['fullName'] as String?) ??
+          (widget.user['full_name'] as String?) ??
+          (widget.user['username'] as String?) ??
+          (widget.user['email'] as String?)?.split('@')[0] ??
+          'User';
 
-      await _db.addCommentWithNotification(
-        listingId: widget.listingId,
-        userId: userId,
-        userName: userName,
-        comment: _commentController.text.trim(),
-      );
+      if (_replyingToCommentId != null) {
+        // Add reply
+        await _db.addReply(
+          listingId: widget.listingId,
+          commentId: _replyingToCommentId!,
+          userId: userId,
+          userName: userName,
+          reply: _commentController.text.trim(),
+        );
+      } else {
+        // Add comment
+        await _db.addCommentWithNotification(
+          listingId: widget.listingId,
+          userId: userId,
+          userName: userName,
+          comment: _commentController.text.trim(),
+        );
+      }
 
       _commentController.clear();
-      
+      _cancelReply();
+
       // Scroll to bottom after adding comment
       Future.delayed(const Duration(milliseconds: 300), () {
         if (_scrollController.hasClients) {
@@ -82,6 +97,27 @@ class _CommentsModalState extends State<CommentsModal> {
         setState(() => _isSubmitting = false);
       }
     }
+  }
+
+  void _startReply(String commentId, String userName) {
+    setState(() {
+      _replyingToCommentId = commentId;
+      _replyingToUserName = userName;
+    });
+    FocusScope.of(context).requestFocus(FocusNode());
+  }
+
+  void _cancelReply() {
+    setState(() {
+      _replyingToCommentId = null;
+      _replyingToUserName = null;
+    });
+  }
+
+  void _toggleShowAllReplies(String commentId) {
+    setState(() {
+      _showAllReplies[commentId] = !(_showAllReplies[commentId] ?? false);
+    });
   }
 
   @override
@@ -128,11 +164,12 @@ class _CommentsModalState extends State<CommentsModal> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
+                    const Text(
                       'Comments',
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
+                        fontFamily: 'SF Pro Display',
                       ),
                     ),
                     IconButton(
@@ -200,14 +237,52 @@ class _CommentsModalState extends State<CommentsModal> {
                   itemCount: comments.length,
                   itemBuilder: (context, index) {
                     final comment = comments[index];
-                    final isCurrentUser = comment['user_id'] == widget.user['uid'];
-                    
-                    return _buildCommentItem(comment, isCurrentUser);
+                    final currentUserId = (widget.user['uid'] as String?) ??
+                        (widget.user['id'] as String?) ??
+                        _db.currentUserId;
+                    final isOwner = currentUserId != null &&
+                        comment['user_id'] == currentUserId;
+
+                    return _buildCommentItem(comment, isOwner);
                   },
                 );
               },
             ),
           ),
+
+          // Reply Preview Banner
+          if (_replyingToCommentId != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                border: Border(
+                  top: BorderSide(color: Colors.blue.shade100),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.reply, size: 16, color: Colors.blue.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Replying to $_replyingToUserName',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.blue.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: _cancelReply,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
 
           // Comment Input
           Container(
@@ -225,17 +300,10 @@ class _CommentsModalState extends State<CommentsModal> {
             child: SafeArea(
               child: Row(
                 children: [
-                  CircleAvatar(
+                  _buildUserAvatar(
+                    imageUrl: widget.user['profileImageUrl'] as String?,
+                    userName: _getUserName(),
                     radius: 18,
-                    backgroundColor: const Color(0xFF8B5CF6),
-                    child: Text(
-                      _getUserInitial(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -243,7 +311,9 @@ class _CommentsModalState extends State<CommentsModal> {
                       controller: _commentController,
                       enabled: !_isSubmitting,
                       decoration: InputDecoration(
-                        hintText: 'Add a comment...',
+                        hintText: _replyingToCommentId != null
+                            ? 'Write a reply...'
+                            : 'Add a comment...',
                         hintStyle: TextStyle(color: Colors.grey[400]),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(25),
@@ -255,7 +325,8 @@ class _CommentsModalState extends State<CommentsModal> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(25),
-                          borderSide: const BorderSide(color: Color(0xFF8B5CF6)),
+                          borderSide:
+                              const BorderSide(color: Color(0xFF8B5CF6)),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -293,38 +364,171 @@ class _CommentsModalState extends State<CommentsModal> {
     );
   }
 
-  Widget _buildCommentItem(Map<String, dynamic> comment, bool isCurrentUser) {
+  Widget _buildCommentItem(Map<String, dynamic> comment, bool isOwner) {
     final userName = comment['user_name'] ?? 'Unknown';
     final commentText = comment['comment'] ?? '';
     final timestamp = comment['created_at'] as Timestamp?;
-    final timeAgo = timestamp != null 
-        ? _getTimeAgo(timestamp.toDate()) 
-        : 'Just now';
+    final timeAgo =
+        timestamp != null ? _getTimeAgo(timestamp.toDate()) : 'Just now';
+    final commentId = comment['id'];
+    final replies =
+        (comment['replies'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+            [];
 
-    // Get current user ID to check ownership
-    final currentUserId = (widget.user['uid'] as String?) ?? 
-                          (widget.user['id'] as String?) ?? 
-                          _db.currentUserId;
-    final isOwner = currentUserId != null && comment['user_id'] == currentUserId;
+    final showAll = _showAllReplies[commentId] ?? false;
+    final visibleReplies =
+        showAll || replies.length <= 3 ? replies : replies.take(3).toList();
+    final hiddenCount = replies.length > 3 && !showAll ? replies.length - 3 : 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildUserAvatar(
+                imageUrl: comment['user_profile_image'] as String?,
+                userName: userName,
+                radius: 18,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          userName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          timeAgo,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      commentText,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => _startReply(commentId, userName),
+                          child: Text(
+                            'Reply',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        if (isOwner) ...[
+                          const SizedBox(width: 16),
+                          GestureDetector(
+                            onTap: () => _deleteComment(commentId),
+                            child: Text(
+                              'Delete',
+                              style: TextStyle(
+                                color: Colors.red[400],
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (replies.isNotEmpty) ...[
+                          const SizedBox(width: 16),
+                          Text(
+                            '${replies.length} ${replies.length == 1 ? 'reply' : 'replies'}',
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Replies Section
+        if (replies.isNotEmpty) ...[
+          ...visibleReplies.map((reply) => _buildReplyItem(reply, commentId)),
+
+          // Show more/less button
+          if (replies.length > 3)
+            Padding(
+              padding: const EdgeInsets.only(left: 58, top: 8, bottom: 8),
+              child: GestureDetector(
+                onTap: () => _toggleShowAllReplies(commentId),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 1,
+                      color: Colors.grey[300],
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      showAll
+                          ? 'Show less'
+                          : 'View $hiddenCount more ${hiddenCount == 1 ? 'reply' : 'replies'}',
+                      style: TextStyle(
+                        color: const Color(0xFF8B5CF6),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildReplyItem(Map<String, dynamic> reply, String parentCommentId) {
+    final userName = reply['user_name'] ?? 'Unknown';
+    final replyText = reply['reply'] ?? '';
+    final timestamp = reply['created_at'] as Timestamp?;
+    final timeAgo =
+        timestamp != null ? _getTimeAgo(timestamp.toDate()) : 'Just now';
+
+    final currentUserId = (widget.user['uid'] as String?) ??
+        (widget.user['id'] as String?) ??
+        _db.currentUserId;
+    final isOwner = currentUserId != null && reply['user_id'] == currentUserId;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.only(left: 58, right: 16, top: 8, bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: const Color(0xFF8B5CF6),
-            child: Text(
-              userName.isNotEmpty ? userName[0].toUpperCase() : '?',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
+          _buildUserAvatar(
+            imageUrl: reply['user_profile_image'] as String?,
+            userName: userName,
+            radius: 14,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -335,35 +539,35 @@ class _CommentsModalState extends State<CommentsModal> {
                       userName,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 13,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Text(
                       timeAgo,
                       style: TextStyle(
                         color: Colors.grey[600],
-                        fontSize: 12,
+                        fontSize: 11,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  commentText,
-                  style: const TextStyle(fontSize: 14),
+                  replyText,
+                  style: const TextStyle(fontSize: 13),
                 ),
                 if (isOwner)
                   Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.only(top: 6),
                     child: GestureDetector(
-                      onTap: () => _deleteComment(comment['id']),
+                      onTap: () => _deleteReply(parentCommentId, reply['id']),
                       child: Text(
                         'Delete',
                         style: TextStyle(
                           color: Colors.red[400],
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -381,7 +585,8 @@ class _CommentsModalState extends State<CommentsModal> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Comment'),
-        content: const Text('Are you sure you want to delete this comment?'),
+        content: const Text(
+            'Are you sure you want to delete this comment and all its replies?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -409,6 +614,39 @@ class _CommentsModalState extends State<CommentsModal> {
     }
   }
 
+  Future<void> _deleteReply(String commentId, String replyId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Reply'),
+        content: const Text('Are you sure you want to delete this reply?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _db.deleteReply(widget.listingId, commentId, replyId);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete reply: $e')),
+          );
+        }
+      }
+    }
+  }
+
   String _getTimeAgo(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
@@ -428,13 +666,45 @@ class _CommentsModalState extends State<CommentsModal> {
     }
   }
 
-  String _getUserInitial() {
-    final fullName = (widget.user['fullName'] as String?) ?? 
-                     (widget.user['full_name'] as String?);
-    final username = widget.user['username'] as String?;
-    final email = widget.user['email'] as String?;
-    
-    final name = fullName ?? username ?? email?.split('@')[0] ?? 'U';
-    return name.isNotEmpty ? name[0].toUpperCase() : 'U';
+  String _getUserName() {
+    return (widget.user['fullName'] as String?) ??
+        (widget.user['full_name'] as String?) ??
+        (widget.user['username'] as String?) ??
+        (widget.user['email'] as String?)?.split('@')[0] ??
+        'User';
+  }
+
+  Widget _buildUserAvatar({
+    required String? imageUrl,
+    required String userName,
+    required double radius,
+  }) {
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundImage: NetworkImage(imageUrl),
+        onBackgroundImageError: (_, __) {},
+        child: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.transparent,
+          ),
+        ),
+      );
+    }
+
+    // Fallback to initial
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: const Color(0xFF8B5CF6),
+      child: Text(
+        userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: radius * 0.7,
+        ),
+      ),
+    );
   }
 }

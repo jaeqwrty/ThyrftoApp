@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:thryfto/commonWidgets/empty_state.dart';
 import 'package:thryfto/commonWidgets/error.dart';
 import 'package:thryfto/commonWidgets/image_placeholder.dart';
 import 'package:thryfto/commonWidgets/tag.dart';
 import 'package:thryfto/pages/listing_detail_page.dart';
+import 'package:thryfto/services/location_service.dart';
 
 class SearchPage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -17,9 +19,14 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final LocationService _locationService = LocationService();
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = 'All';
   String _searchQuery = '';
+  String _sortBy = 'none'; // 'none', 'price_low', 'price_high', 'distance_near', 'distance_far'
+  String _priceSortDirection = 'low'; // 'low' or 'high'
+  String _distanceSortDirection = 'near'; // 'near' or 'far'
+  Map<String, dynamic>? _userLocation;
 
   final List<String> _categories = [
     'All',
@@ -28,6 +35,33 @@ class _SearchPageState extends State<SearchPage> {
     'Accessories',
     'Bags',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserLocation();
+  }
+
+  Future<void> _loadUserLocation() async {
+    try {
+      final userId = widget.user['id'] ?? 
+          widget.user['uid'] ?? 
+          FirebaseAuth.instance.currentUser?.uid;
+      
+      if (userId != null) {
+        final location = await _locationService.getUserLocation(userId);
+        if (mounted) {
+          setState(() {
+            _userLocation = location;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading user location: $e');
+      if (mounted) {
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -115,6 +149,36 @@ class _SearchPageState extends State<SearchPage> {
                       },
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  // Sort Options
+                  Row(
+                    children: [
+                      Icon(Icons.sort, size: 18, color: Colors.grey[600]),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Sort by:',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildSortChip('Relevance', 'none'),
+                              _buildPriceSortChip(),
+                              if (_userLocation != null)
+                                _buildDistanceSortChip(),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -124,6 +188,136 @@ class _SearchPageState extends State<SearchPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPriceSortChip() {
+    final isSelected = _sortBy == 'price_low' || _sortBy == 'price_high';
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Price'),
+            const SizedBox(width: 4),
+            Icon(
+              _priceSortDirection == 'low' 
+                  ? Icons.arrow_upward 
+                  : Icons.arrow_downward,
+              size: 14,
+              color: isSelected ? const Color(0xFF8B5CF6) : Colors.grey[700],
+            ),
+          ],
+        ),
+        selected: isSelected,
+        onSelected: (selected) {
+          setState(() {
+            if (isSelected) {
+              // Toggle between low and high
+              _priceSortDirection = _priceSortDirection == 'low' ? 'high' : 'low';
+              _sortBy = _priceSortDirection == 'low' ? 'price_low' : 'price_high';
+            } else {
+              // First selection, default to low
+              _priceSortDirection = 'low';
+              _sortBy = 'price_low';
+            }
+          });
+        },
+        backgroundColor: Colors.grey[100],
+        selectedColor: const Color(0xFF8B5CF6).withOpacity(0.15),
+        labelStyle: TextStyle(
+          fontSize: 12,
+          color: isSelected ? const Color(0xFF8B5CF6) : Colors.grey[700],
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: isSelected ? const Color(0xFF8B5CF6) : Colors.grey[300]!,
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      ),
+    );
+  }
+
+  Widget _buildDistanceSortChip() {
+    final isSelected = _sortBy == 'distance_near' || _sortBy == 'distance_far';
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Distance'),
+            const SizedBox(width: 4),
+            Icon(
+              _distanceSortDirection == 'near' 
+                  ? Icons.arrow_upward 
+                  : Icons.arrow_downward,
+              size: 14,
+              color: isSelected ? const Color(0xFF8B5CF6) : Colors.grey[700],
+            ),
+          ],
+        ),
+        selected: isSelected,
+        onSelected: (selected) {
+          setState(() {
+            if (isSelected) {
+              // Toggle between near and far
+              _distanceSortDirection = _distanceSortDirection == 'near' ? 'far' : 'near';
+              _sortBy = _distanceSortDirection == 'near' ? 'distance_near' : 'distance_far';
+            } else {
+              // First selection, default to near
+              _distanceSortDirection = 'near';
+              _sortBy = 'distance_near';
+            }
+          });
+        },
+        backgroundColor: Colors.grey[100],
+        selectedColor: const Color(0xFF8B5CF6).withOpacity(0.15),
+        labelStyle: TextStyle(
+          fontSize: 12,
+          color: isSelected ? const Color(0xFF8B5CF6) : Colors.grey[700],
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: isSelected ? const Color(0xFF8B5CF6) : Colors.grey[300]!,
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      ),
+    );
+  }
+
+  Widget _buildSortChip(String label, String value) {
+    final isSelected = _sortBy == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: isSelected,
+        onSelected: (selected) {
+          setState(() => _sortBy = value);
+        },
+        backgroundColor: Colors.grey[100],
+        selectedColor: const Color(0xFF8B5CF6).withOpacity(0.15),
+        labelStyle: TextStyle(
+          fontSize: 12,
+          color: isSelected ? const Color(0xFF8B5CF6) : Colors.grey[700],
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: isSelected ? const Color(0xFF8B5CF6) : Colors.grey[300]!,
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       ),
     );
   }
@@ -149,18 +343,44 @@ class _SearchPageState extends State<SearchPage> {
         }
 
         var listings = snapshot.data?.docs ?? [];
+        
+        // Get current user ID
+        final currentUserId = widget.user['id'] ?? 
+            widget.user['uid'] ?? 
+            FirebaseAuth.instance.currentUser?.uid;
 
-        // Filter by search query
+        // Filter by search query and exclude current user's listings
         if (_searchQuery.isNotEmpty) {
           listings = listings.where((doc) {
             final data = doc.data();
             final title = (data['title'] ?? '').toString().toLowerCase();
             final description = (data['description'] ?? '').toString().toLowerCase();
-            return title.contains(_searchQuery) || description.contains(_searchQuery);
+            final sellerId = data['seller_id'] ?? data['user_id'];
+            
+            // Exclude current user's listings and apply search filter
+            return (sellerId != currentUserId) && 
+                   (title.contains(_searchQuery) || description.contains(_searchQuery));
+          }).toList();
+        } else {
+          // Only exclude current user's listings
+          listings = listings.where((doc) {
+            final data = doc.data();
+            final sellerId = data['seller_id'] ?? data['user_id'];
+            return sellerId != currentUserId;
           }).toList();
         }
 
-        if (listings.isEmpty) {
+        // Convert to list of maps with IDs
+        List<Map<String, dynamic>> listingsList = listings.map((doc) {
+          final data = Map<String, dynamic>.from(doc.data());
+          data['id'] = doc.id;
+          return data;
+        }).toList();
+
+        // Apply sorting
+        listingsList = _applySorting(listingsList);
+
+        if (listingsList.isEmpty) {
           return EmptyState(
             icon: Icons.search_off,
             title: _searchQuery.isNotEmpty ? 'No results found' : 'No items in this category',
@@ -178,20 +398,82 @@ class _SearchPageState extends State<SearchPage> {
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
           ),
-          itemCount: listings.length,
+          itemCount: listingsList.length,
           itemBuilder: (context, index) {
-            final data = listings[index].data();
-            data['id'] = listings[index].id;
-            return _buildListingCard(data);
+            return _buildListingCard(listingsList[index]);
           },
         );
       },
     );
   }
 
+  List<Map<String, dynamic>> _applySorting(List<Map<String, dynamic>> listings) {
+    switch (_sortBy) {
+      case 'price_low':
+        listings.sort((a, b) {
+          final priceA = (a['price'] ?? 0).toDouble();
+          final priceB = (b['price'] ?? 0).toDouble();
+          return priceA.compareTo(priceB);
+        });
+        break;
+      
+      case 'price_high':
+        listings.sort((a, b) {
+          final priceA = (a['price'] ?? 0).toDouble();
+          final priceB = (b['price'] ?? 0).toDouble();
+          return priceB.compareTo(priceA);
+        });
+        break;
+      
+      case 'distance_near':
+        if (_userLocation != null && 
+            _userLocation!['latitude'] != null && 
+            _userLocation!['longitude'] != null) {
+          final userLat = _userLocation!['latitude'] as double;
+          final userLon = _userLocation!['longitude'] as double;
+          
+          listings = _locationService.sortListingsByDistance(
+            listings: listings,
+            userLat: userLat,
+            userLon: userLon,
+          );
+        }
+        break;
+      
+      case 'distance_far':
+        if (_userLocation != null && 
+            _userLocation!['latitude'] != null && 
+            _userLocation!['longitude'] != null) {
+          final userLat = _userLocation!['latitude'] as double;
+          final userLon = _userLocation!['longitude'] as double;
+          
+          listings = _locationService.sortListingsByDistance(
+            listings: listings,
+            userLat: userLat,
+            userLon: userLon,
+          );
+          // Reverse for far to near
+          listings = listings.reversed.toList();
+        }
+        break;
+      
+      case 'none':
+      default:
+        // Keep original order (relevance/default)
+        break;
+    }
+    
+    return listings;
+  }
+
   Widget _buildListingCard(Map<String, dynamic> listing) {
     final imageUrls = listing['image_urls'] as List<dynamic>? ?? [];
     final hasImage = imageUrls.isNotEmpty;
+    
+    // Show distance badge if sorted by distance
+    final showDistance = (_sortBy == 'distance_near' || _sortBy == 'distance_far') && 
+                        _userLocation != null && 
+                        listing['distance_text'] != null;
 
     return GestureDetector(
       onTap: () {
@@ -222,16 +504,52 @@ class _SearchPageState extends State<SearchPage> {
           children: [
             // Image
             Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                child: hasImage
-                    ? Image.network(
-                        imageUrls[0],
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => const ImagePlaceholder(),
-                      )
-                    : const ImagePlaceholder(),
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                    child: hasImage
+                        ? Image.network(
+                            imageUrls[0],
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => const ImagePlaceholder(),
+                          )
+                        : const ImagePlaceholder(),
+                  ),
+                  // Distance badge
+                  if (showDistance)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.location_on,
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              listing['distance_text'],
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             // Details

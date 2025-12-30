@@ -102,9 +102,6 @@ class _SellPageState extends State<SellPage> {
           _selectedCondition = 'New';
           _selectedCategory = 'Clothing';
         });
-
-        await Future.delayed(const Duration(seconds: 1));
-        if (mounted) Navigator.pop(context);
       } else {
         _showMessage(
           result['message'] ?? 'Failed to create listing',
@@ -125,16 +122,13 @@ class _SellPageState extends State<SellPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        automaticallyImplyLeading: false,
         title: const Text(
           'Create Listing',
           style: TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.w600,
           ),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SafeArea(
@@ -153,6 +147,8 @@ class _SellPageState extends State<SellPage> {
                 controller: _titleController,
                 hintText: 'e.g., Vintage Denim Jacket',
                 icon: Icons.title,
+                maxLength: 50,
+                maxLines: 1,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter a title';
@@ -205,7 +201,8 @@ class _SellPageState extends State<SellPage> {
               CustomChoiceChips(
                 options: _categories,
                 selectedValue: _selectedCategory,
-                onSelected: (value) => setState(() => _selectedCategory = value),
+                onSelected: (value) =>
+                    setState(() => _selectedCategory = value),
               ),
               const SizedBox(height: 12),
               const SectionLabel(text: 'Condition'),
@@ -213,7 +210,8 @@ class _SellPageState extends State<SellPage> {
               CustomChoiceChips(
                 options: _conditions,
                 selectedValue: _selectedCondition,
-                onSelected: (value) => setState(() => _selectedCondition = value),
+                onSelected: (value) =>
+                    setState(() => _selectedCondition = value),
               ),
               const SizedBox(height: 12),
               const SectionLabel(text: 'Description'),
@@ -223,6 +221,7 @@ class _SellPageState extends State<SellPage> {
                 hintText: 'Describe your item...',
                 icon: Icons.description,
                 maxLines: 1,
+                maxLength: 100,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter a description';
@@ -236,7 +235,7 @@ class _SellPageState extends State<SellPage> {
                 isLoading: _isLoading,
                 onPressed: _handleCreateListing,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 80), // Extra padding for bottom nav
             ],
           ),
         ),
@@ -284,7 +283,8 @@ class _SellPageState extends State<SellPage> {
               ),
             ),
           ),
-          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+          prefixIconConstraints:
+              const BoxConstraints(minWidth: 0, minHeight: 0),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -555,7 +555,8 @@ class _SellPageState extends State<SellPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_library, color: Color(0xFF8B5CF6)),
+              leading:
+                  const Icon(Icons.photo_library, color: Color(0xFF8B5CF6)),
               title: const Text('Choose from Gallery'),
               onTap: () {
                 Navigator.pop(context);

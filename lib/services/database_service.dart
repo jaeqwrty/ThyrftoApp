@@ -71,7 +71,7 @@ class DatabaseService {
     required String condition,
     required String category,
     required List<XFile> imageFiles,
-     Map<String, dynamic>? location, 
+    Map<String, dynamic>? location,
   }) async {
     try {
       if (imageFiles.isEmpty) {
@@ -117,7 +117,7 @@ class DatabaseService {
         'views': 0,
         'created_at': FieldValue.serverTimestamp(),
         'updated_at': FieldValue.serverTimestamp(),
-        'location': location, 
+        'location': location,
       };
 
       // Save to Firestore
@@ -212,21 +212,16 @@ class DatabaseService {
   }
 
   // Get user profile
- Stream<Map<String, dynamic>?> getUserProfileStream(String userId) {
-  return _firestore
-      .collection('users')
-      .doc(userId)
-      .snapshots()
-      .map((doc) {
-    if (doc.exists) {
-      final data = doc.data()!;
-      data['id'] = doc.id;
-      return data;
-    }
-    return null;
-  });
-}
-
+  Stream<Map<String, dynamic>?> getUserProfileStream(String userId) {
+    return _firestore.collection('users').doc(userId).snapshots().map((doc) {
+      if (doc.exists) {
+        final data = doc.data()!;
+        data['id'] = doc.id;
+        return data;
+      }
+      return null;
+    });
+  }
 
   // Toggle like
   Future<void> toggleLikeWithNotification(String listingId) async {
@@ -503,6 +498,10 @@ class DatabaseService {
     required String comment,
   }) async {
     try {
+      // Get user's profile image
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      final userProfileImage = userDoc.data()?['profileImageUrl'] as String?;
+
       // Get listing info to find seller
       final listingDoc =
           await _firestore.collection('listings').doc(listingId).get();
@@ -522,8 +521,10 @@ class DatabaseService {
           .add({
         'user_id': userId,
         'user_name': userName,
+        'user_profile_image': userProfileImage,
         'comment': comment,
         'created_at': FieldValue.serverTimestamp(),
+        'reply_count': 0,
       });
 
       // Update comment count
@@ -548,7 +549,7 @@ class DatabaseService {
     }
   }
 
-  // Get comments for a listing
+  /// Get comments for a listing WITH replies
   Stream<List<Map<String, dynamic>>> getComments(String listingId) {
     return _firestore
         .collection('listings')
@@ -556,18 +557,53 @@ class DatabaseService {
         .collection('comments')
         .orderBy('created_at', descending: false)
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
+        .asyncMap((snapshot) async {
+      List<Map<String, dynamic>> comments = [];
+
+      for (var doc in snapshot.docs) {
+        final commentData = doc.data();
+        commentData['id'] = doc.id;
+
+        // Fetch replies for this comment
+        final repliesSnapshot = await _firestore
+            .collection('listings')
+            .doc(listingId)
+            .collection('comments')
+            .doc(doc.id)
+            .collection('replies')
+            .orderBy('created_at', descending: false)
+            .get();
+
+        commentData['replies'] = repliesSnapshot.docs.map((replyDoc) {
+          final replyData = replyDoc.data();
+          replyData['id'] = replyDoc.id;
+          return replyData;
+        }).toList();
+
+        comments.add(commentData);
+      }
+
+      return comments;
     });
   }
 
-  // Delete a comment
+  /// Delete a comment and all its replies
   Future<void> deleteComment(String listingId, String commentId) async {
     try {
+      // Delete all replies first
+      final repliesSnapshot = await _firestore
+          .collection('listings')
+          .doc(listingId)
+          .collection('comments')
+          .doc(commentId)
+          .collection('replies')
+          .get();
+
+      for (var replyDoc in repliesSnapshot.docs) {
+        await replyDoc.reference.delete();
+      }
+
+      // Delete the comment
       await _firestore
           .collection('listings')
           .doc(listingId)
@@ -581,6 +617,95 @@ class DatabaseService {
       });
     } catch (e) {
       throw Exception('Failed to delete comment: $e');
+    }
+  }
+
+  Future<void> addReply({
+    required String listingId,
+    required String commentId,
+    required String userId,
+    required String userName,
+    required String reply,
+  }) async {
+    try {
+      // Add reply to the comment's replies subcollection
+      await _firestore
+          .collection('listings')
+          .doc(listingId)
+          .collection('comments')
+          .doc(commentId)
+          .collection('replies')
+          .add({
+        'user_id': userId,
+        'user_name': userName,
+        'reply': reply,
+        'created_at': FieldValue.serverTimestamp(),
+      });
+
+      // Update reply count on the comment
+      await _firestore
+          .collection('listings')
+          .doc(listingId)
+          .collection('comments')
+          .doc(commentId)
+          .update({
+        'reply_count': FieldValue.increment(1),
+      });
+
+      // Get comment info for notification
+      final commentDoc = await _firestore
+          .collection('listings')
+          .doc(listingId)
+          .collection('comments')
+          .doc(commentId)
+          .get();
+
+      if (commentDoc.exists) {
+        final commentData = commentDoc.data()!;
+        final commentOwnerId = commentData['user_id'];
+
+        // Send notification to comment owner if replier is not the comment owner
+        if (commentOwnerId != null && commentOwnerId != userId) {
+          await _createNotification(
+            recipientId: commentOwnerId,
+            type: 'reply',
+            title: '$userName replied to your comment',
+            body: 'Reply: "$reply"',
+            relatedListingId: listingId,
+            relatedUserId: userId,
+          );
+        }
+      }
+    } catch (e) {
+      print('Error adding reply: $e');
+      throw Exception('Failed to add reply: $e');
+    }
+  }
+
+  /// Delete a reply
+  Future<void> deleteReply(
+      String listingId, String commentId, String replyId) async {
+    try {
+      await _firestore
+          .collection('listings')
+          .doc(listingId)
+          .collection('comments')
+          .doc(commentId)
+          .collection('replies')
+          .doc(replyId)
+          .delete();
+
+      // Update reply count on the comment
+      await _firestore
+          .collection('listings')
+          .doc(listingId)
+          .collection('comments')
+          .doc(commentId)
+          .update({
+        'reply_count': FieldValue.increment(-1),
+      });
+    } catch (e) {
+      throw Exception('Failed to delete reply: $e');
     }
   }
 

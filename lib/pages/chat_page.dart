@@ -28,77 +28,305 @@ class _ChatListPageState extends State<ChatListPage> {
   }
 
   Future<void> _deleteConversation(String chatId, String username) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Conversation'),
-        content: Text(
-            'Are you sure you want to delete your conversation with $username? This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirm = await _showFloatingDeleteDialog(
+      title: 'Delete Conversation',
+      message:
+          'Delete this conversation for yourself? $username will still have it.',
+      icon: Icons.forum_outlined,
     );
 
     if (confirm == true) {
-      final success = await _db.deleteChat(chatId);
+      _showLoadingDialog();
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              success
-                  ? 'Conversation deleted'
-                  : 'Failed to delete conversation',
-            ),
-            backgroundColor: success ? Colors.green : Colors.red,
-          ),
-        );
+      try {
+        final currentUserId = _db.currentUserId;
+        if (currentUserId == null) {
+          throw Exception('User not authenticated');
+        }
+
+        // Add current user to deletedFor array
+        await _firestore.collection('chats').doc(chatId).update({
+          'deletedFor': FieldValue.arrayUnion([currentUserId]),
+        });
+
+        if (mounted) {
+          Navigator.pop(context); // Close loading dialog
+          _showResultDialog(
+            success: true,
+            successTitle: 'Conversation Deleted',
+            successMessage:
+                'The conversation has been removed from your chat list.',
+            failTitle: '',
+            failMessage: '',
+          );
+        }
+      } catch (e) {
+        print('Error deleting conversation: $e');
+        if (mounted) {
+          Navigator.pop(context); // Close loading dialog
+          _showResultDialog(
+            success: false,
+            successTitle: '',
+            successMessage: '',
+            failTitle: 'Failed to Delete',
+            failMessage: 'Something went wrong: ${e.toString()}',
+          );
+        }
       }
     }
+  }
+
+  Future<bool?> _showFloatingDeleteDialog({
+    required String title,
+    required String message,
+    required IconData icon,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        elevation: 8,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 48, color: Colors.red),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey[600],
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(color: Colors.grey[300]!),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Delete',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black26,
+      builder: (context) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const CircularProgressIndicator(),
+        ),
+      ),
+    );
+  }
+
+  void _showResultDialog({
+    required bool success,
+    required String successTitle,
+    required String successMessage,
+    required String failTitle,
+    required String failMessage,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: success
+                      ? Colors.green.withOpacity(0.1)
+                      : Colors.red.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  success ? Icons.check_circle_outline : Icons.error_outline,
+                  size: 48,
+                  color: success ? Colors.green : Colors.red,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                success ? successTitle : failTitle,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                success ? successMessage : failMessage,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: success ? Colors.green : Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'OK',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showChatOptions(String chatId, String username) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_outline, color: Colors.red),
-                title: const Text(
-                  'Delete Conversation',
-                  style: TextStyle(color: Colors.red),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Text(
+                    'Conversation Options',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
                 ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _deleteConversation(chatId, username);
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
+                const Divider(height: 1),
+                ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.delete_outline,
+                        color: Colors.red, size: 24),
+                  ),
+                  title: const Text(
+                    'Delete Conversation',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 15,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'This action cannot be undone',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _deleteConversation(chatId, username);
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
           ),
         );
       },
@@ -166,8 +394,14 @@ class _ChatListPageState extends State<ChatListPage> {
 
         final chatDocs = snapshot.data?.docs ?? [];
 
+        // Filter out chats deleted by current user
+        final chats = chatDocs.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final deletedFor = List<String>.from(data['deletedFor'] ?? []);
+          return !deletedFor.contains(_db.currentUserId);
+        }).toList();
+
         // Sort client-side by last message time
-        final chats = chatDocs.toList();
         chats.sort((a, b) {
           final aData = a.data() as Map<String, dynamic>;
           final bData = b.data() as Map<String, dynamic>;
@@ -206,12 +440,10 @@ class _ChatListPageState extends State<ChatListPage> {
       orElse: () => '',
     );
 
-    // Changed from FutureBuilder to StreamBuilder for real-time updates
     return StreamBuilder<Map<String, dynamic>?>(
       stream: _db.getUserProfileStream(otherUserId),
       builder: (context, userSnapshot) {
         if (userSnapshot.connectionState == ConnectionState.waiting) {
-          // Show loading state
           return Container(
             margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
             decoration: BoxDecoration(
@@ -269,13 +501,10 @@ class _ChatListPageState extends State<ChatListPage> {
         final username = otherUser?['username'];
         final profileImageUrl = otherUser?['profileImageUrl'] as String?;
 
-        // Display full name if available, otherwise username
         final displayName = fullName ?? username ?? 'Unknown';
-
         final lastMessage = chatData['lastMessage'] ?? '';
         final lastMessageTime = chatData['lastMessageTime'] as Timestamp?;
 
-        // Filter by search query
         if (_searchQuery.isNotEmpty &&
             !displayName.toLowerCase().contains(_searchQuery)) {
           return const SizedBox.shrink();
@@ -319,7 +548,6 @@ class _ChatListPageState extends State<ChatListPage> {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
-                    // Avatar with profile image
                     CircleAvatar(
                       radius: 24,
                       backgroundColor: const Color(0xFF8B5CF6),
@@ -340,7 +568,6 @@ class _ChatListPageState extends State<ChatListPage> {
                               : null,
                     ),
                     const SizedBox(width: 16),
-                    // Chat Info
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,7 +596,6 @@ class _ChatListPageState extends State<ChatListPage> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // Time
                     if (lastMessageTime != null)
                       Text(
                         _formatTime(lastMessageTime.toDate()),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:thryfto/commonWidgets/main_navigation.dart';
 import 'package:thryfto/services/auth_service.dart';
-import 'package:thryfto/pages/home_page.dart';
 import 'package:thryfto/pages/login_page.dart';
 import 'package:thryfto/pages/onboarding_page.dart';
 
@@ -50,7 +50,7 @@ class AuthWrapper extends StatelessWidget {
                  return const OnboardingPage();
               }
 
-              return HomeScreen(user: userData);
+              return MainNavigation(user: userData);
             },
           );
         }

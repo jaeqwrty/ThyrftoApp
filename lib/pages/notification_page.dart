@@ -155,6 +155,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return Icons.favorite;
       case 'comment':
         return Icons.comment;
+      case 'reply':  // NEW: Add reply icon
+        return Icons.reply;
       case 'share':
         return Icons.share;
       case 'message':
@@ -172,6 +174,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return Colors.red;
       case 'comment':
         return Colors.blue;
+      case 'reply':  // NEW: Add reply color
+        return Colors.teal;
       case 'share':
         return Colors.green;
       case 'message':
@@ -188,5 +192,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
     // final type = notification['type'];
     // final relatedListingId = notification['related_listing_id'];
     // final relatedUserId = notification['related_user_id'];
+    
+    // Example: Navigate to listing detail page
+    // if (relatedListingId != null) {
+    //   Navigator.push(
+    //     context,
+    //     MaterialPageRoute(
+    //       builder: (context) => ListingDetailPage(listingId: relatedListingId),
+    //     ),
+    //   );
+    // }
   }
 }

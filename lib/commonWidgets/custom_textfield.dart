@@ -10,6 +10,7 @@ class CustomTextField extends StatelessWidget {
   final String? Function(String?)? validator;
   final int maxLines;
   final String? prefixText;
+  final int? maxLength;
 
   const CustomTextField({
     super.key,
@@ -20,6 +21,7 @@ class CustomTextField extends StatelessWidget {
     this.keyboardType,
     this.validator,
     this.maxLines = 1,
+    this.maxLength,
     this.prefixText,
   });
 
@@ -44,6 +46,7 @@ class CustomTextField extends StatelessWidget {
         validator: validator,
         maxLines: isPassword ? 1 : maxLines,
         minLines: isPassword ? 1 : (maxLines == 1 ? 1 : 3),
+        maxLength: maxLength,
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
