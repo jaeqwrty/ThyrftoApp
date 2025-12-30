@@ -568,13 +568,27 @@ class _HomePageState extends State<HomePage> {
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(
                                         SnackBar(
-                                          content: Text(
-                                            isBookmarked
-                                                ? 'Removed from bookmarks'
-                                                : 'Added to bookmarks',
+                                          content: Row(
+                                            children: [
+                                              Icon(
+                                                isBookmarked
+                                                    ? Icons.bookmark_border
+                                                    : Icons.bookmark,
+                                                color: Colors.white,
+                                                size: 20,
+                                              ),
+                                              Text(
+                                                isBookmarked
+                                                    ? ' Removed from bookmarks'
+                                                    : ' Added to bookmarks',
+                                              ),
+                                            ],
                                           ),
                                           duration: const Duration(seconds: 1),
                                           behavior: SnackBarBehavior.floating,
+                                          backgroundColor: isBookmarked
+                                              ? Colors.grey[700]
+                                              : const Color(0xFF8B5CF6),
                                           margin: const EdgeInsets.all(16),
                                         ),
                                       );
@@ -613,13 +627,13 @@ class _HomePageState extends State<HomePage> {
 
                     // Price and title
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+                      padding: const EdgeInsets.fromLTRB(15, 1, 12, 4),
                       child: Row(
                         children: [
                           Text(
                             '₱ ${listing['price']?.toStringAsFixed(2) ?? '0.00'}',
                             style: const TextStyle(
-                              fontSize: 15,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF8B5CF6),
                             ),
@@ -637,7 +651,7 @@ class _HomePageState extends State<HomePage> {
                             child: Text(
                               listing['title'] ?? 'No title',
                               style: const TextStyle(
-                                fontSize: 15,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
                               maxLines: 1,
@@ -650,7 +664,7 @@ class _HomePageState extends State<HomePage> {
 
                     // Size and condition
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                      padding: const EdgeInsets.fromLTRB(15, 0, 12, 6),
                       child: Row(
                         children: [
                           Container(
@@ -663,7 +677,7 @@ class _HomePageState extends State<HomePage> {
                             child: Text(
                               listing['size'] ?? 'N/A',
                               style: const TextStyle(
-                                fontSize: 10,
+                                fontSize: 12,
                                 color: Color(0xFF8B5CF6),
                                 fontWeight: FontWeight.w600,
                               ),
@@ -680,7 +694,7 @@ class _HomePageState extends State<HomePage> {
                             child: Text(
                               listing['condition'] ?? 'N/A',
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 12,
                                 color: Colors.green.shade700,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -693,7 +707,7 @@ class _HomePageState extends State<HomePage> {
                     // Description with "see more"
                     _buildDescription(listing),
 
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
 
                     // Divider between posts
                     Container(
@@ -720,7 +734,7 @@ class _HomePageState extends State<HomePage> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 15),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final textSpan = TextSpan(
@@ -786,7 +800,7 @@ class _HomePageState extends State<HomePage> {
           return Text(
             description,
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: 15,
               height: 1.3,
               fontFamily: 'SF Pro Display',
             ),

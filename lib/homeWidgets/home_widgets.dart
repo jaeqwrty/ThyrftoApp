@@ -28,8 +28,8 @@ class ActionButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(
-          horizontal: 8.0,
-          vertical: 4.0,
+          horizontal: 10.0, // Increased horizontal padding for better spacing
+          vertical: 6.0,   // Increased vertical padding
         ),
         child: Row(
           children: [
@@ -39,7 +39,7 @@ class ActionButton extends StatelessWidget {
               size: 24,
             ),
             if (showCount && count != null && count! > 0) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: 8), // Increased space between icon and text
               Text(
                 _formatCount(count!),
                 style: const TextStyle(
@@ -205,7 +205,8 @@ class ListingUserHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(12.0),
+      // Increased vertical padding from 12 to 16
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
       child: Row(
         children: [
           GestureDetector(
@@ -213,7 +214,7 @@ class ListingUserHeader extends StatelessWidget {
             child: Row(
               children: [
                 UserAvatar(username: username, radius: 18),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12), // Increased from 10
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -224,7 +225,7 @@ class ListingUserHeader extends StatelessWidget {
                         fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4), // Increased from 2
                     Text(
                       location,
                       style: TextStyle(
@@ -252,7 +253,7 @@ class ListingImage extends StatelessWidget {
   const ListingImage({
     super.key,
     required this.imageUrls,
-    this.height = 400,
+    this.height = 350, // Decreased by 10 (from 400 to 390)
   });
 
   @override
@@ -325,7 +326,7 @@ class ListingDetails extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 10), // Increased from 4
         // Size and condition
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12.0),
@@ -337,17 +338,21 @@ class ListingDetails extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12), // Increased from 8
         // Description
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Text(
             listing['description'] ?? '',
-            style: const TextStyle(fontSize: 14),
+            style: const TextStyle(
+              fontSize: 14,
+              height: 1.4, // Added line height for readability
+            ),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
         ),
+        const SizedBox(height: 20), // Added spacing at the bottom
       ],
     );
   }

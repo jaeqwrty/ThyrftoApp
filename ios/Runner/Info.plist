@@ -57,6 +57,10 @@
 		<string>We need your location to show you nearby listings and help buyers find items near you.</string>
 		<key>NSLocationAlwaysUsageDescription</key>
 		<string>We need your location to show you nearby listings.</string>
+		<key>NSAppTransportSecurity</key>
+		<dict>
+			<key>NSAllowsArbitraryLoads</key>
+			<true/>
 		<!-- For iOS 14+ -->
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>We need permission to save photos to your library</string>

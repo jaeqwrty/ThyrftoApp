@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/location_service.dart';
+import 'package:thryfto/services/map_location.dart';
 
 class EditProfilePage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -23,7 +24,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _fullNameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _bioController = TextEditingController();
-  final _addressController = TextEditingController();
 
   XFile? _imageFile;
   Uint8List? _imageBytes;
@@ -35,6 +35,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   double? _selectedLatitude;
   double? _selectedLongitude;
+  String? _selectedAddress;
   String? _currentProfileImageUrl;
 
   @override
@@ -52,7 +53,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _bioController.text = widget.user['bio'] ?? '';
     _currentProfileImageUrl = widget.user['profileImageUrl'];
 
-    // Load current location
     _loadCurrentLocation(userId);
   }
 
@@ -63,7 +63,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         setState(() {
           _selectedLatitude = location['latitude'];
           _selectedLongitude = location['longitude'];
-          _addressController.text = location['address'] ?? '';
+          _selectedAddress = location['address'];
         });
       }
     } catch (e) {
@@ -76,7 +76,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _fullNameController.dispose();
     _usernameController.dispose();
     _bioController.dispose();
-    _addressController.dispose();
     super.dispose();
   }
 
@@ -171,7 +170,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         return;
       }
 
-      // Get the actual location name from coordinates
       final address = await _locationService.getAddressFromCoordinates(
         position.latitude,
         position.longitude,
@@ -180,8 +178,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
       setState(() {
         _selectedLatitude = position.latitude;
         _selectedLongitude = position.longitude;
+        _selectedAddress = address;
         _isLoadingLocation = false;
-        _addressController.text = address;
       });
 
       if (mounted) {
@@ -202,6 +200,35 @@ class _EditProfilePageState extends State<EditProfilePage> {
       if (e.toString().contains('denied')) {
         _showPermissionDialog();
       }
+    }
+  }
+
+  Future<void> _openMapPicker() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationPicker(
+          initialLatitude: _selectedLatitude,
+          initialLongitude: _selectedLongitude,
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _selectedLatitude = result['latitude'];
+        _selectedLongitude = result['longitude'];
+        _selectedAddress = result['address'];
+        _locationError = null;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Location set: ${result['address']}'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -230,20 +257,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  String _getLocationDisplayText() {
-    if (_selectedLatitude == null || _selectedLongitude == null) {
-      return 'Not set';
-    }
-
-    if (_addressController.text.isNotEmpty) {
-      return _addressController.text;
-    }
-
-    return 'Lat: ${_selectedLatitude!.toStringAsFixed(4)}, Lon: ${_selectedLongitude!.toStringAsFixed(4)}';
-  }
-
   Future<void> _saveProfile() async {
-    // Validate required fields
     if (_fullNameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -269,45 +283,35 @@ class _EditProfilePageState extends State<EditProfilePage> {
     try {
       final userId = widget.user['id'] ?? widget.user['uid'];
 
-      // Handle profile image
       String? newImageUrl;
 
       if (_imageFile != null) {
-        // User selected a new image - upload it
         newImageUrl =
             await _databaseService.uploadProfileImage(_imageFile!, userId);
       } else if (_currentProfileImageUrl == null && _imageBytes == null) {
-        // User removed the photo - explicitly set to null/empty
         newImageUrl = null;
       } else {
-        // Keep existing image
         newImageUrl = _currentProfileImageUrl;
       }
 
-      // Update profile
       final success = await _authService.updateUserProfile(
         uid: userId,
         fullName: _fullNameController.text.trim(),
         username: _usernameController.text.trim(),
         bio: _bioController.text.trim(),
-        profileImageUrl: newImageUrl ?? '', // Pass empty string if null
+        profileImageUrl: newImageUrl ?? '',
       );
 
       if (!success) {
         throw Exception('Username may already be taken');
       }
 
-      // Update location if changed
       if (_selectedLatitude != null && _selectedLongitude != null) {
-        final address = _addressController.text.trim().isEmpty
-            ? 'Location set'
-            : _addressController.text.trim();
-
         await _locationService.saveUserLocation(
           userId: userId,
           latitude: _selectedLatitude!,
           longitude: _selectedLongitude!,
-          address: address,
+          address: _selectedAddress ?? 'Location set',
         );
       }
 
@@ -320,7 +324,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ),
       );
 
-      // Return true to indicate success
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
@@ -597,7 +600,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  _getLocationDisplayText(),
+                                  _selectedAddress ?? 'Location set',
                                   style: TextStyle(
                                     color: Colors.grey[700],
                                     fontSize: 13,
@@ -637,34 +640,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
                   const SizedBox(height: 16),
 
-                  // Address Input
-                  TextField(
-                    controller: _addressController,
-                    decoration: InputDecoration(
-                      labelText: 'Location Name (Optional)',
-                      hintText: 'e.g., Davao City, Matina District',
-                      prefixIcon: const Icon(Icons.location_city),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6)),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                      helperText: 'This will be shown to other users',
-                      helperStyle:
-                          TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
                   // Use Current Location Button
                   SizedBox(
                     width: double.infinity,
@@ -692,6 +667,32 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF8B5CF6),
+                        side: const BorderSide(color: Color(0xFF8B5CF6)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Pin Location on Map Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: _openMapPicker,
+                      icon: const Icon(Icons.map_outlined),
+                      label: const Text(
+                        'Search location',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
                         foregroundColor: const Color(0xFF8B5CF6),
                         side: const BorderSide(color: Color(0xFF8B5CF6)),
                         shape: RoundedRectangleBorder(

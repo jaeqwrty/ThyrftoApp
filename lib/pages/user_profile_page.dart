@@ -25,7 +25,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -49,34 +49,32 @@ class _UserProfilePageState extends State<UserProfilePage> {
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Text('Error: ${snapshot.error}'),
-            );
+            return Center(child: Text('Error: ${snapshot.error}'));
           }
 
           if (!snapshot.hasData || snapshot.data == null) {
-            return const Center(
-              child: Text('User not found'),
-            );
+            return const Center(child: Text('User not found'));
           }
 
           final userData = snapshot.data!;
           final profileImageUrl = userData['profileImageUrl'] as String?;
           final fullName = userData['fullName'] ?? userData['full_name'] ?? 'User';
           final username = userData['username'] ?? 'unknown';
+          final bio = userData['bio'] as String?;
+          final displayBio = (bio == null || bio.trim().isEmpty) ? 'No bio' : bio;
 
           return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Profile Header
+              // 1. Profile Header Section
               Container(
                 color: Colors.white,
                 padding: const EdgeInsets.all(20),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Avatar and name
                     Row(
                       children: [
-                        // Profile Avatar with Image
                         CircleAvatar(
                           radius: 40,
                           backgroundColor: const Color(0xFF8B5CF6),
@@ -101,72 +99,35 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             children: [
                               Text(
                                 fullName,
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 '@$username',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[600],
-                                ),
+                                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                               ),
                               const SizedBox(height: 8),
-                              // Location from LocationService
                               FutureBuilder<Map<String, dynamic>?>(
                                 future: _locationService.getUserLocation(widget.userId),
                                 builder: (context, snapshot) {
                                   if (snapshot.connectionState == ConnectionState.waiting) {
-                                    return Row(
-                                      children: [
-                                        SizedBox(
-                                          width: 12,
-                                          height: 12,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.grey[400],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'Loading location...',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey[500],
-                                          ),
-                                        ),
-                                      ],
-                                    );
+                                    return const SizedBox(height: 20);
                                   }
-
                                   String locationDisplay = 'Location not set';
                                   IconData locationIcon = Icons.location_off;
                                   Color locationColor = Colors.grey[500]!;
 
                                   if (snapshot.hasData && snapshot.data != null) {
-                                    final locationData = snapshot.data!;
-                                    final address = locationData['address'] as String?;
-                                    
-                                    if (address != null && address.isNotEmpty && 
-                                        !address.startsWith('Lat:') && 
-                                        address != 'Location set' && 
-                                        address != 'Location detected') {
+                                    final address = snapshot.data!['address'] as String?;
+                                    if (address != null && address.isNotEmpty && !address.startsWith('Lat:')) {
                                       locationDisplay = address;
                                       locationIcon = Icons.location_on;
                                       locationColor = const Color(0xFF8B5CF6);
                                     }
                                   }
-
                                   return Row(
                                     children: [
-                                      Icon(
-                                        locationIcon,
-                                        size: 16,
-                                        color: locationColor,
-                                      ),
+                                      Icon(locationIcon, size: 16, color: locationColor),
                                       const SizedBox(width: 4),
                                       Flexible(
                                         child: Text(
@@ -174,9 +135,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                           style: TextStyle(
                                             fontSize: 14,
                                             color: locationColor,
-                                            fontWeight: locationIcon == Icons.location_on
-                                                ? FontWeight.w600
-                                                : FontWeight.normal,
+                                            fontWeight: locationIcon == Icons.location_on ? FontWeight.w600 : FontWeight.normal,
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
@@ -191,8 +150,22 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                    // Message Button
+                    const SizedBox(height: 16),
+                    // 2. Bio (Above button, start-aligned)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        displayBio,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: (bio == null || bio.trim().isEmpty) ? Colors.grey[500] : Colors.black87,
+                          fontStyle: (bio == null || bio.trim().isEmpty) ? FontStyle.italic : FontStyle.normal,
+                        ),
+                        textAlign: TextAlign.start,
+                      ),
+                    ),
+                    // 3. Message Button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
@@ -213,16 +186,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           }
                         },
                         icon: const Icon(Icons.message, size: 20),
-                        label: const Text(
-                          'Message Seller',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
+                        label: const Text('Message Seller', style: TextStyle(fontWeight: FontWeight.w600)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF8B5CF6),
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           elevation: 0,
                         ),
@@ -231,38 +199,31 @@ class _UserProfilePageState extends State<UserProfilePage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
-              // Listings Section Header
+              const Divider(height: 1, thickness: 1, color: Color(0xFFF5F5F7)),
+              // 4. Listings Header with fixed pluralization
               Container(
                 color: Colors.white,
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Listings',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    const Text('Listings', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     StreamBuilder<List<Map<String, dynamic>>>(
                       stream: _db.getUserListings(widget.userId),
                       builder: (context, snapshot) {
                         final count = snapshot.data?.length ?? 0;
+                        // Pluralization logic
+                        final label = count == 1 ? 'item' : 'items';
                         return Text(
-                          '$count items',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
+                          '$count $label',
+                          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                         );
                       },
                     ),
                   ],
                 ),
               ),
-              // Listings Grid
+              // 5. Listings Grid
               Expanded(
                 child: StreamBuilder<List<Map<String, dynamic>>>(
                   stream: _db.getUserListings(widget.userId),
@@ -270,13 +231,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
-
-                    if (snapshot.hasError) {
-                      return Center(child: Text('Error: ${snapshot.error}'));
-                    }
-
+                    if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
                     final listings = snapshot.data ?? [];
-
                     if (listings.isEmpty) {
                       return Center(
                         child: Column(
@@ -284,19 +240,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           children: [
                             Icon(Icons.shopping_bag_outlined, size: 60, color: Colors.grey[400]),
                             const SizedBox(height: 16),
-                            Text(
-                              'No listings yet',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
+                            Text('No listings yet', style: TextStyle(fontSize: 18, color: Colors.grey[600], fontWeight: FontWeight.w500)),
                           ],
                         ),
                       );
                     }
-
                     return GridView.builder(
                       padding: const EdgeInsets.all(12),
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -318,109 +266,42 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
+  // ... (Keep the existing _buildListingCard and _buildImagePlaceholder helper methods)
   Widget _buildListingCard(Map<String, dynamic> listing) {
     final imageUrls = listing['image_urls'] as List<dynamic>? ?? [];
-    final hasImage = imageUrls.isNotEmpty;
-
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ListingDetailPage(
-              listing: listing,
-              user: widget.currentUser,
-            ),
-          ),
-        );
-      },
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ListingDetailPage(listing: listing, user: widget.currentUser))),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image
             Expanded(
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                child: hasImage
-                    ? Image.network(
-                        imageUrls[0],
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => _buildImagePlaceholder(),
-                      )
+                child: imageUrls.isNotEmpty
+                    ? Image.network(imageUrls[0], width: double.infinity, fit: BoxFit.cover, errorBuilder: (c, e, s) => _buildImagePlaceholder())
                     : _buildImagePlaceholder(),
               ),
             ),
-            // Details
             Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '₱${listing['price']?.toStringAsFixed(2) ?? '0.00'}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF8B5CF6),
-                    ),
-                  ),
+                  Text('₱${listing['price']?.toStringAsFixed(2) ?? '0.00'}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF8B5CF6))),
                   const SizedBox(height: 4),
-                  Text(
-                    listing['title'] ?? 'No title',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(listing['title'] ?? 'No title', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.purple.shade50,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          listing['size'] ?? 'N/A',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Color(0xFF8B5CF6),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
+                      _buildBadge(listing['size'] ?? 'N/A', Colors.purple.shade50, const Color(0xFF8B5CF6)),
                       const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade50,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          listing['condition'] ?? 'N/A',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
+                      _buildBadge(listing['condition'] ?? 'N/A', Colors.green.shade50, Colors.green.shade700),
                     ],
                   ),
                 ],
@@ -432,12 +313,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
-  Widget _buildImagePlaceholder() {
+  Widget _buildBadge(String text, Color bgColor, Color textColor) {
     return Container(
-      color: Colors.grey[200],
-      child: Center(
-        child: Icon(Icons.image, size: 40, color: Colors.grey[400]),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(4)),
+      child: Text(text, style: TextStyle(fontSize: 10, color: textColor, fontWeight: FontWeight.w600)),
     );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Container(color: Colors.grey[200], child: Center(child: Icon(Icons.image, size: 40, color: Colors.grey[400])));
   }
 }

@@ -56,47 +56,45 @@ class _ProfilePageState extends State<ProfilePage>
     }
   }
 
-Future<void> _handleEditProfile() async {
-  final result = await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => EditProfilePage(user: widget.user),
-    ),
-  );
+  Future<void> _handleEditProfile() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditProfilePage(user: widget.user),
+      ),
+    );
 
-  // If profile was updated, refresh the entire user data
-  if (result == true && mounted) {
-    // Reload user data from Firestore
-    final userId = widget.user['id'] ?? widget.user['uid'] ?? FirebaseAuth.instance.currentUser?.uid;
-    if (userId != null) {
-      final updatedUser = await _authService.getUserProfile(userId);
-      if (updatedUser != null && mounted) {
-        // Update the user data and rebuild
-        setState(() {
-          // Merge the updated data with existing user data
-          widget.user.clear();
-          widget.user.addAll(updatedUser);
-        });
+    if (result == true && mounted) {
+      final userId = widget.user['id'] ?? widget.user['uid'] ?? FirebaseAuth.instance.currentUser?.uid;
+      if (userId != null) {
+        final updatedUser = await _authService.getUserProfile(userId);
+        if (updatedUser != null && mounted) {
+          setState(() {
+            widget.user.clear();
+            widget.user.addAll(updatedUser);
+          });
+        }
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile updated successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
       }
     }
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated successfully!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
+    final bio = widget.user['bio'] as String?;
+    final displayBio = (bio == null || bio.trim().isEmpty) ? 'No bio' : bio;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -115,14 +113,64 @@ Future<void> _handleEditProfile() async {
         ],
       ),
       body: Column(
+        // Aligns everything to the start (left)
+        crossAxisAlignment: CrossAxisAlignment.start, 
         children: [
-          // Profile Header
+          // 1. Profile Header (Avatar, Name, Location)
+          // Note: If this still shows a button, you need to remove the button 
+          // code from inside your ProfileHeader widget in profile_widgets.dart
           ProfileHeader(
             user: widget.user,
-            onEditProfile: _handleEditProfile,
+            onEditProfile: () {}, 
           ),
           
-          // Tab Bar
+          // 2. Bio Section (Now directly below image/location and ABOVE the button)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
+            child: Text(
+              displayBio,
+              style: TextStyle(
+                fontSize: 15,
+                color: (bio == null || bio.trim().isEmpty) 
+                    ? Colors.grey[500] 
+                    : Colors.black87,
+                fontStyle: (bio == null || bio.trim().isEmpty) 
+                    ? FontStyle.italic 
+                    : FontStyle.normal,
+              ),
+              textAlign: TextAlign.start,
+            ),
+          ),
+
+          // 3. Edit Profile Button (Now below the Bio)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _handleEditProfile,
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF8B5CF6)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                child: const Text(
+                  'Edit Profile',
+                  style: TextStyle(
+                    color: Color(0xFF8B5CF6),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 10),
+
+          // 4. Tab Bar
           Container(
             color: Colors.white,
             child: TabBar(
@@ -136,7 +184,8 @@ Future<void> _handleEditProfile() async {
               ],
             ),
           ),
-          // Tab Content
+          
+          // 5. Tab Content
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -151,6 +200,7 @@ Future<void> _handleEditProfile() async {
     );
   }
 
+  // ... (Rest of the helper methods remain the same)
   Widget _buildMyListings() {
     final userId = widget.user['id'] ??
         widget.user['uid'] ??
@@ -236,7 +286,6 @@ Future<void> _handleEditProfile() async {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            
             SettingsMenuItem(
               icon: Icons.help_outline,
               title: 'Help & Support',
@@ -256,7 +305,7 @@ Future<void> _handleEditProfile() async {
                   context: context,
                   applicationName: 'Thryfto',
                   applicationVersion: '1.0.0',
-                  applicationLegalese: '© 2024 Thryfto. All rights reserved.',
+                  applicationLegalese: '© 2025 Thryfto. All rights reserved.',
                 );
               },
             ),
@@ -319,8 +368,7 @@ Future<void> _handleEditProfile() async {
       await SeedingService().clearAllData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Database reset successfully!')),
+          const SnackBar(content: Text('Database reset successfully!')),
         );
       }
     }

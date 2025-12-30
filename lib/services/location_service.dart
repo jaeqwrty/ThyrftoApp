@@ -195,7 +195,7 @@ class LocationService {
         return {
           ...listing,
           'distance': double.infinity,
-          'distance_text': null, // Changed from 'Location unavailable' to null
+          'distance_text': null,
         };
       }
     }).toList();
@@ -215,7 +215,6 @@ class LocationService {
     double latitude,
     double longitude,
   ) async {
-    // Replace with your actual Google Maps API key
     const String apiKey = ApiKeys.googleMapsApiKey;
     try {
       print('Fetching address for: $latitude, $longitude');

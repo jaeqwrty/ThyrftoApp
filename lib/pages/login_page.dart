@@ -16,7 +16,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+
   bool _isLoading = false;
+  // State variable to toggle password visibility
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -40,7 +43,6 @@ class _LoginScreenState extends State<LoginScreen> {
     if (result['success']) {
       setState(() => _isLoading = false);
       // The AuthWrapper will automatically redirect to HomeScreen
-      // as it listens to authStateChanges.
     } else {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -81,10 +83,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
+
+                    // Email Field
                     _buildCustomTextField(
                       controller: _emailController,
                       hintText: 'Email',
                       icon: Icons.email_outlined,
+                      keyboardType: TextInputType.emailAddress,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your email';
@@ -96,11 +101,28 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
+
+                    // Password Field with Show/Hide Toggle
                     _buildCustomTextField(
                       controller: _passwordController,
                       hintText: 'Password',
                       icon: Icons.lock_outline,
                       isPassword: true,
+                      obscureText: _obscurePassword,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: Colors.grey,
+                          size: 20,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your password';
@@ -108,6 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         return null;
                       },
                     ),
+
                     const SizedBox(height: 12),
                     Align(
                       alignment: Alignment.centerRight,
@@ -184,9 +207,10 @@ class _LoginScreenState extends State<LoginScreen> {
     required String hintText,
     required IconData icon,
     bool isPassword = false,
+    bool obscureText = false, // Added parameter
+    Widget? suffixIcon, // Added parameter
     TextInputType? keyboardType,
     String? Function(String?)? validator,
-    int maxLines = 1,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -202,21 +226,17 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       child: TextFormField(
         controller: controller,
-        obscureText: isPassword,
+        obscureText: obscureText, // Use the passed obscureText value
         keyboardType: keyboardType,
         validator: validator,
-        maxLines: isPassword ? 1 : maxLines,
-        minLines: isPassword ? 1 : (maxLines == 1 ? 1 : 3),
+        // Note: maxLines must be 1 when obscureText is true
+        maxLines: 1,
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: const TextStyle(
               color: Colors.grey, fontSize: 14, fontFamily: 'SF Pro Display'),
-          prefixIcon: Padding(
-            padding: EdgeInsets.only(
-              top: maxLines > 1 ? 12 : 0,
-            ),
-            child: Icon(icon, color: Colors.grey, size: 20),
-          ),
+          prefixIcon: Icon(icon, color: Colors.grey, size: 20),
+          suffixIcon: suffixIcon, // Assign the toggle button here
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(25),
             borderSide: BorderSide.none,

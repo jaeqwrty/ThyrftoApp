@@ -25,6 +25,7 @@ dependencies:
   geolocator: ^10.1.0
   # Optional for reverse geocoding (address from coordinates):
   geocoding: ^3.0.0
+  google_maps_flutter: ^2.5.0
   http: ^1.1.0
 
 

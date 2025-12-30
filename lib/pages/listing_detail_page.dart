@@ -234,7 +234,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
           // Content
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(15),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -245,7 +245,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                       Text(
                         '₱ ${widget.listing['price']?.toStringAsFixed(2) ?? '0.00'}',
                         style: const TextStyle(
-                          fontSize: 28,
+                          fontSize: 23,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF8B5CF6),
                         ),
@@ -267,6 +267,9 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                               return Row(
                                 children: [
                                   IconButton(
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    visualDensity: VisualDensity.compact,
                                     icon: Icon(
                                       isLiked
                                           ? Icons.favorite
@@ -298,7 +301,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 0),
                   // Title
                   Text(
                     widget.listing['title'] ?? 'No title',
@@ -321,7 +324,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                           Colors.blue.shade50, Colors.blue.shade700),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 18),
                   // Description
                   const Text(
                     'Description',
@@ -340,7 +343,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 18),
 // Replace the "Seller Info" section in your listing_detail_page.dart with this:
 
 // Seller Info
@@ -598,7 +601,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                       );
                     }
                   },
-                  icon: const Icon(Icons.message, size: 20),
+                  icon: const Icon(Icons.message, size: 15),
                   label: const Text(
                     'Message Seller',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -606,7 +609,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF8B5CF6),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(25),
                     ),

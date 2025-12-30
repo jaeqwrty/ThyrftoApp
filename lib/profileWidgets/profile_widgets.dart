@@ -159,26 +159,9 @@ class ProfileHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 0),
           // Edit Profile Button
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: onEditProfile,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF8B5CF6),
-                side: const BorderSide(color: Color(0xFF8B5CF6)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: const Text(
-                'Edit Profile',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
+         
         ],
       ),
     );

@@ -9,6 +9,7 @@ import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/pages/home_page.dart';
+import 'package:thryfto/services/map_location.dart';
 
 class ProfileSetupPage extends StatefulWidget {
   const ProfileSetupPage({super.key});
@@ -22,22 +23,21 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   final _databaseService = DatabaseService();
   final _locationService = LocationService();
   final _bioController = TextEditingController();
-  final _addressController = TextEditingController();
 
   XFile? _imageFile;
-  Uint8List? _imageBytes; // For web support
+  Uint8List? _imageBytes;
   final _picker = ImagePicker();
   bool _isLoading = false;
   bool _isLoadingLocation = false;
 
   double? _selectedLatitude;
   double? _selectedLongitude;
+  String? _selectedAddress;
   String? _locationError;
 
   @override
   void dispose() {
     _bioController.dispose();
-    _addressController.dispose();
     super.dispose();
   }
 
@@ -45,7 +45,6 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     try {
       final pickedFile = await _picker.pickImage(source: source);
       if (pickedFile != null) {
-        // Load image bytes for preview
         final bytes = await pickedFile.readAsBytes();
         setState(() {
           _imageFile = pickedFile;
@@ -81,7 +80,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 _pickImage(ImageSource.gallery);
               },
             ),
-            if (!kIsWeb) // Camera only available on mobile
+            if (!kIsWeb)
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: Color(0xFF8B5CF6)),
                 title: const Text('Take a Photo'),
@@ -119,7 +118,6 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         return;
       }
 
-      // Get the actual location name from coordinates
       final address = await _locationService.getAddressFromCoordinates(
         position.latitude,
         position.longitude,
@@ -128,10 +126,8 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       setState(() {
         _selectedLatitude = position.latitude;
         _selectedLongitude = position.longitude;
+        _selectedAddress = address;
         _isLoadingLocation = false;
-
-        // Auto-fill the address field with the detected location name
-        _addressController.text = address;
       });
 
       if (mounted) {
@@ -152,6 +148,35 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       if (e.toString().contains('denied')) {
         _showPermissionDialog();
       }
+    }
+  }
+
+  Future<void> _openMapPicker() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationPicker(
+          initialLatitude: _selectedLatitude,
+          initialLongitude: _selectedLongitude,
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _selectedLatitude = result['latitude'];
+        _selectedLongitude = result['longitude'];
+        _selectedAddress = result['address'];
+        _locationError = null;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Location set: ${result['address']}'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -181,7 +206,6 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   }
 
   Future<void> _completeSetup() async {
-    // Validate location is set
     if (_selectedLatitude == null || _selectedLongitude == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -204,16 +228,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             await _databaseService.uploadProfileImage(_imageFile!, user.uid);
       }
 
-      // Save location with proper address
-      final address = _addressController.text.trim().isEmpty
-          ? 'Location set'
-          : _addressController.text.trim();
-
       await _locationService.saveUserLocation(
         userId: user.uid,
         latitude: _selectedLatitude!,
         longitude: _selectedLongitude!,
-        address: address,
+        address: _selectedAddress ?? 'Location set',
       );
 
       final success = await _authService.completeOnboarding(
@@ -251,23 +270,8 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     }
   }
 
-  String _getLocationDisplayText() {
-    if (_selectedLatitude == null || _selectedLongitude == null) {
-      return 'Not set';
-    }
-
-    // Always prefer the address controller text if available
-    if (_addressController.text.isNotEmpty) {
-      return _addressController.text;
-    }
-
-    // Show coordinates as fallback
-    return 'Lat: ${_selectedLatitude!.toStringAsFixed(4)}, Lon: ${_selectedLongitude!.toStringAsFixed(4)}';
-  }
-
   Widget _buildProfileImage() {
     if (_imageBytes != null) {
-      // Show image from bytes (works on both web and mobile)
       return Container(
         width: 120,
         height: 120,
@@ -281,7 +285,6 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         ),
       );
     } else if (!kIsWeb && _imageFile != null) {
-      // Fallback for mobile using File (though _imageBytes should handle this)
       return Container(
         width: 120,
         height: 120,
@@ -295,7 +298,6 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         ),
       );
     } else {
-      // No image selected
       return Container(
         width: 120,
         height: 120,
@@ -401,7 +403,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
               ),
             ),
 
-            const SizedBox(height: 20 ),
+            const SizedBox(height: 20),
 
             // Location Section Header
             Row(
@@ -473,7 +475,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            _getLocationDisplayText(),
+                            _selectedAddress ?? 'Location set',
                             style: TextStyle(
                               color: Colors.grey[700],
                               fontSize: 13,
@@ -512,33 +514,6 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
             const SizedBox(height: 16),
 
-            // Address Input
-            TextField(
-              controller: _addressController,
-              decoration: InputDecoration(
-                labelText: 'Location Name (Optional)',
-                hintText: 'e.g., Davao City, Matina District',
-                prefixIcon: const Icon(Icons.location_city),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF8B5CF6)),
-                ),
-                filled: true,
-                fillColor: Colors.grey[50],
-                helperText: 'This will be shown to other users',
-                helperStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
             // Use Current Location Button
             SizedBox(
               width: double.infinity,
@@ -571,6 +546,33 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
                   ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Pin Location on Map Button
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: _openMapPicker,
+                icon: const Icon(Icons.map_outlined),
+                label: const Text(
+                  'Seach location',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: const Color(0xFF8B5CF6),
+                  side: const BorderSide(color: Color(0xFF8B5CF6)), 
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  elevation: 0,
                 ),
               ),
             ),
