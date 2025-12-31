@@ -8,6 +8,7 @@ import 'package:thryfto/commonWidgets/custom_textfield.dart';
 import 'package:thryfto/commonWidgets/section_labels.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/favorite_service.dart';
+import 'package:thryfto/services/image_validation_service.dart';
 
 class SellPage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -27,6 +28,7 @@ class _SellPageState extends State<SellPage> {
   final _descriptionController = TextEditingController();
   final _sizeController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
+  final ImageValidationService _imageValidation = ImageValidationService();
 
   List<XFile> _selectedImages = [];
   String _selectedCondition = 'New';
@@ -69,6 +71,100 @@ class _SellPageState extends State<SellPage> {
     );
   }
 
+  void _showSuccessDialog(String title, double price) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Checkmark icon
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_circle,
+                    color: Color(0xFF8B5CF6),
+                    size: 40,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Listing Posted!',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '$title',
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '₱ ${price.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF8B5CF6),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context); // Just close the dialog
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF8B5CF6),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Done', // Change text to "Done" or "OK"
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _handleCreateListing() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedImages.isEmpty) {
@@ -79,14 +175,25 @@ class _SellPageState extends State<SellPage> {
     setState(() => _isLoading = true);
 
     try {
+      // Validate images first
+      final validationResult =
+          await _imageValidation.validateImages(_selectedImages);
+
+      if (!validationResult['isValid']) {
+        setState(() => _isLoading = false);
+        _showMessage(validationResult['message'], isError: true);
+        return;
+      }
+
       final userId = widget.user['id'] ?? widget.user['uid'];
       final listingTitle = _titleController.text.trim();
-      
+      final listingPrice = double.parse(_priceController.text.trim());
+
       final result = await _db.createListing(
         userId: userId,
         title: listingTitle,
         description: _descriptionController.text.trim(),
-        price: double.parse(_priceController.text.trim()),
+        price: listingPrice,
         size: _sizeController.text.trim(),
         condition: _selectedCondition,
         category: _selectedCategory,
@@ -98,10 +205,11 @@ class _SellPageState extends State<SellPage> {
 
       if (result['success']) {
         final listingId = result['listingId'];
-        
+
         // Get the first image URL from the uploaded images
         String? firstImageUrl;
-        if (result['imageUrls'] != null && (result['imageUrls'] as List).isNotEmpty) {
+        if (result['imageUrls'] != null &&
+            (result['imageUrls'] as List).isNotEmpty) {
           firstImageUrl = (result['imageUrls'] as List)[0];
         }
 
@@ -115,8 +223,6 @@ class _SellPageState extends State<SellPage> {
           );
         }
 
-        _showMessage('Listing created successfully!');
-        
         // Clear form
         _titleController.clear();
         _priceController.clear();
@@ -127,8 +233,12 @@ class _SellPageState extends State<SellPage> {
           _selectedCondition = 'New';
           _selectedCategory = 'Clothing';
         });
+
+        // Show success dialog
+        _showSuccessDialog(listingTitle, listingPrice);
       } else {
-        _showMessage(result['message'] ?? 'Failed to create listing', isError: true);
+        _showMessage(result['message'] ?? 'Failed to create listing',
+            isError: true);
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -198,7 +308,8 @@ class _SellPageState extends State<SellPage> {
               CustomChoiceChips(
                 options: _categories,
                 selectedValue: _selectedCategory,
-                onSelected: (value) => setState(() => _selectedCategory = value),
+                onSelected: (value) =>
+                    setState(() => _selectedCategory = value),
               ),
               const SizedBox(height: 12),
               const SectionLabel(text: 'Condition'),
@@ -206,7 +317,8 @@ class _SellPageState extends State<SellPage> {
               CustomChoiceChips(
                 options: _conditions,
                 selectedValue: _selectedCondition,
-                onSelected: (value) => setState(() => _selectedCondition = value),
+                onSelected: (value) =>
+                    setState(() => _selectedCondition = value),
               ),
               const SizedBox(height: 12),
               const SectionLabel(text: 'Description'),
@@ -218,7 +330,8 @@ class _SellPageState extends State<SellPage> {
                 maxLines: 1,
                 maxLength: 100,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter a description';
+                  if (value == null || value.isEmpty)
+                    return 'Please enter a description';
                   return null;
                 },
               ),
@@ -252,7 +365,9 @@ class _SellPageState extends State<SellPage> {
       child: TextFormField(
         controller: _titleController,
         maxLength: 30,
-        buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
+        buildCounter: (context,
+                {required currentLength, required isFocused, maxLength}) =>
+            null,
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: 'e.g., Vintage Denim Jacket',
@@ -264,7 +379,8 @@ class _SellPageState extends State<SellPage> {
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
         validator: (value) {
           if (value == null || value.isEmpty) return 'Please enter a title';
@@ -314,14 +430,16 @@ class _SellPageState extends State<SellPage> {
               ),
             ),
           ),
-          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+          prefixIconConstraints:
+              const BoxConstraints(minWidth: 0, minHeight: 0),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
         validator: (value) {
           if (value == null || value.isEmpty) return 'Required';
@@ -348,7 +466,9 @@ class _SellPageState extends State<SellPage> {
       child: TextFormField(
         controller: _sizeController,
         maxLength: 6,
-        buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
+        buildCounter: (context,
+                {required currentLength, required isFocused, maxLength}) =>
+            null,
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: 'M, L, XL...',
@@ -360,7 +480,8 @@ class _SellPageState extends State<SellPage> {
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
         validator: (value) {
           if (value == null || value.isEmpty) return 'Required';
@@ -382,7 +503,9 @@ class _SellPageState extends State<SellPage> {
               itemCount: _selectedImages.length + 1,
               itemBuilder: (context, index) {
                 if (index == _selectedImages.length) {
-                  return _selectedImages.length < _maxImages ? _buildAddImageButton() : const SizedBox.shrink();
+                  return _selectedImages.length < _maxImages
+                      ? _buildAddImageButton()
+                      : const SizedBox.shrink();
                 }
                 return _buildImageItem(_selectedImages[index], index);
               },
@@ -402,14 +525,21 @@ class _SellPageState extends State<SellPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.add_photo_alternate, size: 30, color: Colors.grey[400]),
+                    Icon(Icons.add_photo_alternate,
+                        size: 30, color: Colors.grey[400]),
                     const SizedBox(width: 8),
                     Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Add Photos', style: TextStyle(fontSize: 14, color: Colors.grey[600], fontWeight: FontWeight.w500)),
-                        Text('Max $_maxImages images', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                        Text('Add Photos',
+                            style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500)),
+                        Text('Max $_maxImages images',
+                            style: TextStyle(
+                                fontSize: 11, color: Colors.grey[500])),
                       ],
                     ),
                   ],
@@ -433,11 +563,19 @@ class _SellPageState extends State<SellPage> {
                 ? FutureBuilder<Uint8List>(
                     future: image.readAsBytes(),
                     builder: (context, snapshot) {
-                      if (snapshot.hasData) return Image.memory(snapshot.data!, width: 100, height: 100, fit: BoxFit.cover);
-                      return Container(width: 100, height: 100, color: Colors.grey[300], child: const Center(child: CircularProgressIndicator()));
+                      if (snapshot.hasData)
+                        return Image.memory(snapshot.data!,
+                            width: 100, height: 100, fit: BoxFit.cover);
+                      return Container(
+                          width: 100,
+                          height: 100,
+                          color: Colors.grey[300],
+                          child:
+                              const Center(child: CircularProgressIndicator()));
                     },
                   )
-                : Image.file(File(image.path), width: 100, height: 100, fit: BoxFit.cover),
+                : Image.file(File(image.path),
+                    width: 100, height: 100, fit: BoxFit.cover),
           ),
           Positioned(
             top: 4,
@@ -446,7 +584,8 @@ class _SellPageState extends State<SellPage> {
               onTap: () => setState(() => _selectedImages.removeAt(index)),
               child: Container(
                 padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                decoration: const BoxDecoration(
+                    color: Colors.red, shape: BoxShape.circle),
                 child: const Icon(Icons.close, color: Colors.white, size: 16),
               ),
             ),
@@ -468,7 +607,8 @@ class _SellPageState extends State<SellPage> {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.grey[300]!, width: 2),
         ),
-        child: Center(child: Icon(Icons.add, size: 30, color: Colors.grey[400])),
+        child:
+            Center(child: Icon(Icons.add, size: 30, color: Colors.grey[400])),
       ),
     );
   }
@@ -483,28 +623,37 @@ class _SellPageState extends State<SellPage> {
 
   Future<void> _pickImageFromCamera() async {
     if (_selectedImages.length >= _maxImages) return;
-    final XFile? image = await _picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+    final XFile? image =
+        await _picker.pickImage(source: ImageSource.camera, imageQuality: 70);
     if (image != null) setState(() => _selectedImages.add(image));
   }
 
   void _showImageSourceDialog() {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => Container(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_library, color: Color(0xFF8B5CF6)),
+              leading:
+                  const Icon(Icons.photo_library, color: Color(0xFF8B5CF6)),
               title: const Text('Choose from Gallery'),
-              onTap: () { Navigator.pop(context); _pickImagesFromGallery(); },
+              onTap: () {
+                Navigator.pop(context);
+                _pickImagesFromGallery();
+              },
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt, color: Color(0xFF8B5CF6)),
               title: const Text('Take a Photo'),
-              onTap: () { Navigator.pop(context); _pickImageFromCamera(); },
+              onTap: () {
+                Navigator.pop(context);
+                _pickImageFromCamera();
+              },
             ),
           ],
         ),
