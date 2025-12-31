@@ -517,7 +517,6 @@ class DatabaseService {
 
       final listingData = listingDoc.data()!;
       final sellerId = listingData['seller_id'];
-      final listingTitle = listingData['title'] ?? 'your listing';
 
       await _firestore
           .collection('listings')

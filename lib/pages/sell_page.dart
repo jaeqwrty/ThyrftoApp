@@ -7,6 +7,7 @@ import 'package:thryfto/commonWidgets/custom_elevated_button.dart';
 import 'package:thryfto/commonWidgets/custom_textfield.dart';
 import 'package:thryfto/commonWidgets/section_labels.dart';
 import 'package:thryfto/services/database_service.dart';
+import 'package:thryfto/services/favorite_service.dart';
 
 class SellPage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -19,6 +20,7 @@ class SellPage extends StatefulWidget {
 
 class _SellPageState extends State<SellPage> {
   final DatabaseService _db = DatabaseService();
+  final FavoritesService _favoritesService = FavoritesService();
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _priceController = TextEditingController();
@@ -47,8 +49,22 @@ class _SellPageState extends State<SellPage> {
   void _showMessage(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.check_circle,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
         backgroundColor: isError ? Colors.red : Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
     );
   }
@@ -63,9 +79,12 @@ class _SellPageState extends State<SellPage> {
     setState(() => _isLoading = true);
 
     try {
+      final userId = widget.user['id'] ?? widget.user['uid'];
+      final listingTitle = _titleController.text.trim();
+      
       final result = await _db.createListing(
-        userId: widget.user['id'] ?? widget.user['uid'],
-        title: _titleController.text.trim(),
+        userId: userId,
+        title: listingTitle,
         description: _descriptionController.text.trim(),
         price: double.parse(_priceController.text.trim()),
         size: _sizeController.text.trim(),
@@ -78,7 +97,27 @@ class _SellPageState extends State<SellPage> {
       if (!mounted) return;
 
       if (result['success']) {
+        final listingId = result['listingId'];
+        
+        // Get the first image URL from the uploaded images
+        String? firstImageUrl;
+        if (result['imageUrls'] != null && (result['imageUrls'] as List).isNotEmpty) {
+          firstImageUrl = (result['imageUrls'] as List)[0];
+        }
+
+        // Notify all users who favorited this seller
+        if (listingId != null) {
+          await _favoritesService.notifyFavoritesOnNewListing(
+            sellerId: userId,
+            listingId: listingId,
+            listingTitle: listingTitle,
+            listingImage: firstImageUrl,
+          );
+        }
+
         _showMessage('Listing created successfully!');
+        
+        // Clear form
         _titleController.clear();
         _priceController.clear();
         _descriptionController.clear();
@@ -123,7 +162,7 @@ class _SellPageState extends State<SellPage> {
               const SizedBox(height: 12),
               const SectionLabel(text: 'Title'),
               const SizedBox(height: 4),
-              _buildTitleField(), // ✅ Updated Title Field
+              _buildTitleField(),
               const SizedBox(height: 12),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,7 +236,6 @@ class _SellPageState extends State<SellPage> {
     );
   }
 
-  // ✅ New helper method to ensure the Title field matches Price/Size and hides indicators
   Widget _buildTitleField() {
     return Container(
       decoration: BoxDecoration(
@@ -213,8 +251,7 @@ class _SellPageState extends State<SellPage> {
       ),
       child: TextFormField(
         controller: _titleController,
-        maxLength: 30, // Updated to 30 as requested
-        // Hides the "0/30" counter for a cleaner look
+        maxLength: 30,
         buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
@@ -228,7 +265,6 @@ class _SellPageState extends State<SellPage> {
           filled: true,
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          counterText: "", // Removes reserved space for the counter
         ),
         validator: (value) {
           if (value == null || value.isEmpty) return 'Please enter a title';
@@ -325,7 +361,6 @@ class _SellPageState extends State<SellPage> {
           filled: true,
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          counterText: "", 
         ),
         validator: (value) {
           if (value == null || value.isEmpty) return 'Required';

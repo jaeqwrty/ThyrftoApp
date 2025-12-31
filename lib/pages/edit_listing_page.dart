@@ -1,6 +1,10 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:thryfto/commonWidgets/category_condition_selection.dart';
+import 'package:thryfto/commonWidgets/custom_elevated_button.dart';
+import 'package:thryfto/commonWidgets/custom_textfield.dart';
+import 'package:thryfto/commonWidgets/section_labels.dart';
+import 'package:thryfto/commonWidgets/listing_form_widgets.dart';
 import 'package:thryfto/services/database_service.dart';
 
 class EditListingPage extends StatefulWidget {
@@ -25,24 +29,18 @@ class _EditListingPageState extends State<EditListingPage> {
   late TextEditingController _titleController;
   late TextEditingController _priceController;
   late TextEditingController _descriptionController;
+  late TextEditingController _sizeController;
   
   String _selectedCategory = 'Clothing';
-  String _selectedSize = 'M';
   String _selectedCondition = 'Good';
   
   List<String> _existingImageUrls = [];
   List<XFile> _newImageFiles = [];
   bool _isLoading = false;
 
-  final List<String> _categories = [
-    'Clothing',
-    'Shoes',
-    'Accessories',
-    'Bags',
-  ];
-
-  final List<String> _sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size'];
+  final List<String> _categories = ['Clothing', 'Shoes', 'Accessories', 'Bags'];
   final List<String> _conditions = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
+  static const int _maxImages = 5;
 
   @override
   void initState() {
@@ -54,8 +52,8 @@ class _EditListingPageState extends State<EditListingPage> {
     _descriptionController = TextEditingController(
       text: widget.listing['description'] ?? '',
     );
+    _sizeController = TextEditingController(text: widget.listing['size'] ?? '');
     _selectedCategory = widget.listing['category'] ?? 'Clothing';
-    _selectedSize = widget.listing['size'] ?? 'M';
     _selectedCondition = widget.listing['condition'] ?? 'Good';
     _existingImageUrls = List<String>.from(widget.listing['image_urls'] ?? []);
   }
@@ -65,24 +63,68 @@ class _EditListingPageState extends State<EditListingPage> {
     _titleController.dispose();
     _priceController.dispose();
     _descriptionController.dispose();
+    _sizeController.dispose();
     super.dispose();
   }
 
-  Future<void> _pickImages() async {
-    final totalImages = _existingImageUrls.length + _newImageFiles.length;
-    if (totalImages >= 5) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Maximum 5 images allowed')),
-      );
-      return;
-    }
+  void _showMessage(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.check_circle,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
 
-    final images = await _picker.pickMultiImage(limit: 5 - totalImages);
+  Future<void> _pickImagesFromGallery() async {
+    final totalImages = _existingImageUrls.length + _newImageFiles.length;
+    final remainingSlots = _maxImages - totalImages;
+    
+    final images = await _picker.pickMultiImage(imageQuality: 70);
+    
     if (images.isNotEmpty) {
       setState(() {
-        _newImageFiles.addAll(images);
+        _newImageFiles.addAll(images.take(remainingSlots));
       });
     }
+  }
+
+  Future<void> _pickImageFromCamera() async {
+    final totalImages = _existingImageUrls.length + _newImageFiles.length;
+    if (totalImages >= _maxImages) return;
+    
+    final image = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 70,
+    );
+    
+    if (image != null) {
+      setState(() {
+        _newImageFiles.add(image);
+      });
+    }
+  }
+
+  void _showImageSourceDialog() {
+    showImageSourceDialog(
+      context: context,
+      onGallery: _pickImagesFromGallery,
+      onCamera: _pickImageFromCamera,
+    );
   }
 
   void _removeExistingImage(int index) {
@@ -101,9 +143,7 @@ class _EditListingPageState extends State<EditListingPage> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_existingImageUrls.isEmpty && _newImageFiles.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add at least one image')),
-      );
+      _showMessage('Please add at least one image', isError: true);
       return;
     }
 
@@ -116,34 +156,28 @@ class _EditListingPageState extends State<EditListingPage> {
         price: double.parse(_priceController.text.trim()),
         description: _descriptionController.text.trim(),
         category: _selectedCategory,
-        size: _selectedSize,
+        size: _sizeController.text.trim(),
         condition: _selectedCondition,
         existingImageUrls: _existingImageUrls,
         newImageFiles: _newImageFiles,
       );
 
-      if (mounted) {
-        if (result['success']) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Listing updated successfully!')),
-          );
-          Navigator.pop(context, true); // Return true to indicate update
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result['message'] ?? 'Failed to update listing')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+
+      if (result['success']) {
+        _showMessage('Listing updated successfully!');
+        Navigator.pop(context, true);
+      } else {
+        _showMessage(
+          result['message'] ?? 'Failed to update listing',
+          isError: true,
         );
       }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      _showMessage('Error: $e', isError: true);
     }
   }
 
@@ -165,322 +199,237 @@ class _EditListingPageState extends State<EditListingPage> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: _isLoading ? null : _handleUpdate,
-            child: _isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text(
-                    'Save',
-                    style: TextStyle(
-                      color: Color(0xFF8B5CF6),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
+      ),
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            children: [
+              const SectionLabel(text: 'Photos'),
+              const SizedBox(height: 8),
+              ListingImagePicker(
+                existingImageUrls: _existingImageUrls,
+                newImageFiles: _newImageFiles,
+                maxImages: _maxImages,
+                onAddImage: _showImageSourceDialog,
+                onRemoveExistingImage: _removeExistingImage,
+                onRemoveNewImage: _removeNewImage,
+              ),
+              const SizedBox(height: 12),
+
+              const SectionLabel(text: 'Title'),
+              const SizedBox(height: 4),
+              _buildTitleField(),
+              const SizedBox(height: 12),
+
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SectionLabel(text: 'Price'),
+                        const SizedBox(height: 4),
+                        _buildPriceField(),
+                      ],
                     ),
                   ),
-          ),
-        ],
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Images Section
-            _buildSectionTitle('Photos'),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 100,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  // Existing images
-                  ..._existingImageUrls.asMap().entries.map((entry) {
-                    return _buildExistingImageTile(entry.value, entry.key);
-                  }),
-                  // New images
-                  ..._newImageFiles.asMap().entries.map((entry) {
-                    return _buildNewImageTile(entry.value, entry.key);
-                  }),
-                  // Add button
-                  if (_existingImageUrls.length + _newImageFiles.length < 5)
-                    _buildAddImageButton(),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SectionLabel(text: 'Size'),
+                        const SizedBox(height: 4),
+                        _buildSizeField(),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 12),
 
-            // Title
-            _buildSectionTitle('Title'),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _titleController,
-              decoration: _inputDecoration('What are you selling?'),
-              validator: (v) => v?.trim().isEmpty == true ? 'Required' : null,
-            ),
-            const SizedBox(height: 16),
-
-            // Price
-            _buildSectionTitle('Price'),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _priceController,
-              decoration: _inputDecoration('0.00', prefixText: '₱ '),
-              keyboardType: TextInputType.number,
-              validator: (v) {
-                if (v?.trim().isEmpty == true) return 'Required';
-                if (double.tryParse(v!) == null) return 'Invalid price';
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Category
-            _buildSectionTitle('Category'),
-            const SizedBox(height: 8),
-            _buildDropdown(
-              value: _selectedCategory,
-              items: _categories,
-              onChanged: (v) => setState(() => _selectedCategory = v!),
-            ),
-            const SizedBox(height: 16),
-
-            // Size
-            _buildSectionTitle('Size'),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _sizes.map((size) => _buildChoiceChip(
-                label: size,
-                selected: _selectedSize == size,
-                onSelected: () => setState(() => _selectedSize = size),
-              )).toList(),
-            ),
-            const SizedBox(height: 16),
-
-            // Condition
-            _buildSectionTitle('Condition'),
-            const SizedBox(height: 8),
-            _buildDropdown(
-              value: _selectedCondition,
-              items: _conditions,
-              onChanged: (v) => setState(() => _selectedCondition = v!),
-            ),
-            const SizedBox(height: 16),
-
-            // Description
-            _buildSectionTitle('Description'),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _descriptionController,
-              decoration: _inputDecoration('Describe your item...'),
-              maxLines: 4,
-              validator: (v) => v?.trim().isEmpty == true ? 'Required' : null,
-            ),
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: Colors.black87,
-      ),
-    );
-  }
-
-  Widget _buildExistingImageTile(String url, int index) {
-    return Container(
-      width: 100,
-      height: 100,
-      margin: const EdgeInsets.only(right: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        image: DecorationImage(
-          image: NetworkImage(url),
-          fit: BoxFit.cover,
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: 4,
-            right: 4,
-            child: GestureDetector(
-              onTap: () => _removeExistingImage(index),
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.close, size: 14, color: Colors.white),
+              const SectionLabel(text: 'Category'),
+              const SizedBox(height: 8),
+              CustomChoiceChips(
+                options: _categories,
+                selectedValue: _selectedCategory,
+                onSelected: (value) => setState(() => _selectedCategory = value),
               ),
-            ),
+              const SizedBox(height: 12),
+
+              const SectionLabel(text: 'Condition'),
+              const SizedBox(height: 8),
+              CustomChoiceChips(
+                options: _conditions,
+                selectedValue: _selectedCondition,
+                onSelected: (value) => setState(() => _selectedCondition = value),
+              ),
+              const SizedBox(height: 12),
+
+              const SectionLabel(text: 'Description'),
+              const SizedBox(height: 4),
+              CustomTextField(
+                controller: _descriptionController,
+                hintText: 'Describe your item...',
+                icon: Icons.description,
+                maxLines: 1,
+                maxLength: 100,
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Please enter a description';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+
+              PrimaryButton(
+                text: 'Update Listing',
+                isLoading: _isLoading,
+                onPressed: _handleUpdate,
+              ),
+              const SizedBox(height: 80),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNewImageTile(XFile file, int index) {
-    return Container(
-      width: 100,
-      height: 100,
-      margin: const EdgeInsets.only(right: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        image: DecorationImage(
-          image: NetworkImage(file.path),
-          fit: BoxFit.cover,
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: 4,
-            right: 4,
-            child: GestureDetector(
-              onTap: () => _removeNewImage(index),
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.close, size: 14, color: Colors.white),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 4,
-            left: 4,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.green,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'NEW',
-                style: TextStyle(color: Colors.white, fontSize: 10),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAddImageButton() {
-    return GestureDetector(
-      onTap: _pickImages,
-      child: Container(
-        width: 100,
-        height: 100,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF8B5CF6), width: 2),
-        ),
-        child: const Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.add_photo_alternate, size: 32, color: Color(0xFF8B5CF6)),
-            SizedBox(height: 4),
-            Text(
-              'Add Photo',
-              style: TextStyle(
-                color: Color(0xFF8B5CF6),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
 
-  Widget _buildDropdown({
-    required String value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-  }) {
+  Widget _buildTitleField() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: DropdownButtonFormField<String>(
-        value: value,
-        items: items.map((item) => DropdownMenuItem(
-          value: item,
-          child: Text(item),
-        )).toList(),
-        onChanged: onChanged,
-        decoration: const InputDecoration(
+      child: TextFormField(
+        controller: _titleController,
+        maxLength: 30,
+        buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        decoration: InputDecoration(
+          hintText: 'e.g., Vintage Denim Jacket',
+          hintStyle: TextStyle(fontSize: 14, color: Colors.grey[400]),
+          prefixIcon: Icon(Icons.title, size: 20, color: Colors.grey[400]),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.all(Radius.circular(12)),
+            borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
+        validator: (value) {
+          if (value == null || value.isEmpty) return 'Please enter a title';
+          return null;
+        },
       ),
     );
   }
 
-  Widget _buildChoiceChip({
-    required String label,
-    required bool selected,
-    required VoidCallback onSelected,
-  }) {
-    return GestureDetector(
-      onTap: onSelected,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFF8B5CF6) : Colors.white,
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(
-            color: selected ? const Color(0xFF8B5CF6) : Colors.grey[300]!,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : Colors.black87,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String hint, {String? prefixText}) {
-    return InputDecoration(
-      hintText: hint,
-      prefixText: prefixText,
-      filled: true,
-      fillColor: Colors.white,
-      border: OutlineInputBorder(
+  Widget _buildPriceField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: TextFormField(
+        controller: _priceController,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF8B5CF6),
+        ),
+        decoration: InputDecoration(
+          hintText: '0.00',
+          hintStyle: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[300],
+          ),
+          prefixIcon: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              '₱',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+                height: 1.25,
+              ),
+            ),
+          ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        ),
+        validator: (value) {
+          if (value == null || value.isEmpty) return 'Required';
+          if (double.tryParse(value) == null) return 'Invalid';
+          return null;
+        },
+      ),
+    );
+  }
+
+  Widget _buildSizeField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: _sizeController,
+        maxLength: 6,
+        buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        decoration: InputDecoration(
+          hintText: 'M, L, XL...',
+          hintStyle: TextStyle(fontSize: 14, color: Colors.grey[400]),
+          prefixIcon: Icon(Icons.straighten, size: 20, color: Colors.grey[400]),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        ),
+        validator: (value) {
+          if (value == null || value.isEmpty) return 'Required';
+          return null;
+        },
+      ),
     );
   }
 }

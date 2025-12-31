@@ -4,8 +4,10 @@ import 'package:thryfto/commonWidgets/empty_state.dart';
 import 'package:thryfto/commonWidgets/error.dart';
 import 'package:thryfto/pages/edit_profile_page.dart';
 import 'package:thryfto/profileWidgets/profile_widgets.dart';
+import 'package:thryfto/profileWidgets/profile_dialogs.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/services/database_service.dart';
+import 'package:thryfto/services/rating_service.dart';
 import 'package:thryfto/services/seeding_service.dart';
 import 'package:thryfto/shared/auth_wrapper.dart';
 
@@ -22,6 +24,7 @@ class _ProfilePageState extends State<ProfilePage>
     with SingleTickerProviderStateMixin {
   final DatabaseService _db = DatabaseService();
   final AuthService _authService = AuthService();
+  final RatingService _ratingService = RatingService();
   late TabController _tabController;
 
   @override
@@ -92,6 +95,9 @@ class _ProfilePageState extends State<ProfilePage>
   Widget build(BuildContext context) {
     final bio = widget.user['bio'] as String?;
     final displayBio = (bio == null || bio.trim().isEmpty) ? 'No bio' : bio;
+    final userId = widget.user['id'] ?? 
+                   widget.user['uid'] ?? 
+                   FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -113,18 +119,15 @@ class _ProfilePageState extends State<ProfilePage>
         ],
       ),
       body: Column(
-        // Aligns everything to the start (left)
-        crossAxisAlignment: CrossAxisAlignment.start, 
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Profile Header (Avatar, Name, Location)
-          // Note: If this still shows a button, you need to remove the button 
-          // code from inside your ProfileHeader widget in profile_widgets.dart
           ProfileHeader(
             user: widget.user,
             onEditProfile: () {}, 
           ),
           
-          // 2. Bio Section (Now directly below image/location and ABOVE the button)
+          // 2. Bio Section
           Container(
             width: double.infinity,
             padding: const EdgeInsets.only(left: 20, right: 20, bottom: 5),
@@ -143,9 +146,19 @@ class _ProfilePageState extends State<ProfilePage>
             ),
           ),
 
-          // 3. Edit Profile Button (Now below the Bio)
+          // 3. Rating Display - Using reusable widget from profile_dialogs.dart
+          if (userId != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: _RatingDisplayWidget(
+                userId: userId,
+                ratingService: _ratingService,
+              ),
+            ),
+
+          // 4. Edit Profile Button
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
             child: SizedBox(
               width: double.infinity,
               child: OutlinedButton(
@@ -170,7 +183,7 @@ class _ProfilePageState extends State<ProfilePage>
           
           const SizedBox(height: 10),
 
-          // 4. Tab Bar
+          // 5. Tab Bar
           Container(
             color: Colors.white,
             child: TabBar(
@@ -185,7 +198,7 @@ class _ProfilePageState extends State<ProfilePage>
             ),
           ),
           
-          // 5. Tab Content
+          // 6. Tab Content
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -200,7 +213,6 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  // ... (Rest of the helper methods remain the same)
   Widget _buildMyListings() {
     final userId = widget.user['id'] ??
         widget.user['uid'] ??
@@ -372,5 +384,92 @@ class _ProfilePageState extends State<ProfilePage>
         );
       }
     }
+  }
+}
+
+/// Separate StatefulWidget for Rating Display - Reusable across pages
+class _RatingDisplayWidget extends StatefulWidget {
+  final String userId;
+  final RatingService ratingService;
+
+  const _RatingDisplayWidget({
+    required this.userId,
+    required this.ratingService,
+  });
+
+  @override
+  State<_RatingDisplayWidget> createState() => _RatingDisplayWidgetState();
+}
+
+class _RatingDisplayWidgetState extends State<_RatingDisplayWidget> {
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<Map<String, dynamic>>(
+      stream: widget.ratingService.getSellerRatingStatsStream(widget.userId),
+      initialData: const {
+        'average_rating': 0.0,
+        'ratings_count': 0,
+      },
+      builder: (context, snapshot) {
+        final stats = snapshot.data ?? {
+          'average_rating': 0.0,
+          'ratings_count': 0,
+        };
+        
+        final averageRating = stats['average_rating'] as double;
+        final ratingsCount = stats['ratings_count'] as int;
+
+        return GestureDetector(
+          onTap: ratingsCount > 0 
+              ? () => RatingsBottomSheet.show(
+                    context: context,
+                    userId: widget.userId,
+                    ratingService: widget.ratingService,
+                  )
+              : null,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+            decoration: BoxDecoration(
+              color: ratingsCount > 0 ? Colors.amber.shade50 : Colors.grey[100],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: ratingsCount > 0 ? Colors.amber.shade200 : Colors.grey[300]!,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.star,
+                  color: ratingsCount > 0 ? Colors.amber : Colors.grey[400],
+                  size: 16,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  ratingsCount > 0 ? averageRating.toStringAsFixed(1) : 'No ratings',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: ratingsCount > 0 ? Colors.black87 : Colors.grey[500],
+                  ),
+                ),
+                if (ratingsCount > 0) ...[
+                  const SizedBox(width: 4),
+                  Text(
+                    '($ratingsCount)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  Icon(Icons.chevron_right, size: 14, color: Colors.grey[600]),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }
