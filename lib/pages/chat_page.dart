@@ -4,6 +4,7 @@ import 'package:thryfto/commonWidgets/empty_state.dart';
 import 'package:thryfto/commonWidgets/error.dart';
 import 'package:thryfto/commonWidgets/search_bar.dart';
 import 'package:thryfto/services/database_service.dart';
+import 'package:thryfto/services/chat_service.dart';
 import 'package:thryfto/pages/conversation_page.dart';
 
 class ChatListPage extends StatefulWidget {
@@ -16,8 +17,8 @@ class ChatListPage extends StatefulWidget {
 }
 
 class _ChatListPageState extends State<ChatListPage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final DatabaseService _db = DatabaseService();
+  final ChatService _chatService = ChatService();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -39,26 +40,24 @@ class _ChatListPageState extends State<ChatListPage> {
       _showLoadingDialog();
 
       try {
-        final currentUserId = _db.currentUserId;
-        if (currentUserId == null) {
-          throw Exception('User not authenticated');
-        }
-
-        // Add current user to deletedFor array
-        await _firestore.collection('chats').doc(chatId).update({
-          'deletedFor': FieldValue.arrayUnion([currentUserId]),
-        });
+        // Using ChatService to delete chat
+        final success = await _chatService.deleteChat(chatId);
 
         if (mounted) {
           Navigator.pop(context); // Close loading dialog
-          _showResultDialog(
-            success: true,
-            successTitle: 'Conversation Deleted',
-            successMessage:
-                'The conversation has been removed from your chat list.',
-            failTitle: '',
-            failMessage: '',
-          );
+
+          if (success) {
+            _showResultDialog(
+              success: true,
+              successTitle: 'Conversation Deleted',
+              successMessage:
+                  'The conversation has been removed from your chat list.',
+              failTitle: '',
+              failMessage: '',
+            );
+          } else {
+            throw Exception('Failed to delete conversation');
+          }
         }
       } catch (e) {
         print('Error deleting conversation: $e');
@@ -352,7 +351,6 @@ class _ChatListPageState extends State<ChatListPage> {
       ),
       body: Column(
         children: [
-          // Search Bar
           Padding(
             padding: const EdgeInsets.all(16),
             child: CustomSearchBar(
@@ -368,7 +366,6 @@ class _ChatListPageState extends State<ChatListPage> {
               showClearButton: _searchQuery.isNotEmpty,
             ),
           ),
-          // Chat List
           Expanded(
             child: _buildChatList(),
           ),
@@ -379,10 +376,8 @@ class _ChatListPageState extends State<ChatListPage> {
 
   Widget _buildChatList() {
     return StreamBuilder<QuerySnapshot>(
-      stream: _firestore
-          .collection('chats')
-          .where('participants', arrayContains: _db.currentUserId)
-          .snapshots(),
+      // FIXED: Using ChatService to get user chats
+      stream: _chatService.getUserChats(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -394,14 +389,14 @@ class _ChatListPageState extends State<ChatListPage> {
 
         final chatDocs = snapshot.data?.docs ?? [];
 
-        // Filter out chats deleted by current user
+        // Filter out deleted chats
         final chats = chatDocs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
           final deletedFor = List<String>.from(data['deletedFor'] ?? []);
-          return !deletedFor.contains(_db.currentUserId);
+          return !deletedFor.contains(_chatService.currentUserId);
         }).toList();
 
-        // Sort client-side by last message time
+        // Sort by last message time
         chats.sort((a, b) {
           final aData = a.data() as Map<String, dynamic>;
           final bData = b.data() as Map<String, dynamic>;
@@ -436,7 +431,7 @@ class _ChatListPageState extends State<ChatListPage> {
   Widget _buildChatTile(String chatId, Map<String, dynamic> chatData) {
     final participants = List<String>.from(chatData['participants'] ?? []);
     final otherUserId = participants.firstWhere(
-      (id) => id != _db.currentUserId,
+      (id) => id != _chatService.currentUserId,
       orElse: () => '',
     );
 
@@ -444,56 +439,7 @@ class _ChatListPageState extends State<ChatListPage> {
       stream: _db.getUserProfileStream(otherUserId),
       builder: (context, userSnapshot) {
         if (userSnapshot.connectionState == ConnectionState.waiting) {
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: Colors.grey[300],
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 100,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
-                          width: 150,
-                          height: 14,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
+          return _buildSkeletonTile();
         }
 
         final otherUser = userSnapshot.data;
@@ -505,6 +451,7 @@ class _ChatListPageState extends State<ChatListPage> {
         final lastMessage = chatData['lastMessage'] ?? '';
         final lastMessageTime = chatData['lastMessageTime'] as Timestamp?;
 
+        // Filter by search query
         if (_searchQuery.isNotEmpty &&
             !displayName.toLowerCase().contains(_searchQuery)) {
           return const SizedBox.shrink();
@@ -611,6 +558,35 @@ class _ChatListPageState extends State<ChatListPage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildSkeletonTile() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            CircleAvatar(radius: 24, backgroundColor: Colors.grey[200]),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(width: 100, height: 16, color: Colors.grey[200]),
+                  const SizedBox(height: 6),
+                  Container(width: 150, height: 14, color: Colors.grey[100]),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

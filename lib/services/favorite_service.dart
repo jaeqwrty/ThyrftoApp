@@ -118,10 +118,11 @@ class FavoritesService {
   }) async {
     try {
       // Get seller's info
-      final sellerDoc = await _firestore.collection('users').doc(sellerId).get();
-      final sellerName = sellerDoc.data()?['fullName'] ?? 
-                         sellerDoc.data()?['full_name'] ?? 
-                         'A seller';
+      final sellerDoc =
+          await _firestore.collection('users').doc(sellerId).get();
+      final sellerName = sellerDoc.data()?['fullName'] ??
+          sellerDoc.data()?['full_name'] ??
+          'A seller';
 
       // Get all users who favorited this seller
       final favoritedUsers = await getUsersWhoFavorited(sellerId);
@@ -175,5 +176,47 @@ class FavoritesService {
         .where('seller_id', isEqualTo: sellerId)
         .snapshots()
         .map((snapshot) => snapshot.docs.length);
+  }
+
+  Stream<List<Map<String, dynamic>>> getFollowingProfiles(String userId) {
+    return _firestore
+        .collection('favorites')
+        .where('user_id', isEqualTo: userId)
+        .snapshots()
+        .asyncMap((snapshot) async {
+      List<Map<String, dynamic>> users = [];
+      for (var doc in snapshot.docs) {
+        String sellerId = doc.data()['seller_id'];
+        var userDoc = await _firestore.collection('users').doc(sellerId).get();
+        if (userDoc.exists) {
+          var data = userDoc.data()!;
+          data['uid'] = userDoc.id; // Ensure the ID is attached
+          users.add(data);
+        }
+      }
+      return users;
+    });
+  }
+
+  /// Get actual user profiles of everyone following this user
+  Stream<List<Map<String, dynamic>>> getFollowersProfiles(String userId) {
+    return _firestore
+        .collection('favorites')
+        .where('seller_id', isEqualTo: userId)
+        .snapshots()
+        .asyncMap((snapshot) async {
+      List<Map<String, dynamic>> users = [];
+      for (var doc in snapshot.docs) {
+        String followerId = doc.data()['user_id'];
+        var userDoc =
+            await _firestore.collection('users').doc(followerId).get();
+        if (userDoc.exists) {
+          var data = userDoc.data()!;
+          data['uid'] = userDoc.id;
+          users.add(data);
+        }
+      }
+      return users;
+    });
   }
 }

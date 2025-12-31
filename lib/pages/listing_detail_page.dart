@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:thryfto/pages/conversation_page.dart';
 import 'package:thryfto/pages/profile_page.dart';
 import 'package:thryfto/pages/user_profile_page.dart';
+import 'package:thryfto/services/chat_service.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/pages/edit_listing_page.dart';
 import 'package:thryfto/modals/share_modal.dart';
@@ -23,6 +24,7 @@ class ListingDetailPage extends StatefulWidget {
 
 class _ListingDetailPageState extends State<ListingDetailPage> {
   final DatabaseService _db = DatabaseService();
+  final ChatService _chatService = ChatService();
   int _currentImageIndex = 0;
   bool _isLiked = false;
   bool _isBookmarked = false;
@@ -412,7 +414,11 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                                   // Navigate to ProfilePage (the current user's own profile)
                                   // Since we're already in the app, we can just switch to the Profile tab
                                   // or you can pop to go back if this is coming from the profile
-                                  Navigator.push(context, MaterialPageRoute(builder: (context) => ProfilePage(user: widget.user)));
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              ProfilePage(user: widget.user)));
                                 } else {
                                   // Navigate to UserProfilePage for other users
                                   Navigator.push(
@@ -584,8 +590,8 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
               child: SafeArea(
                 child: ElevatedButton.icon(
                   onPressed: () async {
-                    final chatId =
-                        await _db.getOrCreateChat(widget.listing['seller_id']);
+                    final chatId = await _chatService
+                        .getOrCreateChat(widget.listing['seller_id']);
                     if (chatId != null && mounted) {
                       Navigator.push(
                         context,

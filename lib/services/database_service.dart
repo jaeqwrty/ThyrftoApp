@@ -340,38 +340,6 @@ class DatabaseService {
     }
   }
 
-  // Get or create chat
-  Future<String?> getOrCreateChat(String otherUserId) async {
-    if (currentUserId == null) return null;
-
-    try {
-      // Check if chat already exists
-      final existingChat = await _firestore
-          .collection('chats')
-          .where('participants', arrayContains: currentUserId)
-          .get();
-
-      for (var doc in existingChat.docs) {
-        final participants = List<String>.from(doc.data()['participants']);
-        if (participants.contains(otherUserId)) {
-          return doc.id;
-        }
-      }
-
-      // Create new chat
-      final chatRef = await _firestore.collection('chats').add({
-        'participants': [currentUserId, otherUserId],
-        'createdAt': FieldValue.serverTimestamp(),
-        'lastMessage': '',
-        'lastMessageTime': FieldValue.serverTimestamp(),
-      });
-
-      return chatRef.id;
-    } catch (e) {
-      return null;
-    }
-  }
-
   // Delete listing images from storage
   Future<void> deleteListingImages(String listingId) async {
     try {
@@ -767,7 +735,6 @@ class DatabaseService {
     });
   }
 
-  // IMPORTANT: Replace the existing getBookmarkedListings in database_service.dart with this:
   // Get user's bookmarked listings with real-time updates and proper ordering
   Stream<List<Map<String, dynamic>>> getBookmarkedListingsUpdated() {
     if (currentUserId == null) {
@@ -804,7 +771,6 @@ class DatabaseService {
       return listings;
     });
   }
-  // Add these methods to your DatabaseService class
 
   /// Increment the share count for a listing
   Future<void> incrementShareCount(String listingId) async {
@@ -919,36 +885,6 @@ class DatabaseService {
     }
   }
 
-  Future<void> sendMessageWithNotification({
-    required String recipientId,
-    required String messageText,
-  }) async {
-    try {
-      if (currentUserId == null) return;
-
-      // Get current user's name
-      final currentUserDoc =
-          await _firestore.collection('users').doc(currentUserId!).get();
-      final currentUserName = currentUserDoc.data()?['fullName'] ??
-          currentUserDoc.data()?['full_name'] ??
-          currentUserDoc.data()?['username'] ??
-          'Someone';
-
-      await _createNotification(
-        recipientId: recipientId,
-        type: 'message',
-        title: 'New message from $currentUserName',
-        body: messageText.length > 50
-            ? '${messageText.substring(0, 50)}...'
-            : messageText,
-        relatedUserId: currentUserId,
-      );
-    } catch (e) {
-      print('Error sending message notification: $e');
-    }
-  }
-
-  /// Internal helper: Create notification in Firestore
   /// Internal helper: Create notification in Firestore with sender details
   Future<void> _createNotification({
     required String recipientId,
@@ -995,72 +931,6 @@ class DatabaseService {
     } catch (e) {
       print('Error creating notification: $e');
       rethrow;
-    }
-  }
-
-  /// Delete a chat conversation and all its messages
-  Future<bool> deleteChat(String chatId) async {
-    try {
-      // Delete all messages in the chat
-      final messagesSnapshot = await _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .get();
-
-      for (var doc in messagesSnapshot.docs) {
-        await doc.reference.delete();
-      }
-
-      // Delete the chat document
-      await _firestore.collection('chats').doc(chatId).delete();
-
-      return true;
-    } catch (e) {
-      print('Error deleting chat: $e');
-      return false;
-    }
-  }
-
-  /// Delete a specific message from a chat
-  Future<bool> deleteMessage(String chatId, String messageId) async {
-    try {
-      await _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .doc(messageId)
-          .delete();
-
-      // Update last message if needed
-      final remainingMessages = await _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .orderBy('timestamp', descending: true)
-          .limit(1)
-          .get();
-
-      if (remainingMessages.docs.isEmpty) {
-        // No messages left, update chat
-        await _firestore.collection('chats').doc(chatId).update({
-          'lastMessage': '',
-          'lastMessageTime': FieldValue.serverTimestamp(),
-        });
-      } else {
-        // Update with the latest message
-        final lastMsg = remainingMessages.docs.first.data();
-        await _firestore.collection('chats').doc(chatId).update({
-          'lastMessage': lastMsg['text'] ?? '',
-          'lastMessageTime':
-              lastMsg['timestamp'] ?? FieldValue.serverTimestamp(),
-        });
-      }
-
-      return true;
-    } catch (e) {
-      print('Error deleting message: $e');
-      return false;
     }
   }
 }

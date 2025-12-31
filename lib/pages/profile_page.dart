@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/commonWidgets/empty_state.dart';
 import 'package:thryfto/pages/edit_profile_page.dart';
+import 'package:thryfto/pages/user_follow_page.dart';
 import 'package:thryfto/profileWidgets/profile_dialogs.dart';
 import 'package:thryfto/profileWidgets/profile_widgets.dart';
 import 'package:thryfto/profileWidgets/profile_settings_handler.dart';
@@ -65,7 +66,7 @@ class _ProfilePageState extends State<ProfilePage>
             onPressed: () => ProfileSettingsHandler.showSettingsMenu(
               context: context,
               authService: _authService,
-              user: widget.user, // FIX: Added this to enable Seed/Reset logic
+              user: widget.user,
             ),
           ),
         ],
@@ -91,12 +92,11 @@ class _ProfilePageState extends State<ProfilePage>
                               color: Colors.black, fontSize: 28))
                       : null,
                 ),
-                const SizedBox(width: 40), // Maintained the 40px gap
+                const SizedBox(width: 40),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Full Name clearly above stats
                       Text(
                         fullName,
                         style: const TextStyle(
@@ -112,20 +112,52 @@ class _ProfilePageState extends State<ProfilePage>
                                 '${s.data?.length ?? 0}', 'posts'),
                           ),
                           const SizedBox(width: 30),
-                          StreamBuilder<int>(
-                            stream: _favoritesService
-                                .getFavoritesCountStream(userId),
-                            builder: (context, s) =>
-                                _buildStatColumn('${s.data ?? 0}', 'followers'),
+
+                          // FOLLOWERS STAT (Clickable)
+                          InkWell(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => UserListPage(
+                                  title: 'Followers',
+                                  userStream: _favoritesService
+                                      .getFollowersProfiles(userId),
+                                  currentUser: widget
+                                      .user, // IMPORTANT: Pass the current logged-in user map here
+                                ),
+                              ),
+                            ),
+                            child: StreamBuilder<int>(
+                              stream: _favoritesService
+                                  .getFavoritesCountStream(userId),
+                              builder: (context, s) => _buildStatColumn(
+                                  '${s.data ?? 0}', 'followers'),
+                            ),
                           ),
                           const SizedBox(width: 30),
-                          StreamBuilder<QuerySnapshot>(
-                            stream: FirebaseFirestore.instance
-                                .collection('favorites')
-                                .where('user_id', isEqualTo: userId)
-                                .snapshots(),
-                            builder: (context, s) => _buildStatColumn(
-                                '${s.data?.docs.length ?? 0}', 'following'),
+
+                          // FOLLOWING STAT (Clickable)
+                          InkWell(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => UserListPage(
+                                  title: 'Following',
+                                  userStream: _favoritesService
+                                      .getFollowingProfiles(userId),
+                                  currentUser: widget
+                                      .user, // IMPORTANT: Pass the current logged-in user map here
+                                ),
+                              ),
+                            ),
+                            child: StreamBuilder<QuerySnapshot>(
+                              stream: FirebaseFirestore.instance
+                                  .collection('favorites')
+                                  .where('user_id', isEqualTo: userId)
+                                  .snapshots(),
+                              builder: (context, s) => _buildStatColumn(
+                                  '${s.data?.docs.length ?? 0}', 'following'),
+                            ),
                           ),
                         ],
                       ),
@@ -146,7 +178,6 @@ class _ProfilePageState extends State<ProfilePage>
                     style:
                         const TextStyle(fontSize: 14, color: Colors.black87)),
                 const SizedBox(height: 4),
-                // Location Widget restored below bio
                 LocationWidget(
                     userId: userId!, locationService: _locationService),
                 const SizedBox(height: 4),
@@ -275,8 +306,6 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 }
-
-// ... _CompactRatingDisplay remains the same
 
 /// Compact Rating Display
 class _CompactRatingDisplay extends StatelessWidget {

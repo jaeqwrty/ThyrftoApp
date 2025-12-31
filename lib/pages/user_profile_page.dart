@@ -5,6 +5,7 @@ import 'package:thryfto/profileWidgets/profile_dialogs.dart';
 import 'package:thryfto/profileWidgets/user_profileWidgets.dart';
 import 'package:thryfto/profileWidgets/profile_settings_handler.dart';
 import 'package:thryfto/services/database_service.dart';
+import 'package:thryfto/services/chat_service.dart'; // Added ChatService
 import 'package:thryfto/services/favorite_service.dart';
 import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/services/rating_service.dart';
@@ -27,6 +28,7 @@ class UserProfilePage extends StatefulWidget {
 
 class _UserProfilePageState extends State<UserProfilePage> {
   final DatabaseService _db = DatabaseService();
+  final ChatService _chatService = ChatService(); // Added ChatService
   final LocationService _locationService = LocationService();
   final FavoritesService _favoritesService = FavoritesService();
   final RatingService _ratingService = RatingService();
@@ -143,9 +145,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                       color: Colors.white, fontSize: 24))
                               : null,
                     ),
-                    const SizedBox(
-                        width:
-                            40), // INCREASED: Pushes the name and stats further away
+                    const SizedBox(width: 40),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,7 +365,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Future<void> _handleMessage(String fullName) async {
-    final chatId = await _db.getOrCreateChat(widget.userId);
+    // FIXED: Now using ChatService instead of DatabaseService
+    final chatId = await _chatService.getOrCreateChat(widget.userId);
     if (chatId != null && mounted) {
       Navigator.push(
           context,
