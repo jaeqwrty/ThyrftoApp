@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/commonWidgets/empty_state.dart';
-import 'package:thryfto/commonWidgets/error.dart';
 import 'package:thryfto/pages/edit_profile_page.dart';
-import 'package:thryfto/profileWidgets/profile_widgets.dart';
 import 'package:thryfto/profileWidgets/profile_dialogs.dart';
+import 'package:thryfto/profileWidgets/profile_widgets.dart';
+import 'package:thryfto/profileWidgets/profile_settings_handler.dart';
+import 'package:thryfto/profileWidgets/user_profileWidgets.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/rating_service.dart';
-import 'package:thryfto/services/seeding_service.dart';
-import 'package:thryfto/shared/auth_wrapper.dart';
+import 'package:thryfto/services/favorite_service.dart';
+import 'package:thryfto/services/location_service.dart';
 
 class ProfilePage extends StatefulWidget {
   final Map<String, dynamic> user;
-
   const ProfilePage({super.key, required this.user});
 
   @override
@@ -24,7 +25,9 @@ class _ProfilePageState extends State<ProfilePage>
     with SingleTickerProviderStateMixin {
   final DatabaseService _db = DatabaseService();
   final AuthService _authService = AuthService();
+  final FavoritesService _favoritesService = FavoritesService();
   final RatingService _ratingService = RatingService();
+  final LocationService _locationService = LocationService();
   late TabController _tabController;
 
   @override
@@ -34,176 +37,169 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handleLogout() async {
-    final confirmed = await ConfirmationDialog.show(
-      context,
-      title: 'Logout',
-      content: 'Are you sure you want to logout?',
-      confirmText: 'Logout',
-      confirmColor: Colors.red,
-    );
-
-    if (confirmed == true) {
-      await _authService.signOut();
-      if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const AuthWrapper()),
-          (route) => false,
-        );
-      }
-    }
-  }
-
-  Future<void> _handleEditProfile() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditProfilePage(user: widget.user),
-      ),
-    );
-
-    if (result == true && mounted) {
-      final userId = widget.user['id'] ?? widget.user['uid'] ?? FirebaseAuth.instance.currentUser?.uid;
-      if (userId != null) {
-        final updatedUser = await _authService.getUserProfile(userId);
-        if (updatedUser != null && mounted) {
-          setState(() {
-            widget.user.clear();
-            widget.user.addAll(updatedUser);
-          });
-        }
-      }
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated successfully!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final fullName =
+        widget.user['fullName'] ?? widget.user['full_name'] ?? 'User';
+    final username = widget.user['username'] ?? 'unknown';
+    final profileImageUrl = widget.user['profileImageUrl'] as String?;
     final bio = widget.user['bio'] as String?;
     final displayBio = (bio == null || bio.trim().isEmpty) ? 'No bio' : bio;
-    final userId = widget.user['id'] ?? 
-                   widget.user['uid'] ?? 
-                   FirebaseAuth.instance.currentUser?.uid;
+    final userId = widget.user['id'] ??
+        widget.user['uid'] ??
+        FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'Profile',
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        centerTitle: false,
+        title: Text(username,
+            style: const TextStyle(
+                color: Colors.black,
+                fontSize: 20,
+                fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined, color: Colors.black87),
-            onPressed: _showSettingsMenu,
+            icon: const Icon(Icons.menu, color: Colors.black),
+            onPressed: () => ProfileSettingsHandler.showSettingsMenu(
+              context: context,
+              authService: _authService,
+              user: widget.user, // FIX: Added this to enable Seed/Reset logic
+            ),
           ),
         ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Profile Header (Avatar, Name, Location)
-          ProfileHeader(
-            user: widget.user,
-            onEditProfile: () {}, 
-          ),
-          
-          // 2. Bio Section
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 5),
-            child: Text(
-              displayBio,
-              style: TextStyle(
-                fontSize: 15,
-                color: (bio == null || bio.trim().isEmpty) 
-                    ? Colors.grey[500] 
-                    : Colors.black87,
-                fontStyle: (bio == null || bio.trim().isEmpty) 
-                    ? FontStyle.italic 
-                    : FontStyle.normal,
-              ),
-              textAlign: TextAlign.start,
-            ),
-          ),
-
-          // 3. Rating Display - Using reusable widget from profile_dialogs.dart
-          if (userId != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: _RatingDisplayWidget(
-                userId: userId,
-                ratingService: _ratingService,
-              ),
-            ),
-
-          // 4. Edit Profile Button
+          // --- Header: Avatar + (Name & Stats) ---
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-            child: SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: _handleEditProfile,
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF8B5CF6)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  backgroundColor: Colors.grey[200],
+                  backgroundImage:
+                      (profileImageUrl != null && profileImageUrl.isNotEmpty)
+                          ? NetworkImage(profileImageUrl)
+                          : null,
+                  child: (profileImageUrl == null || profileImageUrl.isEmpty)
+                      ? Text(fullName[0].toUpperCase(),
+                          style: const TextStyle(
+                              color: Colors.black, fontSize: 28))
+                      : null,
                 ),
-                child: const Text(
-                  'Edit Profile',
-                  style: TextStyle(
-                    color: Color(0xFF8B5CF6),
-                    fontWeight: FontWeight.w600,
+                const SizedBox(width: 40), // Maintained the 40px gap
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Full Name clearly above stats
+                      Text(
+                        fullName,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          StreamBuilder<List<Map<String, dynamic>>>(
+                            stream: _db.getUserListings(userId!),
+                            builder: (context, s) => _buildStatColumn(
+                                '${s.data?.length ?? 0}', 'posts'),
+                          ),
+                          const SizedBox(width: 30),
+                          StreamBuilder<int>(
+                            stream: _favoritesService
+                                .getFavoritesCountStream(userId),
+                            builder: (context, s) =>
+                                _buildStatColumn('${s.data ?? 0}', 'followers'),
+                          ),
+                          const SizedBox(width: 30),
+                          StreamBuilder<QuerySnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('favorites')
+                                .where('user_id', isEqualTo: userId)
+                                .snapshots(),
+                            builder: (context, s) => _buildStatColumn(
+                                '${s.data?.docs.length ?? 0}', 'following'),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 10),
-
-          // 5. Tab Bar
-          Container(
-            color: Colors.white,
-            child: TabBar(
-              controller: _tabController,
-              labelColor: const Color(0xFF8B5CF6),
-              unselectedLabelColor: Colors.grey,
-              indicatorColor: const Color(0xFF8B5CF6),
-              tabs: const [
-                Tab(icon: Icon(Icons.grid_view), text: 'My Listings'),
-                Tab(icon: Icon(Icons.bookmark_outline), text: 'Bookmarks'),
               ],
             ),
           ),
-          
-          // 6. Tab Content
+
+          // --- Identity: Bio, Location & Compact Rating ---
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(displayBio,
+                    style:
+                        const TextStyle(fontSize: 14, color: Colors.black87)),
+                const SizedBox(height: 4),
+                // Location Widget restored below bio
+                LocationWidget(
+                    userId: userId!, locationService: _locationService),
+                const SizedBox(height: 4),
+                _CompactRatingDisplay(
+                    userId: userId, ratingService: _ratingService),
+              ],
+            ),
+          ),
+
+          // --- Action Buttons ---
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildActionButton(
+                      'Edit Profile',
+                      () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  EditProfilePage(user: widget.user)))),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildActionButton(
+                      'Share Profile',
+                      () => ProfileSettingsHandler.handleShareProfile(
+                          context: context,
+                          userId: userId,
+                          username: username)),
+                ),
+              ],
+            ),
+          ),
+
+          TabBar(
+            controller: _tabController,
+            labelColor: Colors.black,
+            unselectedLabelColor: Colors.grey,
+            indicatorColor: Colors.black,
+            indicatorWeight: 1,
+            tabs: const [
+              Tab(icon: Icon(Icons.grid_on_sharp, size: 24)),
+              Tab(icon: Icon(Icons.bookmark_border, size: 26)),
+            ],
+          ),
+
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildMyListings(),
+                _buildMyListings(userId),
                 _buildBookmarks(),
               ],
             ),
@@ -213,40 +209,49 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  Widget _buildMyListings() {
-    final userId = widget.user['id'] ??
-        widget.user['uid'] ??
-        FirebaseAuth.instance.currentUser?.uid;
+  Widget _buildStatColumn(String value, String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(value,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(label,
+            style: const TextStyle(fontSize: 12, color: Colors.black54)),
+      ],
+    );
+  }
 
-    if (userId == null) {
-      return const ErrorState(message: 'Unable to load listings');
-    }
+  Widget _buildActionButton(String text, VoidCallback onTap) {
+    return SizedBox(
+      height: 32,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFEFEFEF),
+          foregroundColor: Colors.black,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          padding: EdgeInsets.zero,
+        ),
+        child: Text(text,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
 
+  Widget _buildMyListings(String userId) {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _db.getUserListings(userId),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting)
           return const Center(child: CircularProgressIndicator());
-        }
-
-        if (snapshot.hasError) {
-          return ErrorState(message: 'Error: ${snapshot.error}');
-        }
-
         final listings = snapshot.data ?? [];
-
-        if (listings.isEmpty) {
+        if (listings.isEmpty)
           return const EmptyState(
-            icon: Icons.shopping_bag_outlined,
-            title: 'No listings yet',
-            subtitle: 'Start selling by tapping the + button',
-          );
-        }
-
-        return ListingsGrid(
-          listings: listings,
-          user: widget.user,
-        );
+              icon: Icons.grid_on,
+              title: 'No listings yet',
+              subtitle: 'Items you post will appear here');
+        return ListingsGrid(listings: listings, user: widget.user);
       },
     );
   }
@@ -255,218 +260,54 @@ class _ProfilePageState extends State<ProfilePage>
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _db.getBookmarkedListings(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting)
           return const Center(child: CircularProgressIndicator());
-        }
-
-        if (snapshot.hasError) {
-          return ErrorState(message: 'Error: ${snapshot.error}');
-        }
-
         final listings = snapshot.data ?? [];
-
         if (listings.isEmpty) {
           return const EmptyState(
-            icon: Icons.bookmark_outline,
-            title: 'No bookmarks yet',
-            subtitle: 'Save items you like for later',
-          );
+              icon: Icons.bookmark_outline,
+              title: 'No saved items',
+              subtitle: 'Items you save will appear here');
         }
-
-        return RefreshIndicator(
-          onRefresh: () async {
-            setState(() {});
-          },
-          child: ListingsGrid(
-            listings: listings,
-            user: widget.user,
-            showBookmarkBadge: true,
-          ),
-        );
+        return ListingsGrid(
+            listings: listings, user: widget.user, showBookmarkBadge: true);
       },
     );
   }
-
-  void _showSettingsMenu() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SettingsMenuItem(
-              icon: Icons.help_outline,
-              title: 'Help & Support',
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Help & Support coming soon!')),
-                );
-              },
-            ),
-            SettingsMenuItem(
-              icon: Icons.info_outline,
-              title: 'About',
-              onTap: () {
-                Navigator.pop(context);
-                showAboutDialog(
-                  context: context,
-                  applicationName: 'Thryfto',
-                  applicationVersion: '1.0.0',
-                  applicationLegalese: '© 2025 Thryfto. All rights reserved.',
-                );
-              },
-            ),
-            SettingsMenuItem(
-              icon: Icons.cloud_upload,
-              title: 'Seed Database (Dev Only)',
-              onTap: () => _handleSeedDatabase(),
-            ),
-            SettingsMenuItem(
-              icon: Icons.refresh,
-              title: 'Reset Database',
-              subtitle: 'Clears all listings (Dev Only)',
-              onTap: () => _handleResetDatabase(),
-            ),
-            const Divider(),
-            SettingsMenuItem(
-              icon: Icons.logout,
-              title: 'Logout',
-              iconColor: Colors.red,
-              textColor: Colors.red,
-              onTap: () {
-                Navigator.pop(context);
-                _handleLogout();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _handleSeedDatabase() async {
-    final userId = widget.user['id'] ??
-        widget.user['uid'] ??
-        FirebaseAuth.instance.currentUser?.uid;
-
-    if (userId != null) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Seeding database...')),
-      );
-      await SeedingService().seedDatabase(userId);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Database seeded successfully!')),
-        );
-      }
-    }
-  }
-
-  Future<void> _handleResetDatabase() async {
-    Navigator.pop(context);
-    final userId = widget.user['id'] ??
-        widget.user['uid'] ??
-        FirebaseAuth.instance.currentUser?.uid;
-    if (userId != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Resetting database...')),
-      );
-      await SeedingService().clearAllData();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Database reset successfully!')),
-        );
-      }
-    }
-  }
 }
 
-/// Separate StatefulWidget for Rating Display - Reusable across pages
-class _RatingDisplayWidget extends StatefulWidget {
+// ... _CompactRatingDisplay remains the same
+
+/// Compact Rating Display
+class _CompactRatingDisplay extends StatelessWidget {
   final String userId;
   final RatingService ratingService;
+  const _CompactRatingDisplay(
+      {required this.userId, required this.ratingService});
 
-  const _RatingDisplayWidget({
-    required this.userId,
-    required this.ratingService,
-  });
-
-  @override
-  State<_RatingDisplayWidget> createState() => _RatingDisplayWidgetState();
-}
-
-class _RatingDisplayWidgetState extends State<_RatingDisplayWidget> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<Map<String, dynamic>>(
-      stream: widget.ratingService.getSellerRatingStatsStream(widget.userId),
-      initialData: const {
-        'average_rating': 0.0,
-        'ratings_count': 0,
-      },
+      stream: ratingService.getSellerRatingStatsStream(userId),
       builder: (context, snapshot) {
-        final stats = snapshot.data ?? {
-          'average_rating': 0.0,
-          'ratings_count': 0,
-        };
-        
-        final averageRating = stats['average_rating'] as double;
-        final ratingsCount = stats['ratings_count'] as int;
+        final stats =
+            snapshot.data ?? {'average_rating': 0.0, 'ratings_count': 0};
+        if (stats['ratings_count'] == 0) return const SizedBox.shrink();
 
-        return GestureDetector(
-          onTap: ratingsCount > 0 
-              ? () => RatingsBottomSheet.show(
-                    context: context,
-                    userId: widget.userId,
-                    ratingService: widget.ratingService,
-                  )
-              : null,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-            decoration: BoxDecoration(
-              color: ratingsCount > 0 ? Colors.amber.shade50 : Colors.grey[100],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: ratingsCount > 0 ? Colors.amber.shade200 : Colors.grey[300]!,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.star,
-                  color: ratingsCount > 0 ? Colors.amber : Colors.grey[400],
-                  size: 16,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  ratingsCount > 0 ? averageRating.toStringAsFixed(1) : 'No ratings',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: ratingsCount > 0 ? Colors.black87 : Colors.grey[500],
-                  ),
-                ),
-                if (ratingsCount > 0) ...[
-                  const SizedBox(width: 4),
-                  Text(
-                    '($ratingsCount)',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                  const SizedBox(width: 2),
-                  Icon(Icons.chevron_right, size: 14, color: Colors.grey[600]),
-                ],
-              ],
-            ),
+        return InkWell(
+          onTap: () => RatingsBottomSheet.show(
+              context: context, userId: userId, ratingService: ratingService),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.star, size: 14, color: Colors.amber),
+              const SizedBox(width: 4),
+              Text((stats['average_rating'] as double).toStringAsFixed(1),
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.bold)),
+              Text(' (${stats['ratings_count']})',
+                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            ],
           ),
         );
       },
