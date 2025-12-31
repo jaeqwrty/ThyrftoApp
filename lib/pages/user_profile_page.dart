@@ -5,7 +5,7 @@ import 'package:thryfto/profileWidgets/profile_dialogs.dart';
 import 'package:thryfto/profileWidgets/user_profileWidgets.dart';
 import 'package:thryfto/profileWidgets/profile_settings_handler.dart';
 import 'package:thryfto/services/database_service.dart';
-import 'package:thryfto/services/chat_service.dart'; // Added ChatService
+import 'package:thryfto/services/chat_service.dart';
 import 'package:thryfto/services/favorite_service.dart';
 import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/services/rating_service.dart';
@@ -28,7 +28,7 @@ class UserProfilePage extends StatefulWidget {
 
 class _UserProfilePageState extends State<UserProfilePage> {
   final DatabaseService _db = DatabaseService();
-  final ChatService _chatService = ChatService(); // Added ChatService
+  final ChatService _chatService = ChatService();
   final LocationService _locationService = LocationService();
   final FavoritesService _favoritesService = FavoritesService();
   final RatingService _ratingService = RatingService();
@@ -41,61 +41,21 @@ class _UserProfilePageState extends State<UserProfilePage> {
     return currentUserId == widget.userId;
   }
 
-  void _showProfileMenu(String userId, String username) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.share_outlined),
-              title: const Text('Share Profile'),
-              onTap: () {
-                Navigator.pop(context);
-                ProfileSettingsHandler.handleShareProfile(
-                  context: context,
-                  userId: userId,
-                  username: username,
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.block_outlined, color: Colors.red),
-              title:
-                  const Text('Block User', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                _showSnackBar(
-                  message: 'Block feature coming soon!',
-                  icon: Icons.info_outline,
-                  backgroundColor: Colors.black87,
-                );
-              },
-            ),
-            const SizedBox(height: 10),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<Map<String, dynamic>?>(
       stream: _db.getUserProfileStream(widget.userId),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        // Handle initial loading state
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
           return const Scaffold(
-              body: Center(child: CircularProgressIndicator()));
+            backgroundColor: Colors.white,
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
 
         final userData = snapshot.data ?? {};
-        final fullName =
-            userData['fullName'] ?? userData['full_name'] ?? 'User';
+        final fullName = userData['fullName'] ?? userData['full_name'] ?? 'User';
         final username = userData['username'] ?? 'unknown';
         final profileImageUrl = userData['profileImageUrl'] as String?;
         final bio = userData['bio'] as String?;
@@ -125,25 +85,21 @@ class _UserProfilePageState extends State<UserProfilePage> {
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- Header Section ---
+              // --- Header Section: Avatar & Stats ---
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
                     CircleAvatar(
                       radius: 35,
                       backgroundColor: const Color(0xFF8B5CF6),
-                      backgroundImage: (profileImageUrl != null &&
-                              profileImageUrl.isNotEmpty)
+                      backgroundImage: (profileImageUrl != null && profileImageUrl.isNotEmpty)
                           ? NetworkImage(profileImageUrl)
                           : null,
-                      child:
-                          (profileImageUrl == null || profileImageUrl.isEmpty)
-                              ? Text(fullName[0].toUpperCase(),
-                                  style: const TextStyle(
-                                      color: Colors.white, fontSize: 24))
-                              : null,
+                      child: (profileImageUrl == null || profileImageUrl.isEmpty)
+                          ? Text(fullName.isNotEmpty ? fullName[0].toUpperCase() : 'U',
+                              style: const TextStyle(color: Colors.white, fontSize: 24))
+                          : null,
                     ),
                     const SizedBox(width: 40),
                     Expanded(
@@ -151,8 +107,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(fullName,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 14)),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                           const SizedBox(height: 12),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.start,
@@ -164,8 +119,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                               ),
                               const SizedBox(width: 30),
                               StreamBuilder<int>(
-                                stream: _favoritesService
-                                    .getFavoritesCountStream(widget.userId),
+                                stream: _favoritesService.getFavoritesCountStream(widget.userId),
                                 builder: (context, s) => _buildStatColumn(
                                     '${s.data ?? 0}', 'followers'),
                               ),
@@ -187,15 +141,14 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 ),
               ),
 
+              // --- Identity: Bio, Location & Rating ---
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(displayBio,
-                        style: const TextStyle(
-                            fontSize: 13, color: Colors.black87)),
+                        style: const TextStyle(fontSize: 13, color: Colors.black87)),
                     LocationWidget(
                         userId: widget.userId,
                         locationService: _locationService),
@@ -206,29 +159,26 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 ),
               ),
 
+              // --- Action Buttons (Visible only if not own profile) ---
               if (!_isOwnProfile)
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     children: [
                       Expanded(
                         child: StreamBuilder<bool>(
-                          stream: _favoritesService
-                              .getFavoriteStatusStream(widget.userId),
+                          stream: _favoritesService.getFavoriteStatusStream(widget.userId),
                           builder: (context, favSnapshot) {
                             final isFavorite = favSnapshot.data ?? false;
                             return SizedBox(
                               height: 32,
                               child: ElevatedButton(
-                                onPressed: () =>
-                                    _toggleFavorite(isFavorite, fullName),
+                                onPressed: () => _toggleFavorite(isFavorite, fullName),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: isFavorite
                                       ? Colors.grey[200]
                                       : const Color(0xFF4A69FF),
-                                  foregroundColor:
-                                      isFavorite ? Colors.black : Colors.white,
+                                  foregroundColor: isFavorite ? Colors.black : Colors.white,
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(6)),
@@ -258,6 +208,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
               const Divider(height: 1),
 
+              // --- Grid Label ---
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -265,23 +216,23 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     Icon(Icons.grid_on, size: 18),
                     SizedBox(width: 8),
                     Text('Listings',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15)),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                   ],
                 ),
               ),
 
+              // --- Listings Grid ---
               Expanded(
                 child: StreamBuilder<List<Map<String, dynamic>>>(
                   stream: _db.getUserListings(widget.userId),
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting)
+                    if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
+                    }
                     final listings = snapshot.data ?? [];
                     return GridView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
                         childAspectRatio: 0.75,
                         crossAxisSpacing: 12,
@@ -302,21 +253,59 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
+  void _showProfileMenu(String userId, String username) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.share_outlined),
+              title: const Text('Share Profile'),
+              onTap: () {
+                Navigator.pop(context);
+                ProfileSettingsHandler.handleShareProfile(
+                  context: context,
+                  userId: userId,
+                  username: username,
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.block_outlined, color: Colors.red),
+              title: const Text('Block User', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _showSnackBar(
+                  message: 'Block feature coming soon!',
+                  icon: Icons.info_outline,
+                  backgroundColor: Colors.black87,
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatColumn(String value, String label) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(value,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-        Text(label,
-            style: const TextStyle(fontSize: 12, color: Colors.black54)),
+        Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
       ],
     );
   }
 
-  Widget _buildSecondaryButton(String? text, VoidCallback onTap,
-      {IconData? icon}) {
+  Widget _buildSecondaryButton(String? text, VoidCallback onTap, {IconData? icon}) {
     return SizedBox(
       height: 32,
       child: ElevatedButton(
@@ -337,8 +326,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   Future<void> _toggleFavorite(bool isFavorite, String sellerName) async {
     if (isFavorite) {
-      final success =
-          await _favoritesService.removeFromFavorites(widget.userId);
+      final success = await _favoritesService.removeFromFavorites(widget.userId);
       if (success && mounted) {
         _showSnackBar(
             message: 'Notifications turned off',
@@ -352,8 +340,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
           recipientId: widget.userId,
           type: 'follow',
           title: 'New Follower',
-          body:
-              '${widget.currentUser['fullName'] ?? 'Someone'} started following you',
+          body: '${widget.currentUser['fullName'] ?? 'Someone'} started following you',
           relatedUserId: FirebaseAuth.instance.currentUser?.uid,
         );
         _showSnackBar(
@@ -365,7 +352,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Future<void> _handleMessage(String fullName) async {
-    // FIXED: Now using ChatService instead of DatabaseService
     final chatId = await _chatService.getOrCreateChat(widget.userId);
     if (chatId != null && mounted) {
       Navigator.push(
@@ -397,10 +383,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
   }
 
-  void _showSnackBar(
-      {required String message,
-      required IconData icon,
-      required Color backgroundColor}) {
+  void _showSnackBar({required String message, required IconData icon, required Color backgroundColor}) {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Row(children: [
@@ -410,24 +393,21 @@ class _UserProfilePageState extends State<UserProfilePage> {
         ]),
         backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
   }
 }
 
 class _CompactRatingDisplay extends StatelessWidget {
   final String userId;
   final RatingService ratingService;
-  const _CompactRatingDisplay(
-      {required this.userId, required this.ratingService});
+  const _CompactRatingDisplay({required this.userId, required this.ratingService});
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<Map<String, dynamic>>(
       stream: ratingService.getSellerRatingStatsStream(userId),
       builder: (context, snapshot) {
-        final stats =
-            snapshot.data ?? {'average_rating': 0.0, 'ratings_count': 0};
+        final stats = snapshot.data ?? {'average_rating': 0.0, 'ratings_count': 0};
         if (stats['ratings_count'] == 0) return const SizedBox.shrink();
 
         return InkWell(
@@ -439,8 +419,7 @@ class _CompactRatingDisplay extends StatelessWidget {
               const Icon(Icons.star, size: 14, color: Colors.amber),
               const SizedBox(width: 4),
               Text((stats['average_rating'] as double).toStringAsFixed(1),
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.bold)),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
               Text(' (${stats['ratings_count']})',
                   style: const TextStyle(fontSize: 11, color: Colors.grey)),
             ],

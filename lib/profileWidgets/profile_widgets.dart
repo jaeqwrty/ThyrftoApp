@@ -23,7 +23,8 @@ class ProfileHeader extends StatelessWidget {
     final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
     final fullName = user['fullName'] ?? user['full_name'] ?? 'User';
     final username = user['username'] ?? 'unknown';
-    final profileImageUrl = user['profileImageUrl'] as String?; // Get profile image URL
+    final profileImageUrl =
+        user['profileImageUrl'] as String?; // Get profile image URL
 
     return Container(
       color: Colors.white,
@@ -37,9 +38,10 @@ class ProfileHeader extends StatelessWidget {
               CircleAvatar(
                 radius: 40,
                 backgroundColor: const Color(0xFF8B5CF6),
-                backgroundImage: (profileImageUrl != null && profileImageUrl.isNotEmpty)
-                    ? NetworkImage(profileImageUrl)
-                    : null,
+                backgroundImage:
+                    (profileImageUrl != null && profileImageUrl.isNotEmpty)
+                        ? NetworkImage(profileImageUrl)
+                        : null,
                 child: (profileImageUrl == null || profileImageUrl.isEmpty)
                     ? Text(
                         fullName[0].toUpperCase(),
@@ -77,7 +79,8 @@ class ProfileHeader extends StatelessWidget {
                       future: LocationService().getUserLocation(userId),
                       builder: (context, snapshot) {
                         // Debug output
-                        if (snapshot.connectionState == ConnectionState.waiting) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return Row(
                             children: [
                               SizedBox(
@@ -118,7 +121,8 @@ class ProfileHeader extends StatelessWidget {
                           } else {
                             final lat = locationData['latitude'];
                             final lon = locationData['longitude'];
-                            displayText = 'Lat: ${lat.toStringAsFixed(4)}, Lon: ${lon.toStringAsFixed(4)}';
+                            displayText =
+                                'Lat: ${lat.toStringAsFixed(4)}, Lon: ${lon.toStringAsFixed(4)}';
                           }
                           textColor = const Color(0xFF8B5CF6);
                           iconData = Icons.location_on;
@@ -142,8 +146,8 @@ class ProfileHeader extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: textColor,
-                                  fontWeight: hasLocation 
-                                      ? FontWeight.w600 
+                                  fontWeight: hasLocation
+                                      ? FontWeight.w600
                                       : FontWeight.normal,
                                 ),
                                 maxLines: 1,
@@ -160,7 +164,6 @@ class ProfileHeader extends StatelessWidget {
             ],
           ),
           // Edit Profile Button
-         
         ],
       ),
     );
@@ -184,6 +187,8 @@ class ListingGridCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrls = listing['image_urls'] as List<dynamic>? ?? [];
     final hasImage = imageUrls.isNotEmpty;
+    // Check if the item is marked as sold
+    final bool isSold = listing['status'] == 'sold';
 
     return GestureDetector(
       onTap: () {
@@ -214,21 +219,66 @@ class ListingGridCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Image
+                // Image Section
                 Expanded(
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                    child: hasImage
-                        ? Image.network(
-                            imageUrls[0],
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => const ImagePlaceholder(),
-                          )
-                        : const ImagePlaceholder(),
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(12)),
+                        child: hasImage
+                            ? Image.network(
+                                imageUrls[0],
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const ImagePlaceholder(),
+                              )
+                            : const ImagePlaceholder(),
+                      ),
+
+                      // THE SOLD BADGE
+                      if (isSold)
+                        Positioned(
+                          top: 8,
+                          left:
+                              8, // Placed on left to avoid conflict with bookmark on right
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'SOLD',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      // Optional: Dark overlay for sold items
+                      if (isSold)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.05),
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(12)),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                // Details
+
+                // Details Section
                 Padding(
                   padding: const EdgeInsets.all(10),
                   child: Column(
@@ -236,18 +286,23 @@ class ListingGridCard extends StatelessWidget {
                     children: [
                       Text(
                         '₱${listing['price']?.toStringAsFixed(2) ?? '0.00'}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF8B5CF6),
+                          // Grey out the price if sold
+                          color: isSold ? Colors.grey : const Color(0xFF8B5CF6),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         listing['title'] ?? 'No title',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
+                          // Strike-through and grey color if sold
+                          decoration:
+                              isSold ? TextDecoration.lineThrough : null,
+                          color: isSold ? Colors.grey : Colors.black87,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -258,7 +313,8 @@ class ListingGridCard extends StatelessWidget {
                           TagBadge.size(listing['size'] ?? 'N/A'),
                           const SizedBox(width: 6),
                           Flexible(
-                            child: TagBadge.condition(listing['condition'] ?? 'N/A'),
+                            child: TagBadge.condition(
+                                listing['condition'] ?? 'N/A'),
                           ),
                         ],
                       ),
@@ -267,6 +323,32 @@ class ListingGridCard extends StatelessWidget {
                 ),
               ],
             ),
+
+            // Existing bookmark badge
+            if (showBookmarkBadge)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8B5CF6),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.bookmark,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+              ),
             // Optional bookmark badge
             if (showBookmarkBadge)
               Positioned(

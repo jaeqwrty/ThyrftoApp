@@ -95,7 +95,9 @@ class RatingIndicator extends StatelessWidget {
               color: ratingsCount > 0 ? Colors.amber.shade50 : Colors.grey[100],
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: ratingsCount > 0 ? Colors.amber.shade200 : Colors.grey[300]!,
+                color: ratingsCount > 0
+                    ? Colors.amber.shade200
+                    : Colors.grey[300]!,
               ),
             ),
             child: Row(
@@ -108,7 +110,9 @@ class RatingIndicator extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  ratingsCount > 0 ? averageRating.toStringAsFixed(1) : 'No ratings',
+                  ratingsCount > 0
+                      ? averageRating.toStringAsFixed(1)
+                      : 'No ratings',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -162,7 +166,9 @@ class ProfileActionButtons extends StatelessWidget {
           child: ElevatedButton.icon(
             onPressed: onToggleFavorite,
             icon: Icon(
-              isFavorite ? Icons.notifications_active : Icons.notifications_none,
+              isFavorite
+                  ? Icons.notifications_active
+                  : Icons.notifications_none,
               size: 16,
             ),
             label: Text(
@@ -170,12 +176,10 @@ class ProfileActionButtons extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: isFavorite 
-                  ? const Color(0xFF8B5CF6) 
-                  : Colors.white,
-              foregroundColor: isFavorite 
-                  ? Colors.white 
-                  : const Color(0xFF8B5CF6),
+              backgroundColor:
+                  isFavorite ? const Color(0xFF8B5CF6) : Colors.white,
+              foregroundColor:
+                  isFavorite ? Colors.white : const Color(0xFF8B5CF6),
               side: BorderSide(
                 color: const Color(0xFF8B5CF6),
                 width: isFavorite ? 0 : 2,
@@ -198,7 +202,8 @@ class ProfileActionButtons extends StatelessWidget {
                   onPressed: onMessage,
                   icon: const Icon(Icons.message_outlined, size: 14),
                   label: const Text('Message',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                      style:
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.black87,
                     side: BorderSide(color: Colors.grey[300]!),
@@ -217,7 +222,8 @@ class ProfileActionButtons extends StatelessWidget {
                   onPressed: onRate,
                   icon: const Icon(Icons.star_outline, size: 14),
                   label: const Text('Rate',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                      style:
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.black87,
                     side: BorderSide(color: Colors.grey[300]!),
@@ -249,6 +255,9 @@ class ListingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrls = listing['image_urls'] as List<dynamic>? ?? [];
+    // Check if the item is marked as sold
+    final bool isSold = listing['status'] == 'sold';
+
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -275,16 +284,59 @@ class ListingCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                child: imageUrls.isNotEmpty
-                    ? Image.network(
-                        imageUrls[0],
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (c, e, s) => _buildImagePlaceholder(),
-                      )
-                    : _buildImagePlaceholder(),
+              child: Stack(
+                children: [
+                  // The Listing Image
+                  ClipRRect(
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(12)),
+                    child: imageUrls.isNotEmpty
+                        ? Image.network(
+                            imageUrls[0],
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (c, e, s) => _buildImagePlaceholder(),
+                          )
+                        : _buildImagePlaceholder(),
+                  ),
+
+                  // THE SOLD BADGE (Top Right)
+                  if (isSold)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'SOLD',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Optional: Slight dark overlay if sold to make the badge pop
+                  if (isSold)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.05),
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(12)),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             Padding(
@@ -294,18 +346,22 @@ class ListingCard extends StatelessWidget {
                 children: [
                   Text(
                     '₱${listing['price']?.toStringAsFixed(2) ?? '0.00'}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF8B5CF6),
+                      // Grey out the price if sold
+                      color: isSold ? Colors.grey : const Color(0xFF8B5CF6),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     listing['title'] ?? 'No title',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
+                      // Strike-through text if sold
+                      decoration: isSold ? TextDecoration.lineThrough : null,
+                      color: isSold ? Colors.grey : Colors.black87,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

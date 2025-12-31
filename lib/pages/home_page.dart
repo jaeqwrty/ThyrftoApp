@@ -292,9 +292,8 @@ class _HomePageState extends State<HomePage> {
                                     Text(
                                       username,
                                       style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 15
-                                      ),
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 15),
                                     ),
                                     if (distanceText != null &&
                                         distanceText != 'Location unavailable')
@@ -376,6 +375,26 @@ class _HomePageState extends State<HomePage> {
                                 )
                               : _buildImagePlaceholder(),
                         ),
+                        if (listing['status'] == 'sold')
+                          Positioned(
+                            top: 10,
+                            right: 10,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'SOLD',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12),
+                              ),
+                            ),
+                          ),
 
                         // Image count indicator (top right)
                         if (imageCount > 1)

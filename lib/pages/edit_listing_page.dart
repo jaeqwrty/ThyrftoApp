@@ -6,6 +6,7 @@ import 'package:thryfto/commonWidgets/custom_textfield.dart';
 import 'package:thryfto/commonWidgets/section_labels.dart';
 import 'package:thryfto/commonWidgets/listing_form_widgets.dart';
 import 'package:thryfto/services/database_service.dart';
+import 'package:thryfto/services/listing_status_service.dart';
 
 class EditListingPage extends StatefulWidget {
   final Map<String, dynamic> listing;
@@ -25,15 +26,16 @@ class _EditListingPageState extends State<EditListingPage> {
   final DatabaseService _db = DatabaseService();
   final _formKey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
+  final ListingStatusService _statusService = ListingStatusService();
 
   late TextEditingController _titleController;
   late TextEditingController _priceController;
   late TextEditingController _descriptionController;
   late TextEditingController _sizeController;
-  
+
   String _selectedCategory = 'Clothing';
   String _selectedCondition = 'Good';
-  
+
   List<String> _existingImageUrls = [];
   List<XFile> _newImageFiles = [];
   bool _isLoading = false;
@@ -45,7 +47,8 @@ class _EditListingPageState extends State<EditListingPage> {
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.listing['title'] ?? '');
+    _titleController =
+        TextEditingController(text: widget.listing['title'] ?? '');
     _priceController = TextEditingController(
       text: widget.listing['price']?.toString() ?? '',
     );
@@ -93,9 +96,9 @@ class _EditListingPageState extends State<EditListingPage> {
   Future<void> _pickImagesFromGallery() async {
     final totalImages = _existingImageUrls.length + _newImageFiles.length;
     final remainingSlots = _maxImages - totalImages;
-    
+
     final images = await _picker.pickMultiImage(imageQuality: 70);
-    
+
     if (images.isNotEmpty) {
       setState(() {
         _newImageFiles.addAll(images.take(remainingSlots));
@@ -106,12 +109,12 @@ class _EditListingPageState extends State<EditListingPage> {
   Future<void> _pickImageFromCamera() async {
     final totalImages = _existingImageUrls.length + _newImageFiles.length;
     if (totalImages >= _maxImages) return;
-    
+
     final image = await _picker.pickImage(
       source: ImageSource.camera,
       imageQuality: 70,
     );
-    
+
     if (image != null) {
       setState(() {
         _newImageFiles.add(image);
@@ -217,12 +220,10 @@ class _EditListingPageState extends State<EditListingPage> {
                 onRemoveNewImage: _removeNewImage,
               ),
               const SizedBox(height: 12),
-
               const SectionLabel(text: 'Title'),
               const SizedBox(height: 4),
               _buildTitleField(),
               const SizedBox(height: 12),
-
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -252,25 +253,24 @@ class _EditListingPageState extends State<EditListingPage> {
                 ],
               ),
               const SizedBox(height: 12),
-
               const SectionLabel(text: 'Category'),
               const SizedBox(height: 8),
               CustomChoiceChips(
                 options: _categories,
                 selectedValue: _selectedCategory,
-                onSelected: (value) => setState(() => _selectedCategory = value),
+                onSelected: (value) =>
+                    setState(() => _selectedCategory = value),
               ),
               const SizedBox(height: 12),
-
               const SectionLabel(text: 'Condition'),
               const SizedBox(height: 8),
               CustomChoiceChips(
                 options: _conditions,
                 selectedValue: _selectedCondition,
-                onSelected: (value) => setState(() => _selectedCondition = value),
+                onSelected: (value) =>
+                    setState(() => _selectedCondition = value),
               ),
               const SizedBox(height: 12),
-
               const SectionLabel(text: 'Description'),
               const SizedBox(height: 4),
               CustomTextField(
@@ -280,17 +280,26 @@ class _EditListingPageState extends State<EditListingPage> {
                 maxLines: 1,
                 maxLength: 100,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter a description';
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a description';
+                  }
                   return null;
                 },
               ),
               const SizedBox(height: 20),
-
               PrimaryButton(
                 text: 'Update Listing',
                 isLoading: _isLoading,
                 onPressed: _handleUpdate,
               ),
+              if (widget.listing['status'] != 'sold') ...[
+                const SizedBox(height: 16),
+                PrimaryButton(
+                  text: 'Mark as Sold',
+                  backgroundColor: Colors.orange[700],
+                  onPressed: _isLoading ? null : _handleMarkAsSold,
+                ),
+              ],
               const SizedBox(height: 80),
             ],
           ),
@@ -315,7 +324,9 @@ class _EditListingPageState extends State<EditListingPage> {
       child: TextFormField(
         controller: _titleController,
         maxLength: 30,
-        buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
+        buildCounter: (context,
+                {required currentLength, required isFocused, maxLength}) =>
+            null,
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: 'e.g., Vintage Denim Jacket',
@@ -327,7 +338,8 @@ class _EditListingPageState extends State<EditListingPage> {
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
         validator: (value) {
           if (value == null || value.isEmpty) return 'Please enter a title';
@@ -377,14 +389,16 @@ class _EditListingPageState extends State<EditListingPage> {
               ),
             ),
           ),
-          prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+          prefixIconConstraints:
+              const BoxConstraints(minWidth: 0, minHeight: 0),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
         validator: (value) {
           if (value == null || value.isEmpty) return 'Required';
@@ -411,7 +425,9 @@ class _EditListingPageState extends State<EditListingPage> {
       child: TextFormField(
         controller: _sizeController,
         maxLength: 6,
-        buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
+        buildCounter: (context,
+                {required currentLength, required isFocused, maxLength}) =>
+            null,
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: 'M, L, XL...',
@@ -423,7 +439,8 @@ class _EditListingPageState extends State<EditListingPage> {
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
         validator: (value) {
           if (value == null || value.isEmpty) return 'Required';
@@ -431,5 +448,37 @@ class _EditListingPageState extends State<EditListingPage> {
         },
       ),
     );
+  }
+
+  Future<void> _handleMarkAsSold() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mark as Sold?'),
+        content: const Text(
+            'This will hide the item from search results but keep it on your profile.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Confirm')),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() => _isLoading = true);
+      final success = await _statusService.markAsSold(widget.listing['id']);
+      setState(() => _isLoading = false);
+
+      if (success) {
+        _showMessage('Listing marked as sold!');
+        Navigator.pop(context, true); // Return to previous page
+      } else {
+        _showMessage('Failed to update status', isError: true);
+      }
+    }
   }
 }

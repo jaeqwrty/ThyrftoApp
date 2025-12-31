@@ -39,204 +39,214 @@ class _ProfilePageState extends State<ProfilePage>
 
   @override
   Widget build(BuildContext context) {
-    final fullName =
-        widget.user['fullName'] ?? widget.user['full_name'] ?? 'User';
-    final username = widget.user['username'] ?? 'unknown';
-    final profileImageUrl = widget.user['profileImageUrl'] as String?;
-    final bio = widget.user['bio'] as String?;
-    final displayBio = (bio == null || bio.trim().isEmpty) ? 'No bio' : bio;
+    // Get the initial userId
     final userId = widget.user['id'] ??
         widget.user['uid'] ??
         FirebaseAuth.instance.currentUser?.uid;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: false,
-        title: Text(username,
-            style: const TextStyle(
-                color: Colors.black,
-                fontSize: 20,
-                fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black),
-            onPressed: () => ProfileSettingsHandler.showSettingsMenu(
-              context: context,
-              authService: _authService,
-              user: widget.user,
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // --- Header: Avatar + (Name & Stats) ---
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 40,
-                  backgroundColor: Colors.grey[200],
-                  backgroundImage:
-                      (profileImageUrl != null && profileImageUrl.isNotEmpty)
-                          ? NetworkImage(profileImageUrl)
-                          : null,
-                  child: (profileImageUrl == null || profileImageUrl.isEmpty)
-                      ? Text(fullName[0].toUpperCase(),
-                          style: const TextStyle(
-                              color: Colors.black, fontSize: 28))
-                      : null,
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.collection('users').doc(userId).snapshots(),
+      builder: (context, snapshot) {
+        // Use stream data if available; fallback to the initial widget.user map
+        Map<String, dynamic> userData = widget.user;
+        if (snapshot.hasData && snapshot.data!.exists) {
+          userData = snapshot.data!.data() as Map<String, dynamic>;
+        }
+
+        final fullName = userData['fullName'] ?? userData['full_name'] ?? 'User';
+        final username = userData['username'] ?? 'unknown';
+        final profileImageUrl = userData['profileImageUrl'] as String?;
+        final bio = userData['bio'] as String?;
+        final displayBio = (bio == null || bio.trim().isEmpty) ? 'No bio' : bio;
+
+        return Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            centerTitle: false,
+            title: Text(username,
+                style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold)),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.menu, color: Colors.black),
+                onPressed: () => ProfileSettingsHandler.showSettingsMenu(
+                  context: context,
+                  authService: _authService,
+                  user: userData, // Pass the most recent data
                 ),
-                const SizedBox(width: 40),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        fullName,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
+              ),
+            ],
+          ),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // --- Header: Avatar + (Name & Stats) ---
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundColor: Colors.grey[200],
+                      backgroundImage:
+                          (profileImageUrl != null && profileImageUrl.isNotEmpty)
+                              ? NetworkImage(profileImageUrl)
+                              : null,
+                      child: (profileImageUrl == null || profileImageUrl.isEmpty)
+                          ? Text(fullName[0].toUpperCase(),
+                              style: const TextStyle(
+                                  color: Colors.black, fontSize: 28))
+                          : null,
+                    ),
+                    const SizedBox(width: 40),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          StreamBuilder<List<Map<String, dynamic>>>(
-                            stream: _db.getUserListings(userId!),
-                            builder: (context, s) => _buildStatColumn(
-                                '${s.data?.length ?? 0}', 'posts'),
+                          Text(
+                            fullName,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 15),
                           ),
-                          const SizedBox(width: 30),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              StreamBuilder<List<Map<String, dynamic>>>(
+                                stream: _db.getUserListings(userId!),
+                                builder: (context, s) => _buildStatColumn(
+                                    '${s.data?.length ?? 0}', 'posts'),
+                              ),
+                              const SizedBox(width: 30),
 
-                          // FOLLOWERS STAT (Clickable)
-                          InkWell(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => UserListPage(
-                                  title: 'Followers',
-                                  userStream: _favoritesService
-                                      .getFollowersProfiles(userId),
-                                  currentUser: widget
-                                      .user, // IMPORTANT: Pass the current logged-in user map here
+                              // FOLLOWERS STAT (Clickable)
+                              InkWell(
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => UserListPage(
+                                      title: 'Followers',
+                                      userStream: _favoritesService
+                                          .getFollowersProfiles(userId),
+                                      currentUser: userData,
+                                    ),
+                                  ),
+                                ),
+                                child: StreamBuilder<int>(
+                                  stream: _favoritesService
+                                      .getFavoritesCountStream(userId),
+                                  builder: (context, s) => _buildStatColumn(
+                                      '${s.data ?? 0}', 'followers'),
                                 ),
                               ),
-                            ),
-                            child: StreamBuilder<int>(
-                              stream: _favoritesService
-                                  .getFavoritesCountStream(userId),
-                              builder: (context, s) => _buildStatColumn(
-                                  '${s.data ?? 0}', 'followers'),
-                            ),
-                          ),
-                          const SizedBox(width: 30),
+                              const SizedBox(width: 30),
 
-                          // FOLLOWING STAT (Clickable)
-                          InkWell(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => UserListPage(
-                                  title: 'Following',
-                                  userStream: _favoritesService
-                                      .getFollowingProfiles(userId),
-                                  currentUser: widget
-                                      .user, // IMPORTANT: Pass the current logged-in user map here
+                              // FOLLOWING STAT (Clickable)
+                              InkWell(
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => UserListPage(
+                                      title: 'Following',
+                                      userStream: _favoritesService
+                                          .getFollowingProfiles(userId),
+                                      currentUser: userData,
+                                    ),
+                                  ),
+                                ),
+                                child: StreamBuilder<QuerySnapshot>(
+                                  stream: FirebaseFirestore.instance
+                                      .collection('favorites')
+                                      .where('user_id', isEqualTo: userId)
+                                      .snapshots(),
+                                  builder: (context, s) => _buildStatColumn(
+                                      '${s.data?.docs.length ?? 0}', 'following'),
                                 ),
                               ),
-                            ),
-                            child: StreamBuilder<QuerySnapshot>(
-                              stream: FirebaseFirestore.instance
-                                  .collection('favorites')
-                                  .where('user_id', isEqualTo: userId)
-                                  .snapshots(),
-                              builder: (context, s) => _buildStatColumn(
-                                  '${s.data?.docs.length ?? 0}', 'following'),
-                            ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
 
-          // --- Identity: Bio, Location & Compact Rating ---
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(displayBio,
-                    style:
-                        const TextStyle(fontSize: 14, color: Colors.black87)),
-                const SizedBox(height: 4),
-                LocationWidget(
-                    userId: userId!, locationService: _locationService),
-                const SizedBox(height: 4),
-                _CompactRatingDisplay(
-                    userId: userId, ratingService: _ratingService),
-              ],
-            ),
-          ),
-
-          // --- Action Buttons ---
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildActionButton(
-                      'Edit Profile',
-                      () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  EditProfilePage(user: widget.user)))),
+              // --- Identity: Bio, Location & Compact Rating ---
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(displayBio,
+                        style:
+                            const TextStyle(fontSize: 14, color: Colors.black87)),
+                    const SizedBox(height: 4),
+                    LocationWidget(
+                        userId: userId!, locationService: _locationService),
+                    const SizedBox(height: 4),
+                    _CompactRatingDisplay(
+                        userId: userId, ratingService: _ratingService),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildActionButton(
-                      'Share Profile',
-                      () => ProfileSettingsHandler.handleShareProfile(
-                          context: context,
-                          userId: userId,
-                          username: username)),
-                ),
-              ],
-            ),
-          ),
+              ),
 
-          TabBar(
-            controller: _tabController,
-            labelColor: Colors.black,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Colors.black,
-            indicatorWeight: 1,
-            tabs: const [
-              Tab(icon: Icon(Icons.grid_on_sharp, size: 24)),
-              Tab(icon: Icon(Icons.bookmark_border, size: 26)),
+              // --- Action Buttons ---
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildActionButton(
+                          'Edit Profile',
+                          () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      EditProfilePage(user: userData)))),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildActionButton(
+                          'Share Profile',
+                          () => ProfileSettingsHandler.handleShareProfile(
+                              context: context,
+                              userId: userId,
+                              username: username)),
+                    ),
+                  ],
+                ),
+              ),
+
+              TabBar(
+                controller: _tabController,
+                labelColor: Colors.black,
+                unselectedLabelColor: Colors.grey,
+                indicatorColor: Colors.black,
+                indicatorWeight: 1,
+                tabs: const [
+                  Tab(icon: Icon(Icons.grid_on_sharp, size: 24)),
+                  Tab(icon: Icon(Icons.bookmark_border, size: 26)),
+                ],
+              ),
+
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildMyListings(userId),
+                    _buildBookmarks(),
+                  ],
+                ),
+              ),
             ],
           ),
-
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildMyListings(userId),
-                _buildBookmarks(),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -274,14 +284,16 @@ class _ProfilePageState extends State<ProfilePage>
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _db.getUserListings(userId),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
+        }
         final listings = snapshot.data ?? [];
-        if (listings.isEmpty)
+        if (listings.isEmpty) {
           return const EmptyState(
               icon: Icons.grid_on,
               title: 'No listings yet',
               subtitle: 'Items you post will appear here');
+        }
         return ListingsGrid(listings: listings, user: widget.user);
       },
     );
@@ -291,8 +303,9 @@ class _ProfilePageState extends State<ProfilePage>
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _db.getBookmarkedListings(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
+        }
         final listings = snapshot.data ?? [];
         if (listings.isEmpty) {
           return const EmptyState(

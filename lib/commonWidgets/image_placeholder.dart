@@ -1,4 +1,3 @@
-/// Common image placeholder used across the app
 import 'package:flutter/material.dart';
 
 class ImagePlaceholder extends StatelessWidget {
