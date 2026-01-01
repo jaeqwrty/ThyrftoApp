@@ -46,3 +46,4 @@ app.*.map.json
 
 #DO NOT COMMIT - API Keys
 lib/services/api_keys.dart
+lib/firebase_options.dart
