@@ -81,7 +81,6 @@ class DatabaseService {
         };
       }
 
-      // Get user data for seller info
       final userDoc = await _firestore.collection('users').doc(userId).get();
       final userData = userDoc.data();
 
@@ -92,11 +91,9 @@ class DatabaseService {
         };
       }
 
-      // Create listing document first to get ID
       final listingRef = _firestore.collection('listings').doc();
       final listingId = listingRef.id;
 
-      // Upload images
       final imageUrls = await uploadImages(imageFiles, listingId);
 
       final listingData = {
@@ -120,7 +117,6 @@ class DatabaseService {
         'location': location,
       };
 
-      // Save to Firestore
       await listingRef.set(listingData);
 
       return {
@@ -156,14 +152,12 @@ class DatabaseService {
         };
       }
 
-      // Upload new images if any
       List<String> allImageUrls = List.from(existingImageUrls);
       if (newImageFiles.isNotEmpty) {
         final newUrls = await uploadImages(newImageFiles, listingId);
         allImageUrls.addAll(newUrls);
       }
 
-      // Update listing data
       await _firestore.collection('listings').doc(listingId).update({
         'title': title,
         'price': price,
@@ -200,11 +194,10 @@ class DatabaseService {
         return data;
       }).toList();
 
-      // Sort client-side to avoid requiring composite index
       listings.sort((a, b) {
         final aTime = a['created_at']?.toDate() ?? DateTime(2000);
         final bTime = b['created_at']?.toDate() ?? DateTime(2000);
-        return bTime.compareTo(aTime); // Descending
+        return bTime.compareTo(aTime);
       });
 
       return listings;
@@ -244,13 +237,11 @@ class DatabaseService {
       final listingTitle = listingData['title'] ?? 'a listing';
 
       if (likeDoc.exists) {
-        // Unlike
         await likeRef.delete();
         await _firestore.collection('listings').doc(listingId).update({
           'likes': FieldValue.increment(-1),
         });
       } else {
-        // Like
         await likeRef.set({
           'userId': currentUserId,
           'listingId': listingId,
@@ -260,9 +251,7 @@ class DatabaseService {
           'likes': FieldValue.increment(1),
         });
 
-        // Send notification only if seller is different from liker
         if (sellerId != null && sellerId != currentUserId) {
-          // Get current user's name
           final currentUserDoc =
               await _firestore.collection('users').doc(currentUserId).get();
           final currentUserName = currentUserDoc.data()?['fullName'] ??
@@ -289,7 +278,6 @@ class DatabaseService {
   // Check if listing is liked
   Future<bool> isListingLiked(String listingId) async {
     if (currentUserId == null) return false;
-
     try {
       final likeDoc = await _firestore
           .collection('likes')
@@ -304,13 +292,10 @@ class DatabaseService {
   // Toggle bookmark
   Future<void> toggleBookmark(String listingId) async {
     if (currentUserId == null) return;
-
     try {
       final bookmarkRef =
           _firestore.collection('bookmarks').doc('${currentUserId}_$listingId');
-
       final bookmarkDoc = await bookmarkRef.get();
-
       if (bookmarkDoc.exists) {
         await bookmarkRef.delete();
       } else {
@@ -328,7 +313,6 @@ class DatabaseService {
   // Check if listing is bookmarked
   Future<bool> isListingBookmarked(String listingId) async {
     if (currentUserId == null) return false;
-
     try {
       final bookmarkDoc = await _firestore
           .collection('bookmarks')
@@ -340,49 +324,36 @@ class DatabaseService {
     }
   }
 
-  // Delete listing images from storage
+  // Delete listing images
   Future<void> deleteListingImages(String listingId) async {
     try {
       final listingFolder = _storage.ref().child('listings/$listingId');
       final listResult = await listingFolder.listAll();
-
       for (var item in listResult.items) {
         await item.delete();
       }
-    } catch (e) {
-      // Ignore errors when deleting images
-    }
+    } catch (e) {}
   }
 
   // Delete listing
   Future<bool> deleteListing(String listingId) async {
     try {
-      // Delete images from storage
       await deleteListingImages(listingId);
-
-      // Delete listing document
       await _firestore.collection('listings').doc(listingId).delete();
-
-      // Delete related likes
       final likes = await _firestore
           .collection('likes')
           .where('listingId', isEqualTo: listingId)
           .get();
-
       for (var doc in likes.docs) {
         await doc.reference.delete();
       }
-
-      // Delete related bookmarks
       final bookmarks = await _firestore
           .collection('bookmarks')
           .where('listingId', isEqualTo: listingId)
           .get();
-
       for (var doc in bookmarks.docs) {
         await doc.reference.delete();
       }
-
       return true;
     } catch (e) {
       return false;
@@ -401,43 +372,34 @@ class DatabaseService {
         data['id'] = doc.id;
         return data;
       }).toList();
-
-      // Sort client-side to avoid requiring composite index
       listings.sort((a, b) {
         final aTime = a['created_at']?.toDate() ?? DateTime(2000);
         final bTime = b['created_at']?.toDate() ?? DateTime(2000);
-        return bTime.compareTo(aTime); // Descending
+        return bTime.compareTo(aTime);
       });
-
       return listings;
     });
   }
 
   // Get user's bookmarked listings
   Stream<List<Map<String, dynamic>>> getBookmarkedListings() {
-    if (currentUserId == null) {
-      return Stream.value([]);
-    }
-
+    if (currentUserId == null) return Stream.value([]);
     return _firestore
         .collection('bookmarks')
         .where('userId', isEqualTo: currentUserId)
         .snapshots()
         .asyncMap((snapshot) async {
       List<Map<String, dynamic>> listings = [];
-
       for (var doc in snapshot.docs) {
         final listingId = doc.data()['listingId'];
         final listingDoc =
             await _firestore.collection('listings').doc(listingId).get();
-
         if (listingDoc.exists) {
           final data = listingDoc.data()!;
           data['id'] = listingDoc.id;
           listings.add(data);
         }
       }
-
       return listings;
     });
   }
@@ -450,256 +412,21 @@ class DatabaseService {
           : path.extension(imageFile.name);
       final fileName = 'profile_$userId$ext';
       final storageRef = _storage.ref().child('profiles/$userId/$fileName');
-
       final bytes = await imageFile.readAsBytes();
       final uploadTask = await storageRef.putData(
         bytes,
-        SettableMetadata(
-          contentType: _getContentType(imageFile.name),
-        ),
+        SettableMetadata(contentType: _getContentType(imageFile.name)),
       );
-
       return await uploadTask.ref.getDownloadURL();
     } catch (e) {
       return null;
     }
   }
 
-  // Add a comment to a listing
-  Future<void> addCommentWithNotification({
-    required String listingId,
-    required String userId,
-    required String userName,
-    required String comment,
-  }) async {
-    try {
-      final userDoc = await _firestore.collection('users').doc(userId).get();
-      final userProfileImage = userDoc.data()?['profileImageUrl'] as String?;
-
-      final listingDoc =
-          await _firestore.collection('listings').doc(listingId).get();
-
-      if (!listingDoc.exists) {
-        throw Exception('Listing not found');
-      }
-
-      final listingData = listingDoc.data()!;
-      final sellerId = listingData['seller_id'];
-
-      await _firestore
-          .collection('listings')
-          .doc(listingId)
-          .collection('comments')
-          .add({
-        'user_id': userId,
-        'user_name': userName,
-        'user_profile_image': userProfileImage,
-        'comment': comment,
-        'created_at': FieldValue.serverTimestamp(),
-        'reply_count': 0,
-      });
-
-      await _firestore.collection('listings').doc(listingId).update({
-        'comments_count': FieldValue.increment(1),
-      });
-
-      // Send notification only if commenter is not the seller
-      if (sellerId != null && sellerId != userId) {
-        await _createNotification(
-          recipientId: sellerId,
-          type: 'comment',
-          title: '$userName commented on your listing',
-          body: '"$comment"',
-          relatedListingId: listingId,
-          relatedUserId: userId,
-        );
-      }
-    } catch (e) {
-      print('Error adding comment: $e');
-      throw Exception('Failed to add comment: $e');
-    }
-  }
-
-  /// Get comments for a listing WITH replies
-  Stream<List<Map<String, dynamic>>> getComments(String listingId) {
-    return _firestore
-        .collection('listings')
-        .doc(listingId)
-        .collection('comments')
-        .orderBy('created_at', descending: false)
-        .snapshots()
-        .asyncMap((snapshot) async {
-      List<Map<String, dynamic>> comments = [];
-
-      for (var doc in snapshot.docs) {
-        final commentData = doc.data();
-        commentData['id'] = doc.id;
-
-        // Fetch replies for this comment
-        final repliesSnapshot = await _firestore
-            .collection('listings')
-            .doc(listingId)
-            .collection('comments')
-            .doc(doc.id)
-            .collection('replies')
-            .orderBy('created_at', descending: false)
-            .get();
-
-        commentData['replies'] = repliesSnapshot.docs.map((replyDoc) {
-          final replyData = replyDoc.data();
-          replyData['id'] = replyDoc.id;
-          return replyData;
-        }).toList();
-
-        comments.add(commentData);
-      }
-
-      return comments;
-    });
-  }
-
-  /// Delete a comment and all its replies
-  Future<void> deleteComment(String listingId, String commentId) async {
-    try {
-      // Delete all replies first
-      final repliesSnapshot = await _firestore
-          .collection('listings')
-          .doc(listingId)
-          .collection('comments')
-          .doc(commentId)
-          .collection('replies')
-          .get();
-
-      for (var replyDoc in repliesSnapshot.docs) {
-        await replyDoc.reference.delete();
-      }
-
-      // Delete the comment
-      await _firestore
-          .collection('listings')
-          .doc(listingId)
-          .collection('comments')
-          .doc(commentId)
-          .delete();
-
-      // Update comment count on listing
-      await _firestore.collection('listings').doc(listingId).update({
-        'comments_count': FieldValue.increment(-1),
-      });
-    } catch (e) {
-      throw Exception('Failed to delete comment: $e');
-    }
-  }
-
-  Future<void> addReply({
-    required String listingId,
-    required String commentId,
-    required String userId,
-    required String userName,
-    required String reply,
-  }) async {
-    try {
-      await _firestore
-          .collection('listings')
-          .doc(listingId)
-          .collection('comments')
-          .doc(commentId)
-          .collection('replies')
-          .add({
-        'user_id': userId,
-        'user_name': userName,
-        'reply': reply,
-        'created_at': FieldValue.serverTimestamp(),
-      });
-
-      await _firestore
-          .collection('listings')
-          .doc(listingId)
-          .collection('comments')
-          .doc(commentId)
-          .update({
-        'reply_count': FieldValue.increment(1),
-      });
-
-      final commentDoc = await _firestore
-          .collection('listings')
-          .doc(listingId)
-          .collection('comments')
-          .doc(commentId)
-          .get();
-
-      if (commentDoc.exists) {
-        final commentData = commentDoc.data()!;
-        final commentOwnerId = commentData['user_id'];
-
-        if (commentOwnerId != null && commentOwnerId != userId) {
-          await _createNotification(
-            recipientId: commentOwnerId,
-            type: 'reply',
-            title: '$userName replied to your comment',
-            body: '"$reply"',
-            relatedListingId: listingId,
-            relatedUserId: userId,
-          );
-        }
-      }
-    } catch (e) {
-      print('Error adding reply: $e');
-      throw Exception('Failed to add reply: $e');
-    }
-  }
-
-  /// Delete a reply
-  Future<void> deleteReply(
-      String listingId, String commentId, String replyId) async {
-    try {
-      await _firestore
-          .collection('listings')
-          .doc(listingId)
-          .collection('comments')
-          .doc(commentId)
-          .collection('replies')
-          .doc(replyId)
-          .delete();
-
-      // Update reply count on the comment
-      await _firestore
-          .collection('listings')
-          .doc(listingId)
-          .collection('comments')
-          .doc(commentId)
-          .update({
-        'reply_count': FieldValue.increment(-1),
-      });
-    } catch (e) {
-      throw Exception('Failed to delete reply: $e');
-    }
-  }
-
-  // Get comment count for a listing
-  Future<int> getCommentCount(String listingId) async {
-    try {
-      final doc = await _firestore.collection('listings').doc(listingId).get();
-      return doc.data()?['comments_count'] ?? 0;
-    } catch (e) {
-      return 0;
-    }
-  }
-
-  // Get comment count as a stream
-  Stream<int> getCommentCountStream(String listingId) {
-    return _firestore
-        .collection('listings')
-        .doc(listingId)
-        .snapshots()
-        .map((doc) => doc.data()?['comments_count'] ?? 0);
-  }
+  // --- Real-time Streams ---
 
   Stream<bool> isListingLikedStream(String listingId) {
-    if (currentUserId == null) {
-      return Stream.value(false);
-    }
-
+    if (currentUserId == null) return Stream.value(false);
     return _firestore
         .collection('likes')
         .doc('${currentUserId}_$listingId')
@@ -707,12 +434,8 @@ class DatabaseService {
         .map((doc) => doc.exists);
   }
 
-  // Stream to check if listing is bookmarked (real-time)
   Stream<bool> isListingBookmarkedStream(String listingId) {
-    if (currentUserId == null) {
-      return Stream.value(false);
-    }
-
+    if (currentUserId == null) return Stream.value(false);
     return _firestore
         .collection('bookmarks')
         .doc('${currentUserId}_$listingId')
@@ -735,24 +458,18 @@ class DatabaseService {
     });
   }
 
-  // Get user's bookmarked listings with real-time updates and proper ordering
   Stream<List<Map<String, dynamic>>> getBookmarkedListingsUpdated() {
-    if (currentUserId == null) {
-      return Stream.value([]);
-    }
-
+    if (currentUserId == null) return Stream.value([]);
     return _firestore
         .collection('bookmarks')
         .where('userId', isEqualTo: currentUserId)
         .snapshots()
         .asyncMap((snapshot) async {
       List<Map<String, dynamic>> listings = [];
-
       for (var doc in snapshot.docs) {
         final listingId = doc.data()['listingId'];
         final listingDoc =
             await _firestore.collection('listings').doc(listingId).get();
-
         if (listingDoc.exists) {
           final data = listingDoc.data()!;
           data['id'] = listingDoc.id;
@@ -760,99 +477,62 @@ class DatabaseService {
           listings.add(data);
         }
       }
-
-      // Sort by bookmark date (most recent first)
       listings.sort((a, b) {
         final aTime = a['bookmarked_at']?.toDate() ?? DateTime(2000);
         final bTime = b['bookmarked_at']?.toDate() ?? DateTime(2000);
         return bTime.compareTo(aTime);
       });
-
       return listings;
     });
   }
 
-  /// Increment the share count for a listing
+  // --- Share Logic ---
+
   Future<void> incrementShareCount(String listingId) async {
     try {
       await _firestore.collection('listings').doc(listingId).update({
         'shares': FieldValue.increment(1),
       });
-      print('Share count incremented for listing: $listingId');
     } catch (e) {
       print('Error incrementing share count: $e');
       rethrow;
     }
   }
 
-  /// Get the share count for a listing as a stream (real-time updates)
   Stream<int> getShareCountStream(String listingId) {
-    try {
-      return _firestore
-          .collection('listings')
-          .doc(listingId)
-          .snapshots()
-          .map((snapshot) {
-        if (!snapshot.exists) return 0;
-        final data = snapshot.data() ?? {};
-        final shares = data['shares'];
-
-        // Handle both int and double types
-        if (shares is int) {
-          return shares;
-        } else if (shares is double) {
-          return shares.toInt();
-        }
-        return 0;
-      }).handleError((error) {
-        print('Error in getShareCountStream: $error');
-        return 0;
-      });
-    } catch (e) {
-      print('Error creating share count stream: $e');
-      return Stream.value(0);
-    }
+    return _firestore
+        .collection('listings')
+        .doc(listingId)
+        .snapshots()
+        .map((snapshot) {
+      if (!snapshot.exists) return 0;
+      final shares = snapshot.data()?['shares'];
+      return shares is int ? shares : (shares as double?)?.toInt() ?? 0;
+    }).handleError((_) => 0);
   }
 
-  /// Get the share count for a listing (single fetch)
   Future<int> getShareCount(String listingId) async {
     try {
       final snapshot =
           await _firestore.collection('listings').doc(listingId).get();
       if (!snapshot.exists) return 0;
-
-      final data = snapshot.data() ?? {};
-      final shares = data['shares'];
-
-      // Handle both int and double types
-      if (shares is int) {
-        return shares;
-      } else if (shares is double) {
-        return shares.toInt();
-      }
-      return 0;
+      final shares = snapshot.data()?['shares'];
+      return shares is int ? shares : (shares as double?)?.toInt() ?? 0;
     } catch (e) {
-      print('Error getting share count: $e');
       return 0;
     }
   }
 
-  /// Call this method when user shares a listing
   Future<void> onListingSharedWithNotification(String listingId) async {
     try {
       final listingDoc =
           await _firestore.collection('listings').doc(listingId).get();
+      if (!listingDoc.exists) throw Exception('Listing not found');
 
-      if (!listingDoc.exists) {
-        throw Exception('Listing not found');
-      }
-
-      final listingData = listingDoc.data()!;
-      final sellerId = listingData['seller_id'];
-      final listingTitle = listingData['title'] ?? 'a listing';
+      final sellerId = listingDoc.data()?['seller_id'];
+      final listingTitle = listingDoc.data()?['title'] ?? 'a listing';
 
       await incrementShareCount(listingId);
-
       await _firestore.collection('listing_shares').add({
         'listing_id': listingId,
         'shared_by': currentUserId,
@@ -860,7 +540,6 @@ class DatabaseService {
       });
 
       if (sellerId != null && sellerId != currentUserId) {
-        // Get current user's name
         final currentUserDoc =
             await _firestore.collection('users').doc(currentUserId!).get();
         final currentUserName = currentUserDoc.data()?['fullName'] ??
@@ -877,15 +556,14 @@ class DatabaseService {
           relatedUserId: currentUserId,
         );
       }
-
-      print('Listing shared and tracked: $listingId');
     } catch (e) {
       print('Error tracking share: $e');
       rethrow;
     }
   }
 
-  /// Internal helper: Create notification in Firestore with sender details
+  // --- Internal Helper ---
+
   Future<void> _createNotification({
     required String recipientId,
     required String type,
@@ -896,7 +574,6 @@ class DatabaseService {
     Map<String, dynamic>? additionalData,
   }) async {
     try {
-      // Get sender's information
       String senderName = 'Someone';
       String? senderProfileImage;
 
@@ -927,7 +604,6 @@ class DatabaseService {
         'created_at': FieldValue.serverTimestamp(),
         'additional_data': additionalData ?? {},
       });
-      print('Notification created: $title');
     } catch (e) {
       print('Error creating notification: $e');
       rethrow;

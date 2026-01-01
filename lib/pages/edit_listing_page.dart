@@ -7,7 +7,6 @@ import 'package:thryfto/commonWidgets/section_labels.dart';
 import 'package:thryfto/commonWidgets/listing_form_widgets.dart';
 import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/database_service.dart';
-import 'package:thryfto/services/listing_status_service.dart';
 
 class EditListingPage extends StatefulWidget {
   final Map<String, dynamic> listing;
@@ -27,7 +26,6 @@ class _EditListingPageState extends State<EditListingPage> {
   final DatabaseService _db = DatabaseService();
   final _formKey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
-  final ListingStatusService _statusService = ListingStatusService();
 
   late TextEditingController _titleController;
   late TextEditingController _priceController;
@@ -293,14 +291,6 @@ class _EditListingPageState extends State<EditListingPage> {
                 isLoading: _isLoading,
                 onPressed: _handleUpdate,
               ),
-              if (widget.listing['status'] != 'sold') ...[
-                const SizedBox(height: 16),
-                PrimaryButton(
-                  text: 'Mark as Sold',
-                  backgroundColor: Colors.orange[700],
-                  onPressed: _isLoading ? null : _handleMarkAsSold,
-                ),
-              ],
               const SizedBox(height: 80),
             ],
           ),
@@ -451,35 +441,4 @@ class _EditListingPageState extends State<EditListingPage> {
     );
   }
 
-  Future<void> _handleMarkAsSold() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Mark as Sold?'),
-        content: const Text(
-            'This will hide the item from search results but keep it on your profile.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Confirm')),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      setState(() => _isLoading = true);
-      final success = await _statusService.markAsSold(widget.listing['id']);
-      setState(() => _isLoading = false);
-
-      if (success) {
-        _showMessage('Listing marked as sold!');
-        Navigator.pop(context, true); // Return to previous page
-      } else {
-        _showMessage('Failed to update status', isError: true);
-      }
-    }
-  }
 }

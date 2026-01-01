@@ -8,6 +8,7 @@ import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/pages/edit_listing_page.dart';
 import 'package:thryfto/modals/share_modal.dart';
 import 'package:thryfto/services/location_service.dart';
+import 'package:thryfto/services/listing_status_service.dart';
 
 class ListingDetailPage extends StatefulWidget {
   final Map<String, dynamic> listing;
@@ -30,11 +31,52 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   bool _isLiked = false;
   bool _isBookmarked = false;
   int _likeCount = 0;
+  final ListingStatusService _statusService = ListingStatusService();
+  bool _isSoldProcessing = false;
 
   @override
   void initState() {
     super.initState();
     _loadInteractionStatus();
+  }
+
+  Future<void> _handleMarkAsSold() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mark as Sold?'),
+        content: const Text(
+            'This will hide the item from search results but keep it on your profile.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+              child: const Text('Confirm')),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() => _isSoldProcessing = true);
+      final success = await _statusService.markAsSold(widget.listing['id']);
+      if (mounted) {
+        setState(() => _isSoldProcessing = false);
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Listing marked as sold!')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Failed to update status'),
+                backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
   }
 
   Future<void> _loadInteractionStatus() async {
@@ -349,280 +391,373 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
 // Replace the "Seller Info" section in your listing_detail_page.dart with this:
 
 // Seller Info
-                  const Text(
-                    'Seller',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  if (isOwnListing) ...[
+                    // OWNER VIEW: Show "Listing Status" instead of Seller Info
+                    const Text(
+                      'Listing Status',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  StreamBuilder<Map<String, dynamic>?>(
-                    stream:
-                        _db.getUserProfileStream(widget.listing['seller_id']),
-                    builder: (context, sellerSnapshot) {
-                      if (sellerSnapshot.connectionState ==
-                          ConnectionState.waiting) {
+                    const SizedBox(height: 12),
+                    StreamBuilder<Map<String, dynamic>?>(
+                      stream: _db.getListingStream(widget.listing['id'] ?? ''),
+                      builder: (context, snapshot) {
+                        final listingData = snapshot.data ?? widget.listing;
+                        final isSold = listingData['status'] == 'sold';
+
                         return Container(
+                          width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.grey[50],
+                            color: isSold
+                                ? Colors.grey[100]
+                                : Colors.orange.shade50,
                             borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
-                      }
-
-                      final seller = sellerSnapshot.data;
-                      final sellerName = seller?['fullName'] ??
-                          seller?['full_name'] ??
-                          seller?['username'] ??
-                          widget.listing['seller_name'] ??
-                          'Unknown Seller';
-                      final profileImageUrl =
-                          seller?['profileImageUrl'] as String?;
-
-                      // REAL-TIME LOCATION: Get location directly from seller data stream
-                      String locationDisplay = 'Location not set';
-                      bool hasLocation = false;
-
-                      if (seller != null) {
-                        // Check for direct latitude/longitude fields (current structure)
-                        if (seller['latitude'] != null &&
-                            seller['longitude'] != null &&
-                            seller['address'] != null &&
-                            seller['address'].toString().isNotEmpty) {
-                          locationDisplay = seller['address'];
-                          hasLocation = true;
-                        }
-                        // Fall back to cityState field
-                        else if (seller['cityState'] != null &&
-                            seller['cityState'].toString().isNotEmpty) {
-                          locationDisplay = seller['cityState'];
-                          hasLocation = true;
-                        }
-                        // Fall back to nested location object (old structure)
-                        else if (seller['location'] != null) {
-                          final location =
-                              seller['location'] as Map<String, dynamic>;
-                          if (location['latitude'] != null &&
-                              location['longitude'] != null &&
-                              location['address'] != null &&
-                              location['address'].toString().isNotEmpty) {
-                            locationDisplay = location['address'];
-                            hasLocation = true;
-                          }
-                        }
-                      }
-
-                      return GestureDetector(
-                        onTap: () {
-                          final sellerId = widget.listing['seller_id'];
-                          if (sellerId != null) {
-                            // Check if the seller is the current user
-                            if (sellerId == _db.currentUserId) {
-                              // Navigate to ProfilePage (the current user's own profile)
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        ProfilePage(user: widget.user)),
-                              );
-                            } else {
-                              // Navigate to UserProfilePage for other users
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => UserProfilePage(
-                                    userId: sellerId,
-                                    currentUser: widget.user,
-                                  ),
-                                ),
-                              );
-                            }
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[50],
-                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSold
+                                  ? Colors.grey.shade300
+                                  : Colors.orange.shade200,
+                            ),
                           ),
                           child: Column(
                             children: [
-                              Row(
-                                children: [
-                                  // Profile Avatar with Image
-                                  CircleAvatar(
-                                    radius: 25,
-                                    backgroundColor: AppColors.primary,
-                                    backgroundImage: (profileImageUrl != null &&
-                                            profileImageUrl.isNotEmpty)
-                                        ? NetworkImage(profileImageUrl)
-                                        : null,
-                                    child: (profileImageUrl == null ||
-                                            profileImageUrl.isEmpty)
-                                        ? Text(
-                                            sellerName[0].toUpperCase(),
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          )
-                                        : null,
+                              if (isSold)
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.check_circle,
+                                        color: Colors.grey[600]),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Item Sold',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              else
+                                Column(
+                                  children: [
+                                    const Text(
+                                      'Is this item sold?',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed: _isSoldProcessing
+                                            ? null
+                                            : _handleMarkAsSold,
+                                        icon: _isSoldProcessing
+                                            ? const SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                        strokeWidth: 2))
+                                            : const Icon(Icons.sell),
+                                        label: const Text('Mark as Sold'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.primary,
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12)),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ] else ...[
+                    // BUYER VIEW: Show standard Seller Section
+                    const Text(
+                      'Seller',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    const SizedBox(height: 12),
+                    StreamBuilder<Map<String, dynamic>?>(
+                      stream:
+                          _db.getUserProfileStream(widget.listing['seller_id']),
+                      builder: (context, sellerSnapshot) {
+                        if (sellerSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        }
+
+                        final seller = sellerSnapshot.data;
+                        final sellerName = seller?['fullName'] ??
+                            seller?['full_name'] ??
+                            seller?['username'] ??
+                            widget.listing['seller_name'] ??
+                            'Unknown Seller';
+                        final profileImageUrl =
+                            seller?['profileImageUrl'] as String?;
+
+                        // REAL-TIME LOCATION: Get location directly from seller data stream
+                        String locationDisplay = 'Location not set';
+                        bool hasLocation = false;
+
+                        if (seller != null) {
+                          // Check for direct latitude/longitude fields (current structure)
+                          if (seller['latitude'] != null &&
+                              seller['longitude'] != null &&
+                              seller['address'] != null &&
+                              seller['address'].toString().isNotEmpty) {
+                            locationDisplay = seller['address'];
+                            hasLocation = true;
+                          }
+                          // Fall back to cityState field
+                          else if (seller['cityState'] != null &&
+                              seller['cityState'].toString().isNotEmpty) {
+                            locationDisplay = seller['cityState'];
+                            hasLocation = true;
+                          }
+                          // Fall back to nested location object (old structure)
+                          else if (seller['location'] != null) {
+                            final location =
+                                seller['location'] as Map<String, dynamic>;
+                            if (location['latitude'] != null &&
+                                location['longitude'] != null &&
+                                location['address'] != null &&
+                                location['address'].toString().isNotEmpty) {
+                              locationDisplay = location['address'];
+                              hasLocation = true;
+                            }
+                          }
+                        }
+
+                        return GestureDetector(
+                          onTap: () {
+                            final sellerId = widget.listing['seller_id'];
+                            if (sellerId != null) {
+                              // Check if the seller is the current user
+                              if (sellerId == _db.currentUserId) {
+                                // Navigate to ProfilePage (the current user's own profile)
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          ProfilePage(user: widget.user)),
+                                );
+                              } else {
+                                // Navigate to UserProfilePage for other users
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => UserProfilePage(
+                                      userId: sellerId,
+                                      currentUser: widget.user,
+                                    ),
                                   ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          sellerName,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
+                                );
+                              }
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    // Profile Avatar with Image
+                                    CircleAvatar(
+                                      radius: 25,
+                                      backgroundColor: AppColors.primary,
+                                      backgroundImage:
+                                          (profileImageUrl != null &&
+                                                  profileImageUrl.isNotEmpty)
+                                              ? NetworkImage(profileImageUrl)
+                                              : null,
+                                      child: (profileImageUrl == null ||
+                                              profileImageUrl.isEmpty)
+                                          ? Text(
+                                              sellerName[0].toUpperCase(),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            )
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            sellerName,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.location_on_outlined,
+                                                size: 14,
+                                                color: hasLocation
+                                                    ? AppColors.primary
+                                                    : Colors.grey[400],
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Expanded(
+                                                child: Text(
+                                                  locationDisplay,
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: hasLocation
+                                                        ? Colors.grey[600]
+                                                        : Colors.grey[400],
+                                                    fontStyle: hasLocation
+                                                        ? FontStyle.normal
+                                                        : FontStyle.italic,
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(Icons.chevron_right,
+                                        color: Colors.grey[400]),
+                                  ],
+                                ),
+
+                                // Show distance if available (this also updates in real-time)
+                                StreamBuilder<Map<String, dynamic>?>(
+                                  stream: _db.getUserProfileStream(
+                                      _db.currentUserId ?? ''),
+                                  builder: (context, currentUserSnapshot) {
+                                    // Get current user's location from stream
+                                    final currentUser =
+                                        currentUserSnapshot.data;
+                                    double? currentUserLat;
+                                    double? currentUserLon;
+
+                                    if (currentUser != null) {
+                                      if (currentUser['latitude'] != null &&
+                                          currentUser['longitude'] != null) {
+                                        currentUserLat =
+                                            currentUser['latitude'] as double?;
+                                        currentUserLon =
+                                            currentUser['longitude'] as double?;
+                                      } else if (currentUser['location'] !=
+                                          null) {
+                                        final loc = currentUser['location']
+                                            as Map<String, dynamic>;
+                                        currentUserLat =
+                                            loc['latitude'] as double?;
+                                        currentUserLon =
+                                            loc['longitude'] as double?;
+                                      }
+                                    }
+
+                                    // Get listing location
+                                    final listingLocation =
+                                        widget.listing['location']
+                                            as Map<String, dynamic>?;
+
+                                    if (currentUserLat != null &&
+                                        currentUserLon != null &&
+                                        listingLocation != null &&
+                                        listingLocation['latitude'] != null &&
+                                        listingLocation['longitude'] != null) {
+                                      final distance =
+                                          LocationService().calculateDistance(
+                                        currentUserLat,
+                                        currentUserLon,
+                                        listingLocation['latitude'],
+                                        listingLocation['longitude'],
+                                      );
+
+                                      final distanceText = LocationService()
+                                          .formatDistance(distance);
+
+                                      return Container(
+                                        margin: const EdgeInsets.only(top: 12),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary
+                                              .withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: AppColors.primary
+                                                .withOpacity(0.3),
                                           ),
                                         ),
-                                        const SizedBox(height: 4),
-                                        Row(
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(
-                                              Icons.location_on_outlined,
-                                              size: 14,
-                                              color: hasLocation
-                                                  ? AppColors.primary
-                                                  : Colors.grey[400],
+                                            const Icon(
+                                              Icons.near_me,
+                                              size: 16,
+                                              color: AppColors.primary,
                                             ),
-                                            const SizedBox(width: 4),
-                                            Expanded(
-                                              child: Text(
-                                                locationDisplay,
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: hasLocation
-                                                      ? Colors.grey[600]
-                                                      : Colors.grey[400],
-                                                  fontStyle: hasLocation
-                                                      ? FontStyle.normal
-                                                      : FontStyle.italic,
-                                                ),
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              distanceText,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                color: AppColors.primary,
+                                                fontWeight: FontWeight.w600,
                                               ),
                                             ),
                                           ],
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                  Icon(Icons.chevron_right,
-                                      color: Colors.grey[400]),
-                                ],
-                              ),
-
-                              // Show distance if available (this also updates in real-time)
-                              StreamBuilder<Map<String, dynamic>?>(
-                                stream: _db.getUserProfileStream(
-                                    _db.currentUserId ?? ''),
-                                builder: (context, currentUserSnapshot) {
-                                  // Get current user's location from stream
-                                  final currentUser = currentUserSnapshot.data;
-                                  double? currentUserLat;
-                                  double? currentUserLon;
-
-                                  if (currentUser != null) {
-                                    if (currentUser['latitude'] != null &&
-                                        currentUser['longitude'] != null) {
-                                      currentUserLat =
-                                          currentUser['latitude'] as double?;
-                                      currentUserLon =
-                                          currentUser['longitude'] as double?;
-                                    } else if (currentUser['location'] !=
-                                        null) {
-                                      final loc = currentUser['location']
-                                          as Map<String, dynamic>;
-                                      currentUserLat =
-                                          loc['latitude'] as double?;
-                                      currentUserLon =
-                                          loc['longitude'] as double?;
+                                      );
                                     }
-                                  }
-
-                                  // Get listing location
-                                  final listingLocation =
-                                      widget.listing['location']
-                                          as Map<String, dynamic>?;
-
-                                  if (currentUserLat != null &&
-                                      currentUserLon != null &&
-                                      listingLocation != null &&
-                                      listingLocation['latitude'] != null &&
-                                      listingLocation['longitude'] != null) {
-                                    final distance =
-                                        LocationService().calculateDistance(
-                                      currentUserLat,
-                                      currentUserLon,
-                                      listingLocation['latitude'],
-                                      listingLocation['longitude'],
-                                    );
-
-                                    final distanceText = LocationService()
-                                        .formatDistance(distance);
-
-                                    return Container(
-                                      margin: const EdgeInsets.only(top: 12),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            AppColors.primary.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: AppColors.primary
-                                              .withOpacity(0.3),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            Icons.near_me,
-                                            size: 16,
-                                            color: AppColors.primary,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            distanceText,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              color: AppColors.primary,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }
-                                  return const SizedBox.shrink();
-                                },
-                              ),
-                            ],
+                                    return const SizedBox.shrink();
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 100), // Space for bottom button
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 100), // Space for bottom button
+                  ],
                 ],
               ),
             ),
-          ),
+          )
         ],
       ),
       // Bottom Action Button

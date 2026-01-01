@@ -48,19 +48,11 @@ class DefaultFirebaseOptions {
     projectId: 'thryfto-ab058',
   );
 
-  // static const FirebaseOptions ios = FirebaseOptions(
-  //   apiKey: 'YOUR_IOS_API_KEY',
-  //   appId: 'YOUR_IOS_APP_ID',
-  //   messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-  //   projectId: 'your-project-id',
-  //   iosBundleId: 'com.example.thryfto',
-  // );
-
-  // static const FirebaseOptions macos = FirebaseOptions(
-  //   apiKey: 'YOUR_MACOS_API_KEY',
-  //   appId: 'YOUR_MACOS_APP_ID',
-  //   messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-  //   projectId: 'your-project-id',
-  //   iosBundleId: 'com.example.thryfto',
-  // );
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyB5c_agoxjkfL0Bt6qaVi__jZZ5RNh5oVI',
+    appId: '1:41459314240:ios:acf1657bdd64914f9639a5',
+    messagingSenderId: '41459314240',
+    projectId: 'thryfto-ab058',
+    iosBundleId: 'com.example.thryfto',
+  );
 }
