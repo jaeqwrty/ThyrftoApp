@@ -284,7 +284,7 @@ class _CommentsModalState extends State<CommentsModal> {
               ),
             ),
 
-          // Comment Input
+          // Comment Input with Real-time Profile Image
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -300,11 +300,8 @@ class _CommentsModalState extends State<CommentsModal> {
             child: SafeArea(
               child: Row(
                 children: [
-                  _buildUserAvatar(
-                    imageUrl: widget.user['profileImageUrl'] as String?,
-                    userName: _getUserName(),
-                    radius: 18,
-                  ),
+                  // Real-time profile image for current user
+                  _buildCurrentUserAvatar(),
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextField(
@@ -371,6 +368,7 @@ class _CommentsModalState extends State<CommentsModal> {
     final timeAgo =
         timestamp != null ? _getTimeAgo(timestamp.toDate()) : 'Just now';
     final commentId = comment['id'];
+    final userId = comment['user_id'];
     final replies =
         (comment['replies'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
             [];
@@ -388,8 +386,9 @@ class _CommentsModalState extends State<CommentsModal> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildUserAvatar(
-                imageUrl: comment['user_profile_image'] as String?,
+              // Real-time profile image for comment author
+              _buildRealtimeUserAvatar(
+                userId: userId,
                 userName: userName,
                 radius: 18,
               ),
@@ -491,8 +490,8 @@ class _CommentsModalState extends State<CommentsModal> {
                       showAll
                           ? 'Show less'
                           : 'View $hiddenCount more ${hiddenCount == 1 ? 'reply' : 'replies'}',
-                      style: TextStyle(
-                        color: const Color(0xFF8B5CF6),
+                      style: const TextStyle(
+                        color: Color(0xFF8B5CF6),
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
@@ -512,6 +511,7 @@ class _CommentsModalState extends State<CommentsModal> {
     final timestamp = reply['created_at'] as Timestamp?;
     final timeAgo =
         timestamp != null ? _getTimeAgo(timestamp.toDate()) : 'Just now';
+    final userId = reply['user_id'];
 
     final currentUserId = (widget.user['uid'] as String?) ??
         (widget.user['id'] as String?) ??
@@ -523,8 +523,9 @@ class _CommentsModalState extends State<CommentsModal> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildUserAvatar(
-            imageUrl: reply['user_profile_image'] as String?,
+          // Real-time profile image for reply author
+          _buildRealtimeUserAvatar(
+            userId: userId,
             userName: userName,
             radius: 14,
           ),
@@ -576,6 +577,104 @@ class _CommentsModalState extends State<CommentsModal> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // Real-time avatar widget that streams user profile data
+  Widget _buildRealtimeUserAvatar({
+    required String? userId,
+    required String userName,
+    required double radius,
+  }) {
+    if (userId == null) {
+      return _buildStaticAvatar(
+        imageUrl: null,
+        userName: userName,
+        radius: radius,
+      );
+    }
+
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: _db.getUserProfileStream(userId),
+      builder: (context, snapshot) {
+        String? profileImageUrl;
+        
+        if (snapshot.hasData && snapshot.data != null) {
+          profileImageUrl = snapshot.data!['profileImageUrl'] as String?;
+        }
+
+        return _buildStaticAvatar(
+          imageUrl: profileImageUrl,
+          userName: userName,
+          radius: radius,
+        );
+      },
+    );
+  }
+
+  // Real-time avatar for the current user typing
+  Widget _buildCurrentUserAvatar() {
+    final currentUserId = (widget.user['uid'] as String?) ??
+        (widget.user['id'] as String?) ??
+        _db.currentUserId;
+
+    if (currentUserId == null) {
+      return _buildStaticAvatar(
+        imageUrl: widget.user['profileImageUrl'] as String?,
+        userName: _getUserName(),
+        radius: 18,
+      );
+    }
+
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: _db.getUserProfileStream(currentUserId),
+      builder: (context, snapshot) {
+        String? profileImageUrl;
+        
+        if (snapshot.hasData && snapshot.data != null) {
+          profileImageUrl = snapshot.data!['profileImageUrl'] as String?;
+        }
+
+        return _buildStaticAvatar(
+          imageUrl: profileImageUrl,
+          userName: _getUserName(),
+          radius: 18,
+        );
+      },
+    );
+  }
+
+  Widget _buildStaticAvatar({
+    required String? imageUrl,
+    required String userName,
+    required double radius,
+  }) {
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundImage: NetworkImage(imageUrl),
+        onBackgroundImageError: (_, __) {},
+        child: Container(
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.transparent,
+          ),
+        ),
+      );
+    }
+
+    // Fallback to initial
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: const Color(0xFF8B5CF6),
+      child: Text(
+        userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: radius * 0.7,
+        ),
       ),
     );
   }
@@ -672,39 +771,5 @@ class _CommentsModalState extends State<CommentsModal> {
         (widget.user['username'] as String?) ??
         (widget.user['email'] as String?)?.split('@')[0] ??
         'User';
-  }
-
-  Widget _buildUserAvatar({
-    required String? imageUrl,
-    required String userName,
-    required double radius,
-  }) {
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      return CircleAvatar(
-        radius: radius,
-        backgroundImage: NetworkImage(imageUrl),
-        onBackgroundImageError: (_, __) {},
-        child: Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.transparent,
-          ),
-        ),
-      );
-    }
-
-    // Fallback to initial
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: const Color(0xFF8B5CF6),
-      child: Text(
-        userName.isNotEmpty ? userName[0].toUpperCase() : '?',
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: radius * 0.7,
-        ),
-      ),
-    );
   }
 }

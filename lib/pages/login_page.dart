@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/pages/signup_page.dart';
 import 'package:thryfto/pages/forgot_password_page.dart';
@@ -147,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           'Forgot Password?',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Color(0xFF8B5CF6),
+                            color: AppColors.primary,
                             fontWeight: FontWeight.w500,
                             fontFamily: 'SF Pro Display',
                           ),
@@ -184,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             'Sign up',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Color(0xFF8B5CF6),
+                              color: AppColors.primary,
                               fontWeight: FontWeight.w600,
                               fontFamily: 'SF Pro Display',
                             ),
@@ -272,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF8B5CF6),
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(25),

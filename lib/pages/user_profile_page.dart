@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/profileWidgets/profile_dialogs.dart';
 import 'package:thryfto/profileWidgets/user_profileWidgets.dart';
 import 'package:thryfto/profileWidgets/profile_settings_handler.dart';
@@ -10,6 +11,7 @@ import 'package:thryfto/services/favorite_service.dart';
 import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/services/rating_service.dart';
 import 'package:thryfto/services/notification_service.dart';
+import 'package:thryfto/services/block_service.dart';
 import 'package:thryfto/pages/conversation_page.dart';
 
 class UserProfilePage extends StatefulWidget {
@@ -33,6 +35,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   final FavoritesService _favoritesService = FavoritesService();
   final RatingService _ratingService = RatingService();
   final NotificationService _notificationService = NotificationService();
+  final BlockService _blockService = BlockService();
 
   bool get _isOwnProfile {
     final currentUserId = widget.currentUser['id'] ??
@@ -47,38 +50,42 @@ class _UserProfilePageState extends State<UserProfilePage> {
       stream: _db.getUserProfileStream(widget.userId),
       builder: (context, snapshot) {
         // Handle initial loading state
-        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
           return const Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.backgroundWhite,
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
         final userData = snapshot.data ?? {};
-        final fullName = userData['fullName'] ?? userData['full_name'] ?? 'User';
+        final fullName =
+            userData['fullName'] ?? userData['full_name'] ?? 'User';
         final username = userData['username'] ?? 'unknown';
         final profileImageUrl = userData['profileImageUrl'] as String?;
         final bio = userData['bio'] as String?;
         final displayBio = (bio == null || bio.trim().isEmpty) ? 'No bio' : bio;
 
         return Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.backgroundWhite,
           appBar: AppBar(
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.backgroundWhite,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
               onPressed: () => Navigator.pop(context),
             ),
             title: Text(username,
                 style: const TextStyle(
-                    color: Colors.black,
+                    color: AppColors.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.bold)),
             actions: [
               IconButton(
-                icon: const Icon(Icons.more_horiz, color: Colors.black),
-                onPressed: () => _showProfileMenu(widget.userId, username),
+                icon:
+                    const Icon(Icons.more_horiz, color: AppColors.textPrimary),
+                onPressed: () =>
+                    _showProfileMenu(widget.userId, username, fullName),
               ),
             ],
           ),
@@ -87,19 +94,27 @@ class _UserProfilePageState extends State<UserProfilePage> {
             children: [
               // --- Header Section: Avatar & Stats ---
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
                     CircleAvatar(
                       radius: 35,
-                      backgroundColor: const Color(0xFF8B5CF6),
-                      backgroundImage: (profileImageUrl != null && profileImageUrl.isNotEmpty)
+                      backgroundColor: AppColors.primary,
+                      backgroundImage: (profileImageUrl != null &&
+                              profileImageUrl.isNotEmpty)
                           ? NetworkImage(profileImageUrl)
                           : null,
-                      child: (profileImageUrl == null || profileImageUrl.isEmpty)
-                          ? Text(fullName.isNotEmpty ? fullName[0].toUpperCase() : 'U',
-                              style: const TextStyle(color: Colors.white, fontSize: 24))
-                          : null,
+                      child:
+                          (profileImageUrl == null || profileImageUrl.isEmpty)
+                              ? Text(
+                                  fullName.isNotEmpty
+                                      ? fullName[0].toUpperCase()
+                                      : 'U',
+                                  style: const TextStyle(
+                                      color: AppColors.backgroundWhite,
+                                      fontSize: 24))
+                              : null,
                     ),
                     const SizedBox(width: 40),
                     Expanded(
@@ -107,7 +122,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(fullName,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 14)),
                           const SizedBox(height: 12),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.start,
@@ -119,7 +135,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                               ),
                               const SizedBox(width: 30),
                               StreamBuilder<int>(
-                                stream: _favoritesService.getFavoritesCountStream(widget.userId),
+                                stream: _favoritesService
+                                    .getFavoritesCountStream(widget.userId),
                                 builder: (context, s) => _buildStatColumn(
                                     '${s.data ?? 0}', 'followers'),
                               ),
@@ -143,12 +160,14 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
               // --- Identity: Bio, Location & Rating ---
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(displayBio,
-                        style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                        style: const TextStyle(
+                            fontSize: 13, color: AppColors.textPrimary)),
                     LocationWidget(
                         userId: widget.userId,
                         locationService: _locationService),
@@ -162,23 +181,28 @@ class _UserProfilePageState extends State<UserProfilePage> {
               // --- Action Buttons (Visible only if not own profile) ---
               if (!_isOwnProfile)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     children: [
                       Expanded(
                         child: StreamBuilder<bool>(
-                          stream: _favoritesService.getFavoriteStatusStream(widget.userId),
+                          stream: _favoritesService
+                              .getFavoriteStatusStream(widget.userId),
                           builder: (context, favSnapshot) {
                             final isFavorite = favSnapshot.data ?? false;
                             return SizedBox(
                               height: 32,
                               child: ElevatedButton(
-                                onPressed: () => _toggleFavorite(isFavorite, fullName),
+                                onPressed: () =>
+                                    _toggleFavorite(isFavorite, fullName),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: isFavorite
-                                      ? Colors.grey[200]
-                                      : const Color(0xFF4A69FF),
-                                  foregroundColor: isFavorite ? Colors.black : Colors.white,
+                                      ? AppColors.backgroundGreyDark
+                                      : AppColors.info,
+                                  foregroundColor: isFavorite
+                                      ? AppColors.textPrimary
+                                      : AppColors.backgroundWhite,
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(6)),
@@ -209,14 +233,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
               const Divider(height: 1),
 
               // --- Grid Label ---
-              Padding(
-                padding: const EdgeInsets.all(16),
+              const Padding(
+                padding: EdgeInsets.all(16),
                 child: Row(
-                  children: const [
+                  children: [
                     Icon(Icons.grid_on, size: 18),
                     SizedBox(width: 8),
                     Text('Listings',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15)),
                   ],
                 ),
               ),
@@ -226,13 +251,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 child: StreamBuilder<List<Map<String, dynamic>>>(
                   stream: _db.getUserListings(widget.userId),
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        !snapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
                     }
                     final listings = snapshot.data ?? [];
                     return GridView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
                         childAspectRatio: 0.75,
                         crossAxisSpacing: 12,
@@ -253,7 +280,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
-  void _showProfileMenu(String userId, String username) {
+  void _showProfileMenu(String userId, String username, String fullName) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -275,15 +302,28 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 );
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.block_outlined, color: Colors.red),
-              title: const Text('Block User', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                _showSnackBar(
-                  message: 'Block feature coming soon!',
-                  icon: Icons.info_outline,
-                  backgroundColor: Colors.black87,
+            StreamBuilder<bool>(
+              stream: _blockService.isUserBlockedStream(userId),
+              builder: (context, snapshot) {
+                final isBlocked = snapshot.data ?? false;
+
+                return ListTile(
+                  leading: Icon(
+                    isBlocked ? Icons.block : Icons.block_outlined,
+                    color: AppColors.error,
+                  ),
+                  title: Text(
+                    isBlocked ? 'Unblock User' : 'Block User',
+                    style: const TextStyle(color: AppColors.error),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (isBlocked) {
+                      _handleUnblock(userId, fullName);
+                    } else {
+                      _handleBlock(userId, fullName);
+                    }
+                  },
                 );
               },
             ),
@@ -294,25 +334,182 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
+  void _handleBlock(String userId, String userName) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Block User'),
+        content: Text(
+          'Are you sure you want to block $userName?\n\n'
+          'They won\'t be able to:\n'
+          '• Follow you or see your posts\n'
+          '• Message you\n'
+          '• See your profile\n\n'
+          'You won\'t see their content either.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              // Close the dialog first
+              Navigator.pop(dialogContext);
+
+              // Show loading indicator
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Row(
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.backgroundWhite),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Text('Blocking user...'),
+                    ],
+                  ),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+
+              final success = await _blockService.blockUser(userId);
+
+              if (!mounted) return;
+
+              // Clear the loading snackbar
+              ScaffoldMessenger.of(context).clearSnackBars();
+
+              // Pop the current page and pass result back
+              Navigator.of(context).pop(success ? 'blocked' : null);
+
+              // Show result snackbar on the previous page
+              if (success) {
+                await Future.delayed(const Duration(milliseconds: 100));
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          const Icon(Icons.block,
+                              color: AppColors.backgroundWhite, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text('$userName has been blocked')),
+                        ],
+                      ),
+                      backgroundColor: AppColors.error,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  );
+                }
+              } else {
+                await Future.delayed(const Duration(milliseconds: 100));
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Row(
+                        children: [
+                          Icon(Icons.error_outline,
+                              color: AppColors.backgroundWhite, size: 20),
+                          SizedBox(width: 8),
+                          Expanded(child: Text('Failed to block user')),
+                        ],
+                      ),
+                      backgroundColor: AppColors.error,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text(
+              'Block',
+              style: TextStyle(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleUnblock(String userId, String userName) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unblock User'),
+        content: Text(
+          'Are you sure you want to unblock $userName? '
+          'They will be able to follow you and message you again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+
+              final success = await _blockService.unblockUser(userId);
+
+              if (success && mounted) {
+                _showSnackBar(
+                  message: '$userName has been unblocked',
+                  icon: Icons.check_circle,
+                  backgroundColor: Colors.green,
+                );
+              } else if (mounted) {
+                _showSnackBar(
+                  message: 'Failed to unblock user',
+                  icon: Icons.error_outline,
+                  backgroundColor: AppColors.error,
+                );
+              }
+            },
+            child: const Text('Unblock'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatColumn(String value, String label) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+        Text(value,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+        Text(label,
+            style: const TextStyle(fontSize: 12, color: AppColors.textPrimary)),
       ],
     );
   }
 
-  Widget _buildSecondaryButton(String? text, VoidCallback onTap, {IconData? icon}) {
+  Widget _buildSecondaryButton(String? text, VoidCallback onTap,
+      {IconData? icon}) {
     return SizedBox(
       height: 32,
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.grey[200],
-          foregroundColor: Colors.black,
+          backgroundColor: AppColors.backgroundGreyDark,
+          foregroundColor: AppColors.textPrimary,
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
           padding: EdgeInsets.zero,
@@ -326,12 +523,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   Future<void> _toggleFavorite(bool isFavorite, String sellerName) async {
     if (isFavorite) {
-      final success = await _favoritesService.removeFromFavorites(widget.userId);
+      final success =
+          await _favoritesService.removeFromFavorites(widget.userId);
       if (success && mounted) {
         _showSnackBar(
-            message: 'Notifications turned off',
+            message: 'Unfollowed $sellerName',
             icon: Icons.notifications_off,
-            backgroundColor: Colors.grey[700]!);
+            backgroundColor: AppColors.textSecondary);
       }
     } else {
       final success = await _favoritesService.addToFavorites(widget.userId);
@@ -340,13 +538,14 @@ class _UserProfilePageState extends State<UserProfilePage> {
           recipientId: widget.userId,
           type: 'follow',
           title: 'New Follower',
-          body: '${widget.currentUser['fullName'] ?? 'Someone'} started following you',
+          body:
+              '${widget.currentUser['fullName'] ?? 'Someone'} started following you',
           relatedUserId: FirebaseAuth.instance.currentUser?.uid,
         );
         _showSnackBar(
             message: 'Following! You\'ll get notified of new listings',
             icon: Icons.check_circle,
-            backgroundColor: const Color(0xFF8B5CF6));
+            backgroundColor: AppColors.primary);
       }
     }
   }
@@ -383,31 +582,37 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
   }
 
-  void _showSnackBar({required String message, required IconData icon, required Color backgroundColor}) {
+  void _showSnackBar(
+      {required String message,
+      required IconData icon,
+      required Color backgroundColor}) {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Row(children: [
-          Icon(icon, color: Colors.white, size: 20),
+          Icon(icon, color: AppColors.backgroundWhite, size: 20),
           const SizedBox(width: 8),
           Expanded(child: Text(message))
         ]),
         backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
   }
 }
 
 class _CompactRatingDisplay extends StatelessWidget {
   final String userId;
   final RatingService ratingService;
-  const _CompactRatingDisplay({required this.userId, required this.ratingService});
+  const _CompactRatingDisplay(
+      {required this.userId, required this.ratingService});
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<Map<String, dynamic>>(
       stream: ratingService.getSellerRatingStatsStream(userId),
       builder: (context, snapshot) {
-        final stats = snapshot.data ?? {'average_rating': 0.0, 'ratings_count': 0};
+        final stats =
+            snapshot.data ?? {'average_rating': 0.0, 'ratings_count': 0};
         if (stats['ratings_count'] == 0) return const SizedBox.shrink();
 
         return InkWell(
@@ -419,7 +624,8 @@ class _CompactRatingDisplay extends StatelessWidget {
               const Icon(Icons.star, size: 14, color: Colors.amber),
               const SizedBox(width: 4),
               Text((stats['average_rating'] as double).toStringAsFixed(1),
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.bold)),
               Text(' (${stats['ratings_count']})',
                   style: const TextStyle(fontSize: 11, color: Colors.grey)),
             ],

@@ -359,4 +359,103 @@ class LocationService {
       return distance <= radiusKm;
     }).toList();
   }
+
+  String formatLocationForDisplay(String fullAddress) {
+    if (fullAddress.isEmpty) return 'Philippines';
+
+    // Remove country name
+    String formatted = fullAddress.replaceAll(', Philippines', '');
+    formatted = formatted.replaceAll('Philippines', '');
+
+    // Remove zip codes (4-digit numbers)
+    formatted = formatted.replaceAll(RegExp(r'\b\d{4}\b'), '');
+
+    // Split by comma to get address components
+    List<String> parts = formatted.split(',').map((e) => e.trim()).toList();
+
+    // Remove empty parts
+    parts.removeWhere((part) => part.isEmpty);
+
+    if (parts.isEmpty) return 'Philippines';
+
+    // Get last 2 parts (usually City, Region)
+    if (parts.length >= 2) {
+      return '${parts[parts.length - 2]}, ${parts[parts.length - 1]}';
+    } else if (parts.length == 1) {
+      return parts[0];
+    }
+
+    return formatted;
+  }
+
+  /// Parse address components and extract only City and Region
+  /// This gives more control over the format
+  Future<String> getCityAndRegionFromCoordinates(
+    double latitude,
+    double longitude,
+  ) async {
+    const String apiKey = ApiKeys.googleMapsApiKey;
+    try {
+      print('Fetching city/region for: $latitude, $longitude');
+
+      final url = Uri.parse(
+          'https://maps.googleapis.com/maps/api/geocode/json?latlng=$latitude,$longitude&key=$apiKey&language=en');
+
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['status'] == 'OK' &&
+            data['results'] != null &&
+            data['results'].isNotEmpty) {
+          final result = data['results'][0];
+          final components = result['address_components'] as List;
+
+          String? city;
+          String? province;
+          String? municipality;
+
+          // Parse address components
+          for (var component in components) {
+            final types = component['types'] as List;
+
+            if (types.contains('locality')) {
+              city = component['long_name'];
+            } else if (types.contains('administrative_area_level_2')) {
+              municipality = component['long_name'];
+            } else if (types.contains('administrative_area_level_1')) {
+              province = component['long_name'];
+            }
+          }
+
+          print(
+              'Parsed - City: $city, Municipality: $municipality, Province: $province');
+
+          // Build CLEAN address string (City, Region format only)
+          if (city != null && province != null) {
+            return '$city, $province';
+          } else if (city != null) {
+            return city;
+          } else if (municipality != null && province != null) {
+            return '$municipality, $province';
+          } else if (municipality != null) {
+            return municipality;
+          } else if (province != null) {
+            return province;
+          }
+
+          // Last resort: use formatted address but clean it
+          String formattedAddress = result['formatted_address'] ?? '';
+          return formatLocationForDisplay(formattedAddress);
+        }
+      }
+
+      print('Geocoding failed, returning fallback');
+      return 'Philippines';
+    } catch (e) {
+      print('Error in getCityAndRegionFromCoordinates: $e');
+      return 'Philippines';
+    }
+  }
 }

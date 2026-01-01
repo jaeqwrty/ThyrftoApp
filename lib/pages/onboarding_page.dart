@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/pages/profile_setup_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -54,7 +55,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.backgroundWhite,
       body: SafeArea(
         child: Column(
           children: [
@@ -101,13 +102,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
           Container(
             padding: const EdgeInsets.all(30),
             decoration: BoxDecoration(
-              color: const Color(0xFF8B5CF6).withOpacity(0.1),
+              color: AppColors.primaryBackground,
               shape: BoxShape.circle,
             ),
             child: Icon(
               iconData,
               size: 80,
-              color: const Color(0xFF8B5CF6),
+              color: AppColors.primary,
             ),
           ),
           const SizedBox(height: 40),
@@ -117,7 +118,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             style: GoogleFonts.poppins(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 20),
@@ -126,7 +127,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(
               fontSize: 16,
-              color: Colors.grey[600],
+              color: AppColors.textSecondary,
               height: 1.5,
             ),
           ),
@@ -152,8 +153,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 width: _currentPage == index ? 24 : 8,
                 decoration: BoxDecoration(
                   color: _currentPage == index
-                      ? const Color(0xFF8B5CF6)
-                      : Colors.grey[300],
+                      ? AppColors.primary
+                      : AppColors.borderLight,
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -163,8 +164,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
           ElevatedButton(
             onPressed: _nextPage,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF8B5CF6),
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.textWhite,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(30),

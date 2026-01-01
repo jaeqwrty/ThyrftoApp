@@ -7,6 +7,7 @@ import 'package:thryfto/commonWidgets/image_placeholder.dart';
 import 'package:thryfto/commonWidgets/tag.dart';
 import 'package:thryfto/pages/listing_detail_page.dart';
 import 'package:thryfto/services/location_service.dart';
+import 'package:thryfto/services/block_service.dart';
 
 class SearchPage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -17,15 +18,18 @@ class SearchPage extends StatefulWidget {
   State<SearchPage> createState() => _SearchPageState();
 }
 
+Stream<Map<String, dynamic>?>? _userLocationStream;
+
 class _SearchPageState extends State<SearchPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final LocationService _locationService = LocationService();
+  final BlockService _blockService = BlockService();
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = 'All';
   String _searchQuery = '';
-  String _sortBy = 'none'; // 'none', 'price_low', 'price_high', 'distance_near', 'distance_far'
-  String _priceSortDirection = 'low'; // 'low' or 'high'
-  String _distanceSortDirection = 'near'; // 'near' or 'far'
+  String _sortBy = 'none';
+  String _priceSortDirection = 'low';
+  String _distanceSortDirection = 'near';
   Map<String, dynamic>? _userLocation;
 
   final List<String> _categories = [
@@ -39,27 +43,53 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void initState() {
     super.initState();
-    _loadUserLocation();
+    _setupUserLocationStream(); // Changed from _loadUserLocation
   }
 
-  Future<void> _loadUserLocation() async {
+  Future<void> _setupUserLocationStream() async {
     try {
-      final userId = widget.user['id'] ?? 
-          widget.user['uid'] ?? 
+      final userId = widget.user['id'] ??
+          widget.user['uid'] ??
           FirebaseAuth.instance.currentUser?.uid;
-      
+
       if (userId != null) {
-        final location = await _locationService.getUserLocation(userId);
-        if (mounted) {
-          setState(() {
-            _userLocation = location;
-          });
-        }
+        // Create a stream that listens to user document changes
+        _userLocationStream =
+            _firestore.collection('users').doc(userId).snapshots().map((doc) {
+          if (!doc.exists) return null;
+
+          final data = doc.data();
+          if (data == null) return null;
+
+          // Check for direct latitude/longitude fields (current structure)
+          if (data['latitude'] != null && data['longitude'] != null) {
+            return {
+              'latitude': data['latitude'],
+              'longitude': data['longitude'],
+              'address': data['address'],
+            };
+          }
+
+          // Fall back to nested location object (old structure)
+          if (data['location'] != null) {
+            return data['location'] as Map<String, dynamic>;
+          }
+
+          return null;
+        });
+
+        // Listen to the stream and update state
+        _userLocationStream?.listen((location) {
+          if (mounted) {
+            setState(() {
+              _userLocation = location;
+              // State update triggers rebuild, which recalculates distances!
+            });
+          }
+        });
       }
     } catch (e) {
-      print('Error loading user location: $e');
-      if (mounted) {
-      }
+      print('Error setting up location stream: $e');
     }
   }
 
@@ -99,7 +129,8 @@ class _SearchPageState extends State<SearchPage> {
                         prefixIcon: Icon(Icons.search, color: Colors.grey[500]),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Icons.clear, color: Colors.grey),
+                                icon:
+                                    const Icon(Icons.clear, color: Colors.grey),
                                 onPressed: () {
                                   _searchController.clear();
                                   setState(() => _searchQuery = '');
@@ -133,15 +164,22 @@ class _SearchPageState extends State<SearchPage> {
                               setState(() => _selectedCategory = category);
                             },
                             backgroundColor: Colors.white,
-                            selectedColor: const Color(0xFF8B5CF6).withOpacity(0.2),
+                            selectedColor:
+                                const Color(0xFF8B5CF6).withOpacity(0.2),
                             labelStyle: TextStyle(
-                              color: isSelected ? const Color(0xFF8B5CF6) : Colors.grey[700],
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                              color: isSelected
+                                  ? const Color(0xFF8B5CF6)
+                                  : Colors.grey[700],
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                               side: BorderSide(
-                                color: isSelected ? const Color(0xFF8B5CF6) : Colors.grey[300]!,
+                                color: isSelected
+                                    ? const Color(0xFF8B5CF6)
+                                    : Colors.grey[300]!,
                               ),
                             ),
                           ),
@@ -203,8 +241,8 @@ class _SearchPageState extends State<SearchPage> {
             const Text('Price'),
             const SizedBox(width: 4),
             Icon(
-              _priceSortDirection == 'low' 
-                  ? Icons.arrow_upward 
+              _priceSortDirection == 'low'
+                  ? Icons.arrow_upward
                   : Icons.arrow_downward,
               size: 14,
               color: isSelected ? const Color(0xFF8B5CF6) : Colors.grey[700],
@@ -215,11 +253,11 @@ class _SearchPageState extends State<SearchPage> {
         onSelected: (selected) {
           setState(() {
             if (isSelected) {
-              // Toggle between low and high
-              _priceSortDirection = _priceSortDirection == 'low' ? 'high' : 'low';
-              _sortBy = _priceSortDirection == 'low' ? 'price_low' : 'price_high';
+              _priceSortDirection =
+                  _priceSortDirection == 'low' ? 'high' : 'low';
+              _sortBy =
+                  _priceSortDirection == 'low' ? 'price_low' : 'price_high';
             } else {
-              // First selection, default to low
               _priceSortDirection = 'low';
               _sortBy = 'price_low';
             }
@@ -254,8 +292,8 @@ class _SearchPageState extends State<SearchPage> {
             const Text('Distance'),
             const SizedBox(width: 4),
             Icon(
-              _distanceSortDirection == 'near' 
-                  ? Icons.arrow_upward 
+              _distanceSortDirection == 'near'
+                  ? Icons.arrow_upward
                   : Icons.arrow_downward,
               size: 14,
               color: isSelected ? const Color(0xFF8B5CF6) : Colors.grey[700],
@@ -266,11 +304,12 @@ class _SearchPageState extends State<SearchPage> {
         onSelected: (selected) {
           setState(() {
             if (isSelected) {
-              // Toggle between near and far
-              _distanceSortDirection = _distanceSortDirection == 'near' ? 'far' : 'near';
-              _sortBy = _distanceSortDirection == 'near' ? 'distance_near' : 'distance_far';
+              _distanceSortDirection =
+                  _distanceSortDirection == 'near' ? 'far' : 'near';
+              _sortBy = _distanceSortDirection == 'near'
+                  ? 'distance_near'
+                  : 'distance_far';
             } else {
-              // First selection, default to near
               _distanceSortDirection = 'near';
               _sortBy = 'distance_near';
             }
@@ -323,9 +362,8 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _buildSearchResults() {
-    Query<Map<String, dynamic>> query = _firestore
-        .collection('listings')
-        .where('status', isEqualTo: 'active');
+    Query<Map<String, dynamic>> query =
+        _firestore.collection('listings').where('status', isEqualTo: 'active');
 
     if (_selectedCategory != 'All') {
       query = query.where('category', isEqualTo: _selectedCategory);
@@ -343,10 +381,10 @@ class _SearchPageState extends State<SearchPage> {
         }
 
         var listings = snapshot.data?.docs ?? [];
-        
+
         // Get current user ID
-        final currentUserId = widget.user['id'] ?? 
-            widget.user['uid'] ?? 
+        final currentUserId = widget.user['id'] ??
+            widget.user['uid'] ??
             FirebaseAuth.instance.currentUser?.uid;
 
         // Filter by search query and exclude current user's listings
@@ -354,15 +392,15 @@ class _SearchPageState extends State<SearchPage> {
           listings = listings.where((doc) {
             final data = doc.data();
             final title = (data['title'] ?? '').toString().toLowerCase();
-            final description = (data['description'] ?? '').toString().toLowerCase();
+            final description =
+                (data['description'] ?? '').toString().toLowerCase();
             final sellerId = data['seller_id'] ?? data['user_id'];
-            
-            // Exclude current user's listings and apply search filter
-            return (sellerId != currentUserId) && 
-                   (title.contains(_searchQuery) || description.contains(_searchQuery));
+
+            return (sellerId != currentUserId) &&
+                (title.contains(_searchQuery) ||
+                    description.contains(_searchQuery));
           }).toList();
         } else {
-          // Only exclude current user's listings
           listings = listings.where((doc) {
             final data = doc.data();
             final sellerId = data['seller_id'] ?? data['user_id'];
@@ -377,37 +415,54 @@ class _SearchPageState extends State<SearchPage> {
           return data;
         }).toList();
 
-        // Apply sorting
-        listingsList = _applySorting(listingsList);
+        // Filter out blocked users' listings
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: _blockService.filterBlockedListings(listingsList),
+          builder: (context, blockedFilterSnapshot) {
+            if (blockedFilterSnapshot.connectionState ==
+                ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-        if (listingsList.isEmpty) {
-          return EmptyState(
-            icon: Icons.search_off,
-            title: _searchQuery.isNotEmpty ? 'No results found' : 'No items in this category',
-            subtitle: _searchQuery.isNotEmpty
-                ? 'Try a different search term'
-                : 'Check back later for new items',
-          );
-        }
+            var filteredListings = blockedFilterSnapshot.data ?? listingsList;
 
-        return GridView.builder(
-          padding: const EdgeInsets.all(12),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.75,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-          ),
-          itemCount: listingsList.length,
-          itemBuilder: (context, index) {
-            return _buildListingCard(listingsList[index]);
+            // REAL-TIME DISTANCE: Apply sorting with current user location
+            // This recalculates whenever _userLocation changes!
+            filteredListings = _applySorting(filteredListings);
+
+            if (filteredListings.isEmpty) {
+              return EmptyState(
+                icon: Icons.search_off,
+                title: _searchQuery.isNotEmpty
+                    ? 'No results found'
+                    : 'No items in this category',
+                subtitle: _searchQuery.isNotEmpty
+                    ? 'Try a different search term'
+                    : 'Check back later for new items',
+              );
+            }
+
+            return GridView.builder(
+              padding: const EdgeInsets.all(12),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.75,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: filteredListings.length,
+              itemBuilder: (context, index) {
+                return _buildListingCard(filteredListings[index]);
+              },
+            );
           },
         );
       },
     );
   }
 
-  List<Map<String, dynamic>> _applySorting(List<Map<String, dynamic>> listings) {
+  List<Map<String, dynamic>> _applySorting(
+      List<Map<String, dynamic>> listings) {
     switch (_sortBy) {
       case 'price_low':
         listings.sort((a, b) {
@@ -416,7 +471,7 @@ class _SearchPageState extends State<SearchPage> {
           return priceA.compareTo(priceB);
         });
         break;
-      
+
       case 'price_high':
         listings.sort((a, b) {
           final priceA = (a['price'] ?? 0).toDouble();
@@ -424,14 +479,14 @@ class _SearchPageState extends State<SearchPage> {
           return priceB.compareTo(priceA);
         });
         break;
-      
+
       case 'distance_near':
-        if (_userLocation != null && 
-            _userLocation!['latitude'] != null && 
+        if (_userLocation != null &&
+            _userLocation!['latitude'] != null &&
             _userLocation!['longitude'] != null) {
           final userLat = _userLocation!['latitude'] as double;
           final userLon = _userLocation!['longitude'] as double;
-          
+
           listings = _locationService.sortListingsByDistance(
             listings: listings,
             userLat: userLat,
@@ -439,41 +494,39 @@ class _SearchPageState extends State<SearchPage> {
           );
         }
         break;
-      
+
       case 'distance_far':
-        if (_userLocation != null && 
-            _userLocation!['latitude'] != null && 
+        if (_userLocation != null &&
+            _userLocation!['latitude'] != null &&
             _userLocation!['longitude'] != null) {
           final userLat = _userLocation!['latitude'] as double;
           final userLon = _userLocation!['longitude'] as double;
-          
+
           listings = _locationService.sortListingsByDistance(
             listings: listings,
             userLat: userLat,
             userLon: userLon,
           );
-          // Reverse for far to near
           listings = listings.reversed.toList();
         }
         break;
-      
+
       case 'none':
       default:
-        // Keep original order (relevance/default)
         break;
     }
-    
+
     return listings;
   }
 
   Widget _buildListingCard(Map<String, dynamic> listing) {
     final imageUrls = listing['image_urls'] as List<dynamic>? ?? [];
     final hasImage = imageUrls.isNotEmpty;
-    
-    // Show distance badge if sorted by distance
-    final showDistance = (_sortBy == 'distance_near' || _sortBy == 'distance_far') && 
-                        _userLocation != null && 
-                        listing['distance_text'] != null;
+
+    final showDistance =
+        (_sortBy == 'distance_near' || _sortBy == 'distance_far') &&
+            _userLocation != null &&
+            listing['distance_text'] != null;
 
     return GestureDetector(
       onTap: () {
@@ -507,23 +560,25 @@ class _SearchPageState extends State<SearchPage> {
               child: Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(12)),
                     child: hasImage
                         ? Image.network(
                             imageUrls[0],
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => const ImagePlaceholder(),
+                            errorBuilder: (context, error, stackTrace) =>
+                                const ImagePlaceholder(),
                           )
                         : const ImagePlaceholder(),
                   ),
-                  // Distance badge
                   if (showDistance)
                     Positioned(
                       top: 8,
                       right: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.7),
                           borderRadius: BorderRadius.circular(12),
@@ -582,7 +637,8 @@ class _SearchPageState extends State<SearchPage> {
                       TagBadge.size(listing['size'] ?? 'N/A'),
                       const SizedBox(width: 6),
                       Flexible(
-                        child: TagBadge.condition(listing['condition'] ?? 'N/A'),
+                        child:
+                            TagBadge.condition(listing['condition'] ?? 'N/A'),
                       ),
                     ],
                   ),

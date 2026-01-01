@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/shared/app_logo.dart';
 import 'package:thryfto/shared/auth_wrapper.dart';
@@ -71,7 +72,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             result['message'],
             style: const TextStyle(fontFamily: 'SF Pro Display'),
           ),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -102,7 +103,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                        color: AppColors.textPrimary,
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
@@ -180,7 +181,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       isPasswordVisible: _isConfirmPasswordVisible,
                       onTogglePasswordVisibility: () {
                         setState(() {
-                          _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                          _isConfirmPasswordVisible =
+                              !_isConfirmPasswordVisible;
                         });
                       },
                       validator: (value) {
@@ -203,17 +205,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                        color: AppColors.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                          color: AppColors.primary.withOpacity(0.3),
                         ),
                       ),
                       child: Row(
                         children: [
                           const Icon(
                             Icons.info_outline,
-                            color: Color(0xFF8B5CF6),
+                            color: AppColors.primary,
                             size: 20,
                           ),
                           const SizedBox(width: 12),
@@ -221,7 +223,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             child: Text(
                               'By signing up, you agree to our Terms of Service and Privacy Policy.',
                               style: TextStyle(
-                                color: Colors.grey.shade800,
+                                color: AppColors.textSecondary,
                                 fontSize: 13,
                                 fontFamily: 'SF Pro Display',
                               ),
@@ -234,11 +236,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
+                        Text(
                           'Already have an account? ',
                           style: TextStyle(
-                            fontSize: 14, 
-                            color: Colors.grey,
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
                             fontFamily: 'SF Pro Display',
                           ),
                         ),
@@ -248,7 +250,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             'Log in',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Color(0xFF8B5CF6),
+                              color: AppColors.primary,
                               fontWeight: FontWeight.w600,
                               fontFamily: 'SF Pro Display',
                             ),
@@ -301,12 +303,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         style: const TextStyle(
           fontFamily: 'SF Pro Display',
           fontSize: 14,
-          color: Colors.black87,
+          color: AppColors.textPrimary,
         ),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: const TextStyle(
-            color: Colors.grey, 
+          hintStyle: TextStyle(
+            color: AppColors.textSecondary,
             fontSize: 14,
             fontFamily: 'SF Pro Display',
           ),
@@ -318,7 +320,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             padding: EdgeInsets.only(
               top: maxLines > 1 ? 12 : 0,
             ),
-            child: Icon(icon, color: Colors.grey, size: 20),
+            child: Icon(icon, color: AppColors.textSecondary, size: 20),
           ),
           suffixIcon: isPassword
               ? IconButton(
@@ -326,7 +328,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     isPasswordVisible
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
-                    color: Colors.grey,
+                    color: AppColors.textSecondary,
                     size: 20,
                   ),
                   onPressed: onTogglePasswordVisibility,
@@ -338,11 +340,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(25),
-            borderSide: const BorderSide(color: Colors.red, width: 1),
+            borderSide: const BorderSide(color: AppColors.error, width: 1),
           ),
           focusedErrorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(25),
-            borderSide: const BorderSide(color: Colors.red, width: 1),
+            borderSide: const BorderSide(color: AppColors.error, width: 1),
           ),
           filled: true,
           fillColor: Colors.white,
@@ -367,7 +369,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF8B5CF6),
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(25),

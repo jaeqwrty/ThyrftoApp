@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/pages/user_profile_page.dart';
 
 class UserListPage extends StatelessWidget {
@@ -16,17 +17,17 @@ class UserListPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.backgroundWhite,
       appBar: AppBar(
         title: Text(title,
             style: const TextStyle(
-              color: Colors.black,
+             color: AppColors.textPrimary,
               fontWeight: FontWeight.bold,
               fontSize: 18,
             )),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.backgroundWhite,
         elevation: 0, // Makes the header seamless
-        iconTheme: const IconThemeData(color: Colors.black),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: userStream,
@@ -40,7 +41,7 @@ class UserListPage extends StatelessWidget {
           if (users.isEmpty) {
             return Center(
               child: Text("No users found",
-                  style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
             );
           }
 
@@ -61,7 +62,7 @@ class UserListPage extends StatelessWidget {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 leading: CircleAvatar(
                   radius: 24,
-                  backgroundColor: Colors.grey[200],
+                  backgroundColor: AppColors.backgroundGreyDark,
                   backgroundImage: (imageUrl != null && imageUrl.isNotEmpty)
                       ? NetworkImage(imageUrl)
                       : null,
@@ -72,7 +73,7 @@ class UserListPage extends StatelessWidget {
                 title: Text(fullName,
                     style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                 subtitle: Text('@$username',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                 onTap: () {
                   // CORRECT REDIRECTION
                   Navigator.push(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/location_service.dart';
@@ -111,7 +112,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           children: [
             ListTile(
               leading:
-                  const Icon(Icons.photo_library, color: Color(0xFF8B5CF6)),
+                  const Icon(Icons.photo_library, color: AppColors.primary),
               title: const Text('Choose from Gallery'),
               onTap: () {
                 Navigator.pop(context);
@@ -119,7 +120,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt, color: Color(0xFF8B5CF6)),
+              leading: const Icon(Icons.camera_alt, color: AppColors.primary),
               title: const Text('Take a Photo'),
               onTap: () {
                 Navigator.pop(context);
@@ -360,7 +361,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             child: Text(
               'Save',
               style: TextStyle(
-                color: _isLoading ? Colors.grey : const Color(0xFF8B5CF6),
+                color: _isLoading ? Colors.grey :  AppColors.primary,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -417,7 +418,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             child: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: const BoxDecoration(
-                                color: Color(0xFF8B5CF6),
+                                color: AppColors.primary,
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -468,7 +469,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6)),
+                        borderSide: const BorderSide(color: AppColors.primary),
                       ),
                       filled: true,
                       fillColor: Colors.grey[50],
@@ -502,7 +503,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6)),
+                        borderSide: const BorderSide(color: AppColors.primary),
                       ),
                       filled: true,
                       fillColor: Colors.grey[50],
@@ -537,7 +538,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6)),
+                        borderSide: const BorderSide(color: AppColors.primary),
                       ),
                       filled: true,
                       fillColor: Colors.grey[50],
@@ -549,7 +550,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   // Location Section
                   Row(
                     children: [
-                      const Icon(Icons.location_on, color: Color(0xFF8B5CF6)),
+                      const Icon(Icons.location_on, color: AppColors.primary),
                       const SizedBox(width: 8),
                       Text(
                         'Your Location',
@@ -653,7 +654,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Color(0xFF8B5CF6),
+                                color: AppColors.primary,
                               ),
                             )
                           : const Icon(Icons.my_location),
@@ -667,8 +668,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF8B5CF6),
-                        side: const BorderSide(color: Color(0xFF8B5CF6)),
+                        foregroundColor:  AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25),
                         ),
@@ -693,8 +694,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        foregroundColor: const Color(0xFF8B5CF6),
-                        side: const BorderSide(color: Color(0xFF8B5CF6)),
+                        foregroundColor:  AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25),
                         ),

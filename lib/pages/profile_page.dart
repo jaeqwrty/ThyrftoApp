@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/commonWidgets/empty_state.dart';
+import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/pages/edit_profile_page.dart';
 import 'package:thryfto/pages/user_follow_page.dart';
 import 'package:thryfto/profileWidgets/profile_dialogs.dart';
@@ -60,9 +61,9 @@ class _ProfilePageState extends State<ProfilePage>
         final displayBio = (bio == null || bio.trim().isEmpty) ? 'No bio' : bio;
 
         return Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.backgroundWhite,
           appBar: AppBar(
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.backgroundWhite,
             elevation: 0,
             centerTitle: false,
             title: Text(username,

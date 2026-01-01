@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/chat_service.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:image_picker/image_picker.dart';
@@ -118,9 +119,9 @@ class _ConversationPageState extends State<ConversationPage> {
               // Header
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF8B5CF6),
-                  borderRadius: const BorderRadius.only(
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(20),
                     topRight: Radius.circular(20),
                   ),
@@ -200,7 +201,7 @@ class _ConversationPageState extends State<ConversationPage> {
                         icon: const Icon(Icons.send, size: 20),
                         label: const Text('Send'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF8B5CF6),
+                          backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
@@ -315,7 +316,7 @@ class _ConversationPageState extends State<ConversationPage> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(Icons.camera_alt,
-                        color: Color(0xFF8B5CF6), size: 24),
+                        color: AppColors.primary, size: 24),
                   ),
                   title: const Text(
                     'Take Photo',
@@ -339,7 +340,7 @@ class _ConversationPageState extends State<ConversationPage> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(Icons.photo_library,
-                        color: Color(0xFF8B5CF6), size: 24),
+                        color: AppColors.primary, size: 24),
                   ),
                   title: const Text(
                     'Choose from Gallery',
@@ -905,11 +906,43 @@ class _ConversationPageState extends State<ConversationPage> {
             final displayName = fullName ?? username ?? widget.otherUserName;
             final profileImageUrl = otherUser?['profileImageUrl'] as String?;
 
+            // Real-time location retrieval
+            String locationText = 'Location not set';
+            bool hasLocation = false;
+
+            if (otherUser != null) {
+              // Check for direct latitude/longitude fields (current structure)
+              if (otherUser['latitude'] != null &&
+                  otherUser['longitude'] != null &&
+                  otherUser['address'] != null &&
+                  otherUser['address'].toString().isNotEmpty) {
+                locationText = otherUser['address'];
+                hasLocation = true;
+              }
+              // Fall back to cityState field
+              else if (otherUser['cityState'] != null &&
+                  otherUser['cityState'].toString().isNotEmpty) {
+                locationText = otherUser['cityState'];
+                hasLocation = true;
+              }
+              // Fall back to nested location object (old structure)
+              else if (otherUser['location'] != null) {
+                final location = otherUser['location'] as Map<String, dynamic>;
+                if (location['latitude'] != null &&
+                    location['longitude'] != null &&
+                    location['address'] != null &&
+                    location['address'].toString().isNotEmpty) {
+                  locationText = location['address'];
+                  hasLocation = true;
+                }
+              }
+            }
+
             return Row(
               children: [
                 CircleAvatar(
                   radius: 18,
-                  backgroundColor: const Color(0xFF8B5CF6),
+                  backgroundColor: AppColors.primary,
                   backgroundImage:
                       (profileImageUrl != null && profileImageUrl.isNotEmpty)
                           ? NetworkImage(profileImageUrl)
@@ -928,26 +961,49 @@ class _ConversationPageState extends State<ConversationPage> {
                       : null,
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayName,
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Active now',
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontSize: 12,
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            size: 12,
+                            color: hasLocation
+                                ? Colors.red[400]
+                                : Colors.grey[400],
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              locationText,
+                              style: TextStyle(
+                                color: hasLocation
+                                    ? Colors.grey[600]
+                                    : Colors.grey[400],
+                                fontSize: 12,
+                                fontStyle: hasLocation
+                                    ? FontStyle.normal
+                                    : FontStyle.italic,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             );

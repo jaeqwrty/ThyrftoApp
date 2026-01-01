@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/location_service.dart';
@@ -73,7 +74,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
           children: [
             ListTile(
               leading:
-                  const Icon(Icons.photo_library, color: Color(0xFF8B5CF6)),
+                  const Icon(Icons.photo_library, color: AppColors.primary),
               title: const Text('Choose from Gallery'),
               onTap: () {
                 Navigator.pop(context);
@@ -82,7 +83,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             ),
             if (!kIsWeb)
               ListTile(
-                leading: const Icon(Icons.camera_alt, color: Color(0xFF8B5CF6)),
+                leading: const Icon(Icons.camera_alt, color: AppColors.primary),
                 title: const Text('Take a Photo'),
                 onTap: () {
                   Navigator.pop(context);
@@ -279,7 +280,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         height: 120,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.grey[200],
+          color: AppColors.backgroundGreyDark,
           image: DecorationImage(
             image: MemoryImage(_imageBytes!),
             fit: BoxFit.cover,
@@ -292,7 +293,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         height: 120,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.grey[200],
+          color: AppColors.backgroundGreyDark,
           image: DecorationImage(
             image: FileImage(File(_imageFile!.path)),
             fit: BoxFit.cover,
@@ -305,7 +306,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         height: 120,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.grey[200],
+          color: AppColors.backgroundGreyDark,
         ),
         child: Icon(
           Icons.person_outline,
@@ -319,9 +320,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.backgroundWhite,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.backgroundWhite,
         elevation: 0,
         title: Text(
           'Setup Profile',
@@ -352,12 +353,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: const BoxDecoration(
-                          color: Color(0xFF8B5CF6),
+                          color: AppColors.primary,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
                           Icons.camera_alt,
-                          color: Colors.white,
+                          color: AppColors.backgroundWhite,
                           size: 20,
                         ),
                       ),
@@ -371,7 +372,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
               child: Text(
                 'Add a profile photo (Optional)',
                 style: GoogleFonts.poppins(
-                  color: Colors.grey[600],
+                  color: AppColors.textSecondary,
                   fontSize: 14,
                 ),
               ),
@@ -390,15 +391,15 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 alignLabelWithHint: true,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
+                  borderSide: BorderSide(color: AppColors.border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
+                  borderSide: BorderSide(color: AppColors.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF8B5CF6)),
+                  borderSide: const BorderSide(color: AppColors.primary),
                 ),
                 filled: true,
                 fillColor: Colors.grey[50],
@@ -410,7 +411,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             // Location Section Header
             Row(
               children: [
-                const Icon(Icons.location_on, color: Color(0xFF8B5CF6)),
+                const Icon(Icons.location_on, color: AppColors.primary),
                 const SizedBox(width: 8),
                 Text(
                   'Your Location',
@@ -443,7 +444,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             Text(
               'Help buyers find items near you',
               style: TextStyle(
-                color: Colors.grey[600],
+                color: AppColors.textSecondary,
                 fontSize: 14,
               ),
             ),
@@ -529,7 +530,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Color(0xFF8B5CF6),
+                          color: AppColors.primary,
                         ),
                       )
                     : const Icon(Icons.my_location),
@@ -543,8 +544,8 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                   ),
                 ),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF8B5CF6),
-                  side: const BorderSide(color: Color(0xFF8B5CF6)),
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
                   ),
@@ -569,8 +570,8 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  foregroundColor: const Color(0xFF8B5CF6),
-                  side: const BorderSide(color: Color(0xFF8B5CF6)), 
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary), 
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
                   ),
@@ -616,8 +617,8 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _completeSetup,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8B5CF6),
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.backgroundWhite,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
                   ),
@@ -628,7 +629,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                         height: 20,
                         width: 20,
                         child: CircularProgressIndicator(
-                          color: Colors.white,
+                          color: AppColors.backgroundWhite,
                           strokeWidth: 2,
                         ),
                       )

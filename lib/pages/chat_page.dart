@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/commonWidgets/empty_state.dart';
 import 'package:thryfto/commonWidgets/error.dart';
 import 'package:thryfto/commonWidgets/search_bar.dart';
+import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/chat_service.dart';
 import 'package:thryfto/pages/conversation_page.dart';
@@ -497,7 +498,7 @@ class _ChatListPageState extends State<ChatListPage> {
                   children: [
                     CircleAvatar(
                       radius: 24,
-                      backgroundColor: const Color(0xFF8B5CF6),
+                      backgroundColor: AppColors.primary,
                       backgroundImage: (profileImageUrl != null &&
                               profileImageUrl.isNotEmpty)
                           ? NetworkImage(profileImageUrl)

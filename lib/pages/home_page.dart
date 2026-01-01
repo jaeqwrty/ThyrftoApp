@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/modals/comments.dart';
 import 'package:thryfto/modals/share_modal.dart';
 import 'package:thryfto/pages/notification_page.dart';
 import 'package:thryfto/pages/user_profile_page.dart';
 import 'package:thryfto/services/database_service.dart';
+import 'package:thryfto/services/block_service.dart';
 import 'package:thryfto/pages/listing_detail_page.dart';
 import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/services/notification_service.dart';
@@ -23,7 +25,8 @@ final NotificationService _notificationService = NotificationService();
 
 class _HomePageState extends State<HomePage> {
   final DatabaseService _db = DatabaseService();
-
+  final BlockService _blockService = BlockService();
+  int _refreshKey = 0;
   String _formatCount(int count) {
     if (count >= 1000000) {
       return '${(count / 1000000).toStringAsFixed(1)}M';
@@ -46,6 +49,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildHomeFeed() {
     return StreamBuilder<List<Map<String, dynamic>>>(
+      key: ValueKey(_refreshKey),
       stream: _db.getActiveListings(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -58,91 +62,107 @@ class _HomePageState extends State<HomePage> {
 
         var listings = snapshot.data ?? [];
 
-        // Sort listings by distance if user has location set
-        return FutureBuilder<Map<String, dynamic>?>(
-          future: LocationService().getUserLocation(_db.currentUserId ?? ''),
-          builder: (context, userLocationSnapshot) {
-            if (userLocationSnapshot.hasData &&
-                userLocationSnapshot.data != null) {
-              // Check if location data exists directly or nested
-              final locationData = userLocationSnapshot.data!;
-              double? userLat;
-              double? userLon;
-
-              // Try to get latitude/longitude from direct fields first
-              if (locationData['latitude'] != null &&
-                  locationData['longitude'] != null) {
-                userLat = locationData['latitude'];
-                userLon = locationData['longitude'];
-              }
-              // If not found, try nested location object
-              else if (locationData['location'] != null) {
-                final nestedLocation =
-                    locationData['location'] as Map<String, dynamic>;
-                userLat = nestedLocation['latitude'];
-                userLon = nestedLocation['longitude'];
-              }
-
-              if (userLat != null && userLon != null) {
-                listings = LocationService().sortListingsByDistance(
-                  listings: listings,
-                  userLat: userLat,
-                  userLon: userLon,
-                );
-              }
+        // Filter out blocked users' listings
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          key: ValueKey('filter_$_refreshKey'),
+          future: _blockService.filterBlockedListings(listings),
+          builder: (context, blockedFilterSnapshot) {
+            if (blockedFilterSnapshot.connectionState ==
+                ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
             }
 
-            // Empty state - show app bar with empty message
-            if (listings.isEmpty) {
-              return CustomScrollView(
-                slivers: [
-                  _buildAppBar(),
-                  SliverFillRemaining(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.shopping_bag_outlined,
-                              size: 80, color: Colors.grey[400]),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No listings yet',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
+            var filteredListings = blockedFilterSnapshot.data ?? listings;
+
+            // Sort listings by distance if user has location set
+            return FutureBuilder<Map<String, dynamic>?>(
+              future:
+                  LocationService().getUserLocation(_db.currentUserId ?? ''),
+              builder: (context, userLocationSnapshot) {
+                if (userLocationSnapshot.hasData &&
+                    userLocationSnapshot.data != null) {
+                  // Check if location data exists directly or nested
+                  final locationData = userLocationSnapshot.data!;
+                  double? userLat;
+                  double? userLon;
+
+                  // Try to get latitude/longitude from direct fields first
+                  if (locationData['latitude'] != null &&
+                      locationData['longitude'] != null) {
+                    userLat = locationData['latitude'];
+                    userLon = locationData['longitude'];
+                  }
+                  // If not found, try nested location object
+                  else if (locationData['location'] != null) {
+                    final nestedLocation =
+                        locationData['location'] as Map<String, dynamic>;
+                    userLat = nestedLocation['latitude'];
+                    userLon = nestedLocation['longitude'];
+                  }
+
+                  if (userLat != null && userLon != null) {
+                    filteredListings = LocationService().sortListingsByDistance(
+                      listings: filteredListings,
+                      userLat: userLat,
+                      userLon: userLon,
+                    );
+                  }
+                }
+
+                // Empty state - show app bar with empty message
+                if (filteredListings.isEmpty) {
+                  return CustomScrollView(
+                    slivers: [
+                      _buildAppBar(),
+                      SliverFillRemaining(
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.shopping_bag_outlined,
+                                  size: 80, color: Colors.grey[400]),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No listings yet',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Be the first to post!',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Be the first to post!',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[500],
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                ],
-              );
-            }
+                    ],
+                  );
+                }
 
-            // Listings exist - show app bar with listings
-            return RefreshIndicator(
-              onRefresh: () async => setState(() {}),
-              child: CustomScrollView(
-                slivers: [
-                  _buildAppBar(),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => _buildPostCard(listings[index]),
-                      childCount: listings.length,
-                    ),
+                // Listings exist - show app bar with listings
+                return RefreshIndicator(
+                  onRefresh: () async => setState(() {}),
+                  child: CustomScrollView(
+                    slivers: [
+                      _buildAppBar(),
+                      SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) =>
+                              _buildPostCard(filteredListings[index]),
+                          childCount: filteredListings.length,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             );
           },
         );
@@ -159,7 +179,7 @@ class _HomePageState extends State<HomePage> {
       automaticallyImplyLeading: false,
       title: ShaderMask(
         shaderCallback: (bounds) => const LinearGradient(
-          colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
+          colors: [AppColors.primary, Color(0xFFD946EF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ).createShader(bounds),
@@ -224,126 +244,133 @@ class _HomePageState extends State<HomePage> {
               }
             }
 
-            return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ListingDetailPage(
-                      listing: listing,
-                      user: widget.user,
+            return Container(
+              decoration: const BoxDecoration(color: Colors.white),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User info header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () async {
+                            final sellerId = listing['seller_id'];
+                            if (sellerId != null &&
+                                sellerId != _db.currentUserId) {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => UserProfilePage(
+                                    userId: sellerId,
+                                    currentUser: widget.user,
+                                  ),
+                                ),
+                              );
+
+                              // If user was blocked, refresh the entire page
+                              if (result == 'blocked' && mounted) {
+                                setState(() {
+                                  _refreshKey++;
+                                });
+                              }
+                            }
+                          },
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: AppColors.primary,
+                                backgroundImage: (profileImageUrl != null &&
+                                        profileImageUrl.isNotEmpty)
+                                    ? NetworkImage(profileImageUrl)
+                                    : null,
+                                child: (profileImageUrl == null ||
+                                        profileImageUrl.isEmpty)
+                                    ? Text(
+                                        username.isNotEmpty
+                                            ? username[0].toUpperCase()
+                                            : '?',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 8),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    username,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 15),
+                                  ),
+                                  if (distanceText != null &&
+                                      distanceText != 'Location unavailable')
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.location_on,
+                                          size: 11,
+                                          color: AppColors.primary,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          distanceText,
+                                          style: const TextStyle(
+                                            color: AppColors.primary,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  else
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.location_on_outlined,
+                                          size: 11,
+                                          color: Colors.grey,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          locationDisplay,
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                );
-              },
-              child: Container(
-                decoration: const BoxDecoration(color: Colors.white),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // User info header
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                      child: Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              final sellerId = listing['seller_id'];
-                              if (sellerId != null &&
-                                  sellerId != _db.currentUserId) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => UserProfilePage(
-                                      userId: sellerId,
-                                      currentUser: widget.user,
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 16,
-                                  backgroundColor: const Color(0xFF8B5CF6),
-                                  backgroundImage: (profileImageUrl != null &&
-                                          profileImageUrl.isNotEmpty)
-                                      ? NetworkImage(profileImageUrl)
-                                      : null,
-                                  child: (profileImageUrl == null ||
-                                          profileImageUrl.isEmpty)
-                                      ? Text(
-                                          username.isNotEmpty
-                                              ? username[0].toUpperCase()
-                                              : '?',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                        )
-                                      : null,
-                                ),
-                                const SizedBox(width: 8),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      username,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 15),
-                                    ),
-                                    if (distanceText != null &&
-                                        distanceText != 'Location unavailable')
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.location_on,
-                                            size: 11,
-                                            color: Color(0xFF8B5CF6),
-                                          ),
-                                          const SizedBox(width: 2),
-                                          Text(
-                                            distanceText,
-                                            style: const TextStyle(
-                                              color: Color(0xFF8B5CF6),
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                    else
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.location_on_outlined,
-                                            size: 11,
-                                            color: Colors.grey,
-                                          ),
-                                          const SizedBox(width: 2),
-                                          Text(
-                                            locationDisplay,
-                                            style: TextStyle(
-                                              color: Colors.grey[600],
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
 
-                    // Item image with indicator
-                    Stack(
+                  // Item image with indicator - WRAPPED WITH GESTURE DETECTOR
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ListingDetailPage(
+                            listing: listing,
+                            user: widget.user,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Stack(
                       children: [
                         Container(
                           height: 400,
@@ -396,7 +423,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
 
-                        // Image count indicator (top right)
+                        // Image count indicator
                         if (imageCount > 1)
                           Positioned(
                             top: 12,
@@ -433,219 +460,229 @@ class _HomePageState extends State<HomePage> {
                           ),
                       ],
                     ),
+                  ),
 
-                    // Action buttons
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      child: Row(
-                        children: [
-                          // Like button
-                          StreamBuilder<bool>(
-                            stream: _db.isListingLikedStream(listing['id']),
-                            initialData: false,
-                            builder: (context, likeSnapshot) {
-                              final isLiked = likeSnapshot.data ?? false;
+                  // Action buttons
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    child: Row(
+                      children: [
+                        // Like button
+                        StreamBuilder<bool>(
+                          stream: _db.isListingLikedStream(listing['id']),
+                          initialData: false,
+                          builder: (context, likeSnapshot) {
+                            final isLiked = likeSnapshot.data ?? false;
 
-                              return StreamBuilder<Map<String, dynamic>?>(
-                                stream: _db.getListingStream(listing['id']),
-                                initialData: null,
-                                builder: (context, listingSnapshot) {
-                                  final likeCount =
-                                      listingSnapshot.data?['likes'] ??
-                                          listing['likes'] ??
-                                          0;
+                            return StreamBuilder<Map<String, dynamic>?>(
+                              stream: _db.getListingStream(listing['id']),
+                              initialData: null,
+                              builder: (context, listingSnapshot) {
+                                final likeCount =
+                                    listingSnapshot.data?['likes'] ??
+                                        listing['likes'] ??
+                                        0;
 
-                                  return InkWell(
-                                    onTap: () async {
-                                      await _db.toggleLikeWithNotification(
-                                          listing['id']);
-                                    },
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 4,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            isLiked
-                                                ? Icons.favorite
-                                                : Icons.favorite_border,
-                                            color: isLiked
-                                                ? Colors.red
-                                                : Colors.black,
-                                            size: 26,
-                                          ),
-                                          if (likeCount > 0) ...[
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              _formatCount(likeCount),
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
+                                return InkWell(
+                                  onTap: () async {
+                                    await _db.toggleLikeWithNotification(
+                                        listing['id']);
+                                  },
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 4,
                                     ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
-
-                          const SizedBox(width: 4),
-
-                          // Comment button
-                          StreamBuilder<int>(
-                            stream: _db.getCommentCountStream(listing['id']),
-                            builder: (context, snapshot) {
-                              final commentCount = snapshot.data ?? 0;
-                              return InkWell(
-                                onTap: () {
-                                  showModalBottomSheet(
-                                    context: context,
-                                    isScrollControlled: true,
-                                    backgroundColor: Colors.transparent,
-                                    builder: (context) => CommentsModal(
-                                      listingId: listing['id'],
-                                      user: widget.user,
-                                    ),
-                                  );
-                                },
-                                borderRadius: BorderRadius.circular(8),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 4,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.mode_comment_outlined,
-                                        size: 26,
-                                      ),
-                                      if (commentCount > 0) ...[
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          _formatCount(commentCount),
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          isLiked
+                                              ? Icons.favorite
+                                              : Icons.favorite_border,
+                                          color: isLiked
+                                              ? Colors.red
+                                              : Colors.black,
+                                          size: 26,
                                         ),
+                                        if (likeCount > 0) ...[
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            _formatCount(likeCount),
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
                                       ],
-                                    ],
+                                    ),
                                   ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+
+                        const SizedBox(width: 4),
+
+                        // Comment button
+                        StreamBuilder<int>(
+                          stream: _db.getCommentCountStream(listing['id']),
+                          builder: (context, snapshot) {
+                            final commentCount = snapshot.data ?? 0;
+                            return InkWell(
+                              onTap: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (context) => CommentsModal(
+                                    listingId: listing['id'],
+                                    user: widget.user,
+                                  ),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 4,
                                 ),
-                              );
-                            },
-                          ),
-
-                          const SizedBox(width: 4),
-
-                          // Share button
-                          InkWell(
-                            onTap: () {
-                              showModalBottomSheet(
-                                context: context,
-                                backgroundColor: Colors.transparent,
-                                builder: (context) =>
-                                    ShareModal(listing: listing),
-                              );
-                            },
-                            borderRadius: BorderRadius.circular(8),
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 4,
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.mode_comment_outlined,
+                                      size: 26,
+                                    ),
+                                    if (commentCount > 0) ...[
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _formatCount(commentCount),
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
                               ),
-                              child: Icon(
-                                Icons.share,
-                                size: 26,
-                              ),
+                            );
+                          },
+                        ),
+
+                        const SizedBox(width: 4),
+
+                        // Share button
+                        InkWell(
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) =>
+                                  ShareModal(listing: listing),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 4,
+                            ),
+                            child: Icon(
+                              Icons.share,
+                              size: 26,
                             ),
                           ),
+                        ),
 
-                          const Spacer(),
+                        const Spacer(),
 
-                          // Bookmark button
-                          StreamBuilder<bool>(
-                            stream:
-                                _db.isListingBookmarkedStream(listing['id']),
-                            initialData: false,
-                            builder: (context, snapshot) {
-                              final isBookmarked = snapshot.data ?? false;
-                              return InkWell(
-                                onTap: () async {
-                                  try {
-                                    await _db.toggleBookmark(listing['id']);
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Row(
-                                            children: [
-                                              Icon(
-                                                isBookmarked
-                                                    ? Icons.bookmark_border
-                                                    : Icons.bookmark,
-                                                color: Colors.white,
-                                                size: 20,
-                                              ),
-                                              Text(
-                                                isBookmarked
-                                                    ? ' Removed from bookmarks'
-                                                    : ' Added to bookmarks',
-                                              ),
-                                            ],
-                                          ),
-                                          duration: const Duration(seconds: 1),
-                                          behavior: SnackBarBehavior.floating,
-                                          backgroundColor: isBookmarked
-                                              ? Colors.grey[700]
-                                              : const Color(0xFF8B5CF6),
-                                          margin: const EdgeInsets.all(16),
+                        // Bookmark button
+                        StreamBuilder<bool>(
+                          stream: _db.isListingBookmarkedStream(listing['id']),
+                          initialData: false,
+                          builder: (context, snapshot) {
+                            final isBookmarked = snapshot.data ?? false;
+                            return InkWell(
+                              onTap: () async {
+                                try {
+                                  await _db.toggleBookmark(listing['id']);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          children: [
+                                            Icon(
+                                              isBookmarked
+                                                  ? Icons.bookmark_border
+                                                  : Icons.bookmark,
+                                              color: Colors.white,
+                                              size: 20,
+                                            ),
+                                            Text(
+                                              isBookmarked
+                                                  ? ' Removed from bookmarks'
+                                                  : ' Added to bookmarks',
+                                            ),
+                                          ],
                                         ),
-                                      );
-                                    }
-                                  } catch (e) {
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(content: Text('Error: $e')),
-                                      );
-                                    }
+                                        duration: const Duration(seconds: 1),
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: isBookmarked
+                                            ? Colors.grey[700]
+                                            : AppColors.primary,
+                                        margin: const EdgeInsets.all(16),
+                                      ),
+                                    );
                                   }
-                                },
-                                borderRadius: BorderRadius.circular(8),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 4,
-                                  ),
-                                  child: Icon(
-                                    isBookmarked
-                                        ? Icons.bookmark
-                                        : Icons.bookmark_border,
-                                    color: isBookmarked
-                                        ? const Color(0xFF8B5CF6)
-                                        : Colors.black,
-                                    size: 22,
-                                  ),
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Error: $e')),
+                                    );
+                                  }
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 4,
                                 ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
+                                child: Icon(
+                                  isBookmarked
+                                      ? Icons.bookmark
+                                      : Icons.bookmark_border,
+                                  color: isBookmarked
+                                      ? AppColors.primary
+                                      : Colors.black,
+                                  size: 22,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
+                  ),
 
-                    // Price and title
-                    Padding(
+                  // Price and title - WRAPPED WITH GESTURE DETECTOR
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ListingDetailPage(
+                            listing: listing,
+                            user: widget.user,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Padding(
                       padding: const EdgeInsets.fromLTRB(15, 1, 12, 4),
                       child: Row(
                         children: [
@@ -654,7 +691,7 @@ class _HomePageState extends State<HomePage> {
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF8B5CF6),
+                              color: AppColors.primary,
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -680,61 +717,61 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                     ),
+                  ),
 
-                    // Size and condition
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(15, 0, 12, 6),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.purple.shade50,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              listing['size'] ?? 'N/A',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF8B5CF6),
-                                fontWeight: FontWeight.w600,
-                              ),
+                  // Size and condition
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(15, 0, 12, 6),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.shade50,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            listing['size'] ?? 'N/A',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              listing['condition'] ?? 'N/A',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.green.shade700,
-                                fontWeight: FontWeight.w600,
-                              ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            listing['condition'] ?? 'N/A',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.green.shade700,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
+                  ),
 
-                    // Description with "see more"
-                    _buildDescription(listing),
+                  // Description with "see more"
+                  _buildDescription(listing),
 
-                    const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-                    // Divider between posts
-                    Container(
-                      height: 6,
-                      color: const Color(0xFFF5F5F7),
-                    ),
-                  ],
-                ),
+                  // Divider between posts
+                  Container(
+                    height: 6,
+                    color: const Color(0xFFF5F5F7),
+                  ),
+                ],
               ),
             );
           },
@@ -806,7 +843,7 @@ class _HomePageState extends State<HomePage> {
                     const TextSpan(
                       text: 'see more',
                       style: TextStyle(
-                        color: Color(0xFF8B5CF6),
+                        color: AppColors.primary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

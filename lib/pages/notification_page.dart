@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/notification_service.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -17,9 +18,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.backgroundWhite,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.backgroundWhite,
         elevation: 0,
         centerTitle: false,
         title: const Text(
@@ -27,7 +28,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: AppColors.textPrimary,
           ),
         ),
         actions: [
@@ -35,10 +36,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
             onPressed: () async {
               await _notificationService.markAllNotificationsAsRead();
             },
-            child: const Text(
+            child: Text(
               'Mark all read',
               style: TextStyle(
-                color: Color(0xFF8B5CF6),
+                color: AppColors.primary,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -47,7 +48,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Divider(height: 1, color: Colors.grey[100]),
+          child: Divider(height: 1, color: AppColors.divider),
         ),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
@@ -67,7 +68,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
             return _buildEmptyState();
           }
 
-          // Group notifications by type and related data
           final groupedNotifications = _groupNotifications(notifications);
 
           return ListView.separated(
@@ -76,7 +76,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             separatorBuilder: (context, index) => Divider(
               height: 1,
               indent: 72,
-              color: Colors.grey[50],
+              color: AppColors.backgroundGrey,
             ),
             itemBuilder: (context, index) {
               final group = groupedNotifications[index];
@@ -87,20 +87,18 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 key: Key(group['id']),
                 direction: DismissDirection.endToStart,
                 background: Container(
-                  color: Colors.red[400],
+                  color: AppColors.errorLight,
                   alignment: Alignment.centerRight,
                   padding: const EdgeInsets.only(right: 20),
-                  child: const Icon(Icons.delete_outline, color: Colors.white),
+                  child: Icon(Icons.delete_outline, color: AppColors.textWhite),
                 ),
                 onDismissed: (direction) {
-                  // Delete all notifications in this group
                   for (var notif in group['notifications'] as List) {
                     _notificationService.deleteNotification(notif['id']);
                   }
                 },
                 child: InkWell(
                   onTap: () async {
-                    // Mark all in group as read
                     if (hasUnread) {
                       for (var notif in group['notifications'] as List) {
                         if (!(notif['is_read'] ?? false)) {
@@ -112,7 +110,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   },
                   child: Container(
                     color: hasUnread 
-                        ? const Color(0xFF8B5CF6).withOpacity(0.04) 
+                        ? AppColors.primaryBackgroundLight
                         : Colors.transparent,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     child: isGrouped 
@@ -134,14 +132,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
     for (var notification in notifications) {
       final type = notification['type'];
       
-      // Don't group message notifications
       if (type == 'message') {
         final key = '${notification['id']}_single';
         groups[key] = [notification];
         continue;
       }
 
-      // Group by type and related item (listing_id, seller_id, etc.)
       String groupKey;
       if (type == 'rating') {
         groupKey = 'rating_${notification['recipient_id']}';
@@ -151,7 +147,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
         final listingId = notification['additional_data']?['listing_id'];
         groupKey = 'new_listing_${listingId ?? 'unknown'}';
       } else {
-        // Default grouping by type
         groupKey = '${type}_${notification['recipient_id']}';
       }
 
@@ -161,7 +156,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
       groups[groupKey]!.add(notification);
     }
 
-    // Convert groups to list format
     final List<Map<String, dynamic>> result = [];
     groups.forEach((key, notificationList) {
       notificationList.sort((a, b) {
@@ -170,7 +164,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return bTime.compareTo(aTime);
       });
 
-      // Get unique users in this group
       final uniqueUserIds = <String>{};
       for (var notif in notificationList) {
         final userId = notif['related_user_id'] as String?;
@@ -186,8 +179,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
         'id': key,
         'type': mostRecent['type'],
         'count': notificationList.length,
-        'unique_count': uniqueUserIds.length, // Number of unique users
-        'unique_user_ids': uniqueUserIds.toList(), // List of unique user IDs
+        'unique_count': uniqueUserIds.length,
+        'unique_user_ids': uniqueUserIds.toList(),
         'notifications': notificationList,
         'most_recent': mostRecent,
         'has_unread': hasUnread,
@@ -195,7 +188,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
       });
     });
 
-    // Sort by most recent
     result.sort((a, b) {
       final aTime = a['created_at']?.toDate() ?? DateTime.now();
       final bTime = b['created_at']?.toDate() ?? DateTime.now();
@@ -212,13 +204,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
     final mostRecent = group['most_recent'] as Map<String, dynamic>;
     final createdAt = mostRecent['created_at']?.toDate();
 
-    // Get the first few unique sender IDs for profile pictures
     final displayUserIds = uniqueUserIds.take(3).toList();
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Stacked avatars for grouped notifications
         SizedBox(
           width: 40,
           height: 40,
@@ -237,7 +227,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     child: Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
+                        border: Border.all(color: AppColors.backgroundWhite, width: 2),
                       ),
                       child: _buildAvatar(displayUserIds[1].toString(), 24, false, type),
                     ),
@@ -256,7 +246,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 text: TextSpan(
-                  style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.3),
+                  style: TextStyle(fontSize: 14, color: AppColors.textPrimary, height: 1.3),
                   children: [
                     TextSpan(
                       text: _getGroupedTitle(type, uniqueCount, group),
@@ -273,7 +263,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   timeago.format(createdAt),
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey[500],
+                    color: AppColors.textTertiary,
                   ),
                 ),
               ],
@@ -308,9 +298,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   width: 10,
                   height: 10,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF8B5CF6),
+                    color: AppColors.primary,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+                    border: Border.all(color: AppColors.backgroundWhite, width: 2),
                   ),
                 ),
               ),
@@ -325,7 +315,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 text: TextSpan(
-                  style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.3),
+                  style: TextStyle(fontSize: 14, color: AppColors.textPrimary, height: 1.3),
                   children: [
                     TextSpan(
                       text: "${notification['title'] ?? ''} ",
@@ -336,7 +326,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     TextSpan(
                       text: notification['body'] ?? '',
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: AppColors.textSecondary,
                         fontWeight: FontWeight.normal,
                       ),
                     ),
@@ -349,7 +339,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   timeago.format(createdAt),
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey[500],
+                    color: AppColors.textTertiary,
                   ),
                 ),
               ],
@@ -425,22 +415,18 @@ class _NotificationsPageState extends State<NotificationsPage> {
       return "${notif['title'] ?? ''} ${notif['body'] ?? ''}";
     }
 
-    // Get the first unique user's name
     final notifications = group['notifications'] as List<Map<String, dynamic>>;
     String firstName = 'Someone';
     final firstNotif = notifications.first;
     final body = firstNotif['body']?.toString() ?? '';
     
-    // Try to extract name from body (e.g., "John Smith rated you 5.0 stars")
     if (body.isNotEmpty) {
       final words = body.split(' ');
-      // Usually the name is at the start of the body
       if (words.isNotEmpty) {
         firstName = words[0];
       }
     }
     
-    // Fallback: try to get from title
     if (firstName == 'Someone') {
       final title = firstNotif['title']?.toString() ?? '';
       if (title.isNotEmpty) {
@@ -476,11 +462,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.notifications_none, size: 48, color: Colors.grey[300]),
+          Icon(Icons.notifications_none, size: 48, color: AppColors.borderLight),
           const SizedBox(height: 12),
           Text(
             'No notifications yet',
-            style: TextStyle(fontSize: 15, color: Colors.grey[500]),
+            style: TextStyle(fontSize: 15, color: AppColors.textTertiary),
           ),
         ],
       ),
@@ -492,7 +478,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.error_outline, size: 48, color: Colors.red[200]),
+          Icon(Icons.error_outline, size: 48, color: AppColors.errorLight),
           const SizedBox(height: 12),
           const Text('Error loading notifications'),
         ],
@@ -517,16 +503,16 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   Color _getNotificationColor(String type) {
     switch (type) {
-      case 'like': return Colors.red;
-      case 'comment': return Colors.blue;
+      case 'like': return AppColors.like;
+      case 'comment': return AppColors.info;
       case 'reply': return Colors.teal;
-      case 'share': return Colors.green;
-      case 'message': return Colors.orange;
-      case 'follow': return const Color(0xFF8B5CF6);
-      case 'favorite': return const Color(0xFF8B5CF6);
-      case 'new_listing': return Colors.green;
-      case 'rating': return Colors.amber;
-      default: return Colors.grey;
+      case 'share': return AppColors.success;
+      case 'message': return AppColors.warning;
+      case 'follow': return AppColors.primary;
+      case 'favorite': return AppColors.primary;
+      case 'new_listing': return AppColors.success;
+      case 'rating': return AppColors.rating;
+      default: return AppColors.textSecondary;
     }
   }
 
@@ -534,13 +520,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
     final type = group['type'];
     final notifications = group['notifications'] as List<Map<String, dynamic>>;
     
-    // Handle navigation based on notification type
     print('Notification group tapped: $type with ${notifications.length} items');
-    
-    // You can expand this to navigate to appropriate pages
-    // For example:
-    // - rating: navigate to ratings page
-    // - follow: navigate to followers list
-    // - new_listing: navigate to user's listings
   }
 }

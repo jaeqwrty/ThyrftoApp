@@ -5,6 +5,7 @@ import 'package:thryfto/commonWidgets/custom_elevated_button.dart';
 import 'package:thryfto/commonWidgets/custom_textfield.dart';
 import 'package:thryfto/commonWidgets/section_labels.dart';
 import 'package:thryfto/commonWidgets/listing_form_widgets.dart';
+import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/listing_status_service.dart';
 
@@ -368,7 +369,7 @@ class _EditListingPageState extends State<EditListingPage> {
         style: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.bold,
-          color: Color(0xFF8B5CF6),
+          color: AppColors.primary,
         ),
         decoration: InputDecoration(
           hintText: '0.00',

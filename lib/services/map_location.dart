@@ -45,6 +45,11 @@ class _LocationPickerState extends State<LocationPicker> {
     _selectedLongitude = widget.initialLongitude;
     _selectedAddress = widget.initialAddress;
 
+    // Initialize search field with existing address
+    if (_selectedAddress != null && _selectedAddress!.isNotEmpty) {
+      _searchController.text = _selectedAddress!;
+    }
+
     if (kIsWeb && mounted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showWebInfoDialog();
@@ -249,6 +254,7 @@ class _LocationPickerState extends State<LocationPicker> {
     );
   }
 
+  // UPDATED: Now syncs with search field
   Future<void> _getPlaceDetails(String placeId, String description) async {
     setState(() => _isSearching = true);
 
@@ -276,19 +282,23 @@ class _LocationPickerState extends State<LocationPicker> {
         if (data['status'] == 'OK') {
           final location = data['result']['geometry']['location'];
 
+          // 🆕 FORMAT: Clean the description to City, Region format
+          final cleanAddress =
+              _locationService.formatLocationForDisplay(description);
+
           setState(() {
             _selectedLatitude = location['lat'];
             _selectedLongitude = location['lng'];
-            _selectedAddress = description;
+            _selectedAddress = cleanAddress;
             _searchResults = [];
-            _searchController.text = description;
+            _searchController.text = cleanAddress;
             _isSearching = false;
           });
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Location set: $description'),
+                content: Text('Location set: $cleanAddress'),
                 backgroundColor: Colors.green,
                 duration: const Duration(seconds: 2),
               ),
@@ -305,6 +315,7 @@ class _LocationPickerState extends State<LocationPicker> {
     }
   }
 
+  // UPDATED: Now syncs with search field
   Future<void> _useCurrentLocation() async {
     setState(() => _isLoadingGPS = true);
 
@@ -325,7 +336,8 @@ class _LocationPickerState extends State<LocationPicker> {
         return;
       }
 
-      final address = await _locationService.getAddressFromCoordinates(
+      // 🆕 USE NEW METHOD: Get only City, Region format
+      final address = await _locationService.getCityAndRegionFromCoordinates(
         position.latitude,
         position.longitude,
       );
@@ -428,8 +440,8 @@ class _LocationPickerState extends State<LocationPicker> {
         ),
         centerTitle: true,
       ),
-      // FIX 1: Move Confirm Button to bottomNavigationBar so it avoids the keyboard
-      bottomNavigationBar: (_selectedLatitude != null && _selectedLongitude != null)
+      bottomNavigationBar: (_selectedLatitude != null &&
+              _selectedLongitude != null)
           ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               decoration: BoxDecoration(
@@ -469,7 +481,6 @@ class _LocationPickerState extends State<LocationPicker> {
               ),
             )
           : null,
-      // FIX 2: Wrap the body in a SingleChildScrollView to handle overflow
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -591,7 +602,7 @@ class _LocationPickerState extends State<LocationPicker> {
 
             const SizedBox(height: 16),
 
-            // Search Bar
+            // Search Bar (Now synced with GPS location)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: TextField(
@@ -599,7 +610,8 @@ class _LocationPickerState extends State<LocationPicker> {
                 decoration: InputDecoration(
                   hintText: 'Type your city or area...',
                   hintStyle: TextStyle(color: Colors.grey[400]),
-                  prefixIcon: const Icon(Icons.search, color: Color(0xFF8B5CF6)),
+                  prefixIcon:
+                      const Icon(Icons.search, color: Color(0xFF8B5CF6)),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear),
@@ -636,7 +648,7 @@ class _LocationPickerState extends State<LocationPicker> {
 
             const SizedBox(height: 8),
 
-            // Search Results (Replaced Expanded with shrink-wrapped content)
+            // Search Results
             _isSearching
                 ? const Padding(
                     padding: EdgeInsets.all(32.0),
@@ -678,8 +690,8 @@ class _LocationPickerState extends State<LocationPicker> {
                         ),
                       )
                     : ListView.builder(
-                        shrinkWrap: true, // Crucial for using inside SingleChildScrollView
-                        physics: const NeverScrollableScrollPhysics(), // Delegate scrolling to parent
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
                         itemCount: _searchResults.length,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemBuilder: (context, index) {
@@ -702,8 +714,7 @@ class _LocationPickerState extends State<LocationPicker> {
                           );
                         },
                       ),
-            
-            // Padding to ensure content isn't hidden by the bottomNavigationBar
+
             const SizedBox(height: 20),
           ],
         ),

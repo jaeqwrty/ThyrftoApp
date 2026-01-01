@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/pages/conversation_page.dart';
 import 'package:thryfto/pages/profile_page.dart';
 import 'package:thryfto/pages/user_profile_page.dart';
@@ -115,9 +116,8 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                       ),
                       child: Icon(
                         _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                        color: _isBookmarked
-                            ? const Color(0xFF8B5CF6)
-                            : Colors.black87,
+                        color:
+                            _isBookmarked ? AppColors.primary : Colors.black87,
                       ),
                     ),
                     onPressed: () async {
@@ -161,7 +161,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                                 duration: const Duration(seconds: 2),
                                 behavior: SnackBarBehavior.floating,
                                 backgroundColor: _isBookmarked
-                                    ? const Color(0xFF8B5CF6)
+                                    ? AppColors.primary
                                     : Colors.grey[700],
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
@@ -221,7 +221,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     color: _currentImageIndex == index
-                                        ? const Color(0xFF8B5CF6)
+                                        ? AppColors.primary
                                         : Colors.white.withOpacity(0.5),
                                   ),
                                 ),
@@ -249,7 +249,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                         style: const TextStyle(
                           fontSize: 23,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF8B5CF6),
+                          color: AppColors.primary,
                         ),
                       ),
                       StreamBuilder<bool>(
@@ -319,7 +319,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                     runSpacing: 8,
                     children: [
                       _buildTag(widget.listing['size'] ?? 'N/A',
-                          Colors.purple.shade50, const Color(0xFF8B5CF6)),
+                          Colors.purple.shade50, AppColors.primary),
                       _buildTag(widget.listing['condition'] ?? 'N/A',
                           Colors.green.shade50, Colors.green.shade700),
                       _buildTag(widget.listing['category'] ?? 'Other',
@@ -384,185 +384,237 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                       final profileImageUrl =
                           seller?['profileImageUrl'] as String?;
 
-                      return FutureBuilder<Map<String, dynamic>?>(
-                        future: LocationService()
-                            .getUserLocation(widget.listing['seller_id']),
-                        builder: (context, locationSnapshot) {
-                          String locationDisplay = 'Location not set';
+                      // REAL-TIME LOCATION: Get location directly from seller data stream
+                      String locationDisplay = 'Location not set';
+                      bool hasLocation = false;
 
-                          if (locationSnapshot.hasData &&
-                              locationSnapshot.data != null) {
-                            final locationData = locationSnapshot.data!;
-                            final address = locationData['address'] as String?;
+                      if (seller != null) {
+                        // Check for direct latitude/longitude fields (current structure)
+                        if (seller['latitude'] != null &&
+                            seller['longitude'] != null &&
+                            seller['address'] != null &&
+                            seller['address'].toString().isNotEmpty) {
+                          locationDisplay = seller['address'];
+                          hasLocation = true;
+                        }
+                        // Fall back to cityState field
+                        else if (seller['cityState'] != null &&
+                            seller['cityState'].toString().isNotEmpty) {
+                          locationDisplay = seller['cityState'];
+                          hasLocation = true;
+                        }
+                        // Fall back to nested location object (old structure)
+                        else if (seller['location'] != null) {
+                          final location =
+                              seller['location'] as Map<String, dynamic>;
+                          if (location['latitude'] != null &&
+                              location['longitude'] != null &&
+                              location['address'] != null &&
+                              location['address'].toString().isNotEmpty) {
+                            locationDisplay = location['address'];
+                            hasLocation = true;
+                          }
+                        }
+                      }
 
-                            // Use the address from API if available
-                            if (address != null &&
-                                address.isNotEmpty &&
-                                !address.startsWith('Lat:') &&
-                                address != 'Location set' &&
-                                address != 'Location detected') {
-                              locationDisplay = address;
+                      return GestureDetector(
+                        onTap: () {
+                          final sellerId = widget.listing['seller_id'];
+                          if (sellerId != null) {
+                            // Check if the seller is the current user
+                            if (sellerId == _db.currentUserId) {
+                              // Navigate to ProfilePage (the current user's own profile)
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        ProfilePage(user: widget.user)),
+                              );
+                            } else {
+                              // Navigate to UserProfilePage for other users
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => UserProfilePage(
+                                    userId: sellerId,
+                                    currentUser: widget.user,
+                                  ),
+                                ),
+                              );
                             }
                           }
-
-                          return GestureDetector(
-                            onTap: () {
-                              final sellerId = widget.listing['seller_id'];
-                              if (sellerId != null) {
-                                // Check if the seller is the current user
-                                if (sellerId == _db.currentUserId) {
-                                  // Navigate to ProfilePage (the current user's own profile)
-                                  // Since we're already in the app, we can just switch to the Profile tab
-                                  // or you can pop to go back if this is coming from the profile
-                                  Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              ProfilePage(user: widget.user)));
-                                } else {
-                                  // Navigate to UserProfilePage for other users
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => UserProfilePage(
-                                        userId: sellerId,
-                                        currentUser: widget.user,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[50],
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
                                 children: [
-                                  Row(
-                                    children: [
-                                      // Profile Avatar with Image
-                                      CircleAvatar(
-                                        radius: 25,
-                                        backgroundColor:
-                                            const Color(0xFF8B5CF6),
-                                        backgroundImage:
-                                            (profileImageUrl != null &&
-                                                    profileImageUrl.isNotEmpty)
-                                                ? NetworkImage(profileImageUrl)
-                                                : null,
-                                        child: (profileImageUrl == null ||
-                                                profileImageUrl.isEmpty)
-                                            ? Text(
-                                                sellerName[0].toUpperCase(),
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              )
-                                            : null,
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              sellerName,
-                                              style: const TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w600,
-                                              ),
+                                  // Profile Avatar with Image
+                                  CircleAvatar(
+                                    radius: 25,
+                                    backgroundColor: AppColors.primary,
+                                    backgroundImage: (profileImageUrl != null &&
+                                            profileImageUrl.isNotEmpty)
+                                        ? NetworkImage(profileImageUrl)
+                                        : null,
+                                    child: (profileImageUrl == null ||
+                                            profileImageUrl.isEmpty)
+                                        ? Text(
+                                            sellerName[0].toUpperCase(),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
                                             ),
-                                            const SizedBox(height: 4),
-                                            Row(
-                                              children: [
-                                                Icon(Icons.location_on_outlined,
-                                                    size: 14,
-                                                    color: Colors.grey[500]),
-                                                const SizedBox(width: 4),
-                                                Expanded(
-                                                  child: Text(
-                                                    locationDisplay,
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      color: Colors.grey[500],
-                                                    ),
-                                                    maxLines: 2,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          sellerName,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.location_on_outlined,
+                                              size: 14,
+                                              color: hasLocation
+                                                  ? AppColors.primary
+                                                  : Colors.grey[400],
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                locationDisplay,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: hasLocation
+                                                      ? Colors.grey[600]
+                                                      : Colors.grey[400],
+                                                  fontStyle: hasLocation
+                                                      ? FontStyle.normal
+                                                      : FontStyle.italic,
                                                 ),
-                                              ],
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
                                             ),
                                           ],
                                         ),
-                                      ),
-                                      Icon(Icons.chevron_right,
-                                          color: Colors.grey[400]),
-                                    ],
-                                  ),
-
-                                  // Show distance if available
-                                  FutureBuilder<String?>(
-                                    future:
-                                        LocationService().getDistanceToListing(
-                                      userId: _db.currentUserId ?? '',
-                                      listing: widget.listing,
+                                      ],
                                     ),
-                                    builder: (context, distanceSnapshot) {
-                                      if (distanceSnapshot.hasData &&
-                                          distanceSnapshot.data != null) {
-                                        return Container(
-                                          margin:
-                                              const EdgeInsets.only(top: 12),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF8B5CF6)
-                                                .withOpacity(0.1),
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                            border: Border.all(
-                                              color: const Color(0xFF8B5CF6)
-                                                  .withOpacity(0.3),
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(
-                                                Icons.near_me,
-                                                size: 16,
-                                                color: Color(0xFF8B5CF6),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                distanceSnapshot.data!,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  color: Color(0xFF8B5CF6),
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }
-                                      return const SizedBox.shrink();
-                                    },
                                   ),
+                                  Icon(Icons.chevron_right,
+                                      color: Colors.grey[400]),
                                 ],
                               ),
-                            ),
-                          );
-                        },
+
+                              // Show distance if available (this also updates in real-time)
+                              StreamBuilder<Map<String, dynamic>?>(
+                                stream: _db.getUserProfileStream(
+                                    _db.currentUserId ?? ''),
+                                builder: (context, currentUserSnapshot) {
+                                  // Get current user's location from stream
+                                  final currentUser = currentUserSnapshot.data;
+                                  double? currentUserLat;
+                                  double? currentUserLon;
+
+                                  if (currentUser != null) {
+                                    if (currentUser['latitude'] != null &&
+                                        currentUser['longitude'] != null) {
+                                      currentUserLat =
+                                          currentUser['latitude'] as double?;
+                                      currentUserLon =
+                                          currentUser['longitude'] as double?;
+                                    } else if (currentUser['location'] !=
+                                        null) {
+                                      final loc = currentUser['location']
+                                          as Map<String, dynamic>;
+                                      currentUserLat =
+                                          loc['latitude'] as double?;
+                                      currentUserLon =
+                                          loc['longitude'] as double?;
+                                    }
+                                  }
+
+                                  // Get listing location
+                                  final listingLocation =
+                                      widget.listing['location']
+                                          as Map<String, dynamic>?;
+
+                                  if (currentUserLat != null &&
+                                      currentUserLon != null &&
+                                      listingLocation != null &&
+                                      listingLocation['latitude'] != null &&
+                                      listingLocation['longitude'] != null) {
+                                    final distance =
+                                        LocationService().calculateDistance(
+                                      currentUserLat,
+                                      currentUserLon,
+                                      listingLocation['latitude'],
+                                      listingLocation['longitude'],
+                                    );
+
+                                    final distanceText = LocationService()
+                                        .formatDistance(distance);
+
+                                    return Container(
+                                      margin: const EdgeInsets.only(top: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            AppColors.primary.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: AppColors.primary
+                                              .withOpacity(0.3),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.near_me,
+                                            size: 16,
+                                            color: AppColors.primary,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            distanceText,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }
+                                  return const SizedBox.shrink();
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -613,9 +665,9 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF8B5CF6),
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(25),
                     ),
@@ -659,9 +711,9 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                         icon: const Icon(Icons.edit),
                         label: const Text('Edit'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF8B5CF6),
-                          side: const BorderSide(color: Color(0xFF8B5CF6)),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(25),
                           ),
@@ -677,7 +729,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(25),
                           ),

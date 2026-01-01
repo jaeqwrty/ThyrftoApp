@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:thryfto/global/app_colors.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -103,13 +104,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                color:  AppColors.primary.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.lock_reset,
                 size: 40,
-                color: Color(0xFF8B5CF6),
+                color: AppColors.primary,
               ),
             ),
           ),
@@ -167,7 +168,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF8B5CF6), width: 2),
+                borderSide: const BorderSide(color: AppColors.primary, width: 2),
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -191,7 +192,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _handleResetPassword,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8B5CF6),
+                backgroundColor:  AppColors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -225,7 +226,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               child: const Text(
                 'Back to Login',
                 style: TextStyle(
-                  color: Color(0xFF8B5CF6),
+                  color: AppColors.primary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -309,7 +310,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           child: ElevatedButton(
             onPressed: () => Navigator.pop(context),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF8B5CF6),
+              backgroundColor:  AppColors.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
@@ -335,7 +336,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           child: const Text(
             "Didn't receive the email? Try again",
             style: TextStyle(
-              color: Color(0xFF8B5CF6),
+              color: AppColors.primary,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -351,14 +352,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           width: 28,
           height: 28,
           decoration: BoxDecoration(
-            color: const Color(0xFF8B5CF6).withOpacity(0.1),
+            color:  AppColors.primary.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
           child: Center(
             child: Text(
               number,
               style: const TextStyle(
-                color: Color(0xFF8B5CF6),
+                color: AppColors.primary,
                 fontWeight: FontWeight.bold,
               ),
             ),

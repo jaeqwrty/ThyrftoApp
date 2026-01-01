@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/location_service.dart';
 
 class SetLocationPage extends StatefulWidget {
@@ -19,7 +20,7 @@ class SetLocationPage extends StatefulWidget {
 class _SetLocationPageState extends State<SetLocationPage> {
   final LocationService _locationService = LocationService();
   final TextEditingController _addressController = TextEditingController();
-  
+
   bool _isLoading = false;
   double? _selectedLatitude;
   double? _selectedLongitude;
@@ -60,7 +61,7 @@ class _SetLocationPageState extends State<SetLocationPage> {
 
     try {
       final position = await _locationService.getCurrentLocation();
-      
+
       if (position == null) {
         setState(() {
           _errorMessage = 'Could not get your location. Please check settings.';
@@ -69,8 +70,8 @@ class _SetLocationPageState extends State<SetLocationPage> {
         return;
       }
 
-      // Get address from coordinates
-      final address = await _locationService.getAddressFromCoordinates(
+      // 🆕 USE NEW METHOD: Get clean City, Region format
+      final address = await _locationService.getCityAndRegionFromCoordinates(
         position.latitude,
         position.longitude,
       );
@@ -79,12 +80,12 @@ class _SetLocationPageState extends State<SetLocationPage> {
         _selectedLatitude = position.latitude;
         _selectedLongitude = position.longitude;
         _detectedLocationName = address;
-        
+
         // Only auto-fill if user hasn't entered a custom address
         if (_addressController.text.isEmpty) {
           _addressController.text = address;
         }
-        
+
         _isLoading = false;
       });
 
@@ -148,10 +149,10 @@ class _SetLocationPageState extends State<SetLocationPage> {
 
     try {
       // Use custom address if provided, otherwise use detected location name
-      final addressToSave = _addressController.text.trim().isNotEmpty 
-          ? _addressController.text.trim() 
+      final addressToSave = _addressController.text.trim().isNotEmpty
+          ? _addressController.text.trim()
           : _detectedLocationName;
-      
+
       final success = await _locationService.saveUserLocation(
         userId: widget.userId,
         latitude: _selectedLatitude!,
@@ -197,11 +198,12 @@ class _SetLocationPageState extends State<SetLocationPage> {
     if (_selectedLatitude == null || _selectedLongitude == null) {
       return 'No location selected';
     }
-    
-    if (_detectedLocationName.isNotEmpty && !_detectedLocationName.startsWith('Lat:')) {
+
+    if (_detectedLocationName.isNotEmpty &&
+        !_detectedLocationName.startsWith('Lat:')) {
       return _detectedLocationName;
     }
-    
+
     return 'Lat: ${_selectedLatitude!.toStringAsFixed(6)}, Lon: ${_selectedLongitude!.toStringAsFixed(6)}';
   }
 
@@ -236,17 +238,17 @@ class _SetLocationPageState extends State<SetLocationPage> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                      color: AppColors.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                        color: AppColors.primary.withOpacity(0.3),
                       ),
                     ),
                     child: Row(
                       children: [
                         const Icon(
                           Icons.info_outline,
-                          color: Color(0xFF8B5CF6),
+                          color: AppColors.primary,
                           size: 24,
                         ),
                         const SizedBox(width: 12),
@@ -327,12 +329,13 @@ class _SetLocationPageState extends State<SetLocationPage> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF8B5CF6)),
+                        borderSide: const BorderSide(color: AppColors.primary),
                       ),
                       filled: true,
                       fillColor: Colors.grey[50],
                       helperText: 'This will be shown to other users',
-                      helperStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      helperStyle:
+                          TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                   ),
 
@@ -381,8 +384,8 @@ class _SetLocationPageState extends State<SetLocationPage> {
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF8B5CF6),
-                        side: const BorderSide(color: Color(0xFF8B5CF6)),
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25),
                         ),
@@ -402,7 +405,7 @@ class _SetLocationPageState extends State<SetLocationPage> {
                           ? _saveLocation
                           : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF8B5CF6),
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25),
