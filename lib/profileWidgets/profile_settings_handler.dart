@@ -62,11 +62,6 @@ class ProfileSettingsHandler {
 
             // --- Support ---
             SettingsMenuItem(
-              icon: Icons.help_outline,
-              title: 'Help & Support',
-              onTap: () => Navigator.pop(context),
-            ),
-            SettingsMenuItem(
               icon: Icons.info_outline,
               title: 'About Thryfto',
               onTap: () {
@@ -319,7 +314,7 @@ class ProfileSettingsHandler {
 
                     const SizedBox(height: 10),
                     const Divider(),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     const Text(
                       "Our mission is to promote sustainable reuse and help local sellers through thrift culture.",
                       textAlign: TextAlign.center,
@@ -332,7 +327,7 @@ class ProfileSettingsHandler {
                       child: ElevatedButton(
                         onPressed: () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF8B5CF6),
+                          backgroundColor: brandPurple,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
@@ -365,7 +360,7 @@ class _FeatureRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: const Color(0xFF8B5CF6)),
+          Icon(icon, size: 20, color: ProfileSettingsHandler.brandPurple),
           const SizedBox(width: 12),
           Text(text,
               style:
