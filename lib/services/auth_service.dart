@@ -341,8 +341,6 @@ class AuthService {
       return false;
     }
   }
-
-  /// Convert Firebase error codes to user-friendly messages
   String _getErrorMessage(String code) {
     switch (code) {
       case 'user-not-found':

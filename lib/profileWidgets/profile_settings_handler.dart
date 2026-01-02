@@ -50,13 +50,6 @@ class ProfileSettingsHandler {
             const Divider(),
 
             // --- Dev Tools --
-            // SettingsMenuItem(
-            //   icon: Icons.refresh,
-            //   title: 'Reset Database',
-            //   subtitle: 'Clears all listings (Dev Only)',
-            //   onTap: () => _handleResetDatabase(context, user),
-            // ),
-            // const Divider(),
 
             // --- Support ---
             SettingsMenuItem(
@@ -88,26 +81,6 @@ class ProfileSettingsHandler {
     );
   }
 
-  // static Future<void> _handleResetDatabase(
-  //     BuildContext context, Map<String, dynamic> user) async {
-  //   final userId =
-  //       user['id'] ?? user['uid'] ?? FirebaseAuth.instance.currentUser?.uid;
-
-  //   if (userId != null) {
-  //     Navigator.pop(context);
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text('Resetting database...')),
-  //     );
-
-  //     await SeedingService().clearAllData();
-
-  //     if (context.mounted) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         const SnackBar(content: Text('Database reset successfully!')),
-  //       );
-  //     }
-  //   }
-  // }
 
   static Future<void> _handleLogout(
       BuildContext context, AuthService authService) async {
