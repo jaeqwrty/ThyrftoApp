@@ -4,9 +4,9 @@ import 'dart:typed_data';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/auth_service.dart';
-import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/services/map_location.dart';
+import 'package:thryfto/services/profile_picture_service.dart';
 
 class EditProfilePage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -19,7 +19,7 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   final _authService = AuthService();
-  final _databaseService = DatabaseService();
+  final _profileImageService = ProfileImageService(); // NEW: Use profile image service
   final _locationService = LocationService();
 
   final _fullNameController = TextEditingController();
@@ -38,6 +38,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   double? _selectedLongitude;
   String? _selectedAddress;
   String? _currentProfileImageUrl;
+  bool _shouldDeleteImage = false; // NEW: Track if user wants to delete image
 
   @override
   void initState() {
@@ -88,6 +89,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         setState(() {
           _imageFile = pickedFile;
           _imageBytes = bytes;
+          _shouldDeleteImage = false; // Reset delete flag when new image is picked
         });
       }
     } catch (e) {
@@ -138,6 +140,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     _imageFile = null;
                     _imageBytes = null;
                     _currentProfileImageUrl = null;
+                    _shouldDeleteImage = true; // NEW: Mark for deletion
                   });
                 },
               ),
@@ -286,12 +289,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       String? newImageUrl;
 
-      if (_imageFile != null) {
-        newImageUrl =
-            await _databaseService.uploadProfileImage(_imageFile!, userId);
-      } else if (_currentProfileImageUrl == null && _imageBytes == null) {
-        newImageUrl = null;
+      // NEW: Handle profile image with the dedicated service
+      if (_shouldDeleteImage) {
+        // User wants to remove the profile image
+        await _profileImageService.deleteProfileImage(userId);
+        newImageUrl = ''; // Empty string to remove from database
+      } else if (_imageFile != null) {
+        // User selected a new image
+        newImageUrl = await _profileImageService.uploadProfileImage(_imageFile!, userId);
+        if (newImageUrl == null) {
+          throw Exception('Failed to upload profile image');
+        }
       } else {
+        // Keep existing image
         newImageUrl = _currentProfileImageUrl;
       }
 
@@ -361,7 +371,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             child: Text(
               'Save',
               style: TextStyle(
-                color: _isLoading ? Colors.grey :  AppColors.primary,
+                color: _isLoading ? Colors.grey : AppColors.primary,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -443,7 +453,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                   ),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 10),
 
                   // Full Name
                   Text(
@@ -476,7 +486,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 10),
 
                   // Username
                   Text(
@@ -510,7 +520,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 10),
 
                   // Bio
                   Text(
@@ -524,8 +534,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   const SizedBox(height: 8),
                   TextField(
                     controller: _bioController,
-                    maxLines: 2,
-                    maxLength: 150,
+                    maxLines: 1,
+                    maxLength: 50,
                     decoration: InputDecoration(
                       hintText: 'Tell us a bit about yourself...',
                       border: OutlineInputBorder(
@@ -545,7 +555,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 7),
 
                   // Location Section
                   Row(
@@ -668,7 +678,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor:  AppColors.primary,
+                        foregroundColor: AppColors.primary,
                         side: const BorderSide(color: AppColors.primary),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25),
@@ -694,7 +704,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        foregroundColor:  AppColors.primary,
+                        foregroundColor: AppColors.primary,
                         side: const BorderSide(color: AppColors.primary),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25),

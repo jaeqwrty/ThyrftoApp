@@ -41,11 +41,10 @@ class _ChatListPageState extends State<ChatListPage> {
       _showLoadingDialog();
 
       try {
-        // Using ChatService to delete chat
         final success = await _chatService.deleteChat(chatId);
 
         if (mounted) {
-          Navigator.pop(context); // Close loading dialog
+          Navigator.pop(context);
 
           if (success) {
             _showResultDialog(
@@ -63,7 +62,7 @@ class _ChatListPageState extends State<ChatListPage> {
       } catch (e) {
         print('Error deleting conversation: $e');
         if (mounted) {
-          Navigator.pop(context); // Close loading dialog
+          Navigator.pop(context);
           _showResultDialog(
             success: false,
             successTitle: '',
@@ -377,7 +376,6 @@ class _ChatListPageState extends State<ChatListPage> {
 
   Widget _buildChatList() {
     return StreamBuilder<QuerySnapshot>(
-      // FIXED: Using ChatService to get user chats
       stream: _chatService.getUserChats(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -390,15 +388,44 @@ class _ChatListPageState extends State<ChatListPage> {
 
         final chatDocs = snapshot.data?.docs ?? [];
 
-        // Filter out deleted chats
-        final chats = chatDocs.where((doc) {
+        // Filter out deleted chats AND chats with no visible messages
+        final List<QueryDocumentSnapshot> validChats = [];
+
+        for (var doc in chatDocs) {
           final data = doc.data() as Map<String, dynamic>;
+          
+          // Check if user deleted this chat
           final deletedFor = List<String>.from(data['deletedFor'] ?? []);
-          return !deletedFor.contains(_chatService.currentUserId);
-        }).toList();
+          if (deletedFor.contains(_chatService.currentUserId)) {
+            // Get the deletion timestamp
+            final deletedForTimestamps = 
+                data['deletedForTimestamps'] as Map<String, dynamic>?;
+            final deletionTimestamp = 
+                deletedForTimestamps?[_chatService.currentUserId] as Timestamp?;
+
+            if (deletionTimestamp != null) {
+              // Check if lastMessageTime is after deletion timestamp
+              final lastMessageTime = data['lastMessageTime'] as Timestamp?;
+              
+              if (lastMessageTime == null || 
+                  lastMessageTime.compareTo(deletionTimestamp) <= 0) {
+                // No messages after deletion, skip this chat
+                continue;
+              }
+            }
+          }
+
+          // Check if chat has any messages (lastMessage should not be empty)
+          final lastMessage = data['lastMessage'] as String?;
+          if (lastMessage == null || lastMessage.trim().isEmpty) {
+            continue;
+          }
+
+          validChats.add(doc);
+        }
 
         // Sort by last message time
-        chats.sort((a, b) {
+        validChats.sort((a, b) {
           final aData = a.data() as Map<String, dynamic>;
           final bData = b.data() as Map<String, dynamic>;
           final aTime = (aData['lastMessageTime'] as Timestamp?)?.toDate() ??
@@ -408,7 +435,7 @@ class _ChatListPageState extends State<ChatListPage> {
           return bTime.compareTo(aTime);
         });
 
-        if (chats.isEmpty) {
+        if (validChats.isEmpty) {
           return const EmptyState(
             icon: Icons.chat_bubble_outline,
             title: 'No messages yet',
@@ -418,10 +445,10 @@ class _ChatListPageState extends State<ChatListPage> {
 
         return ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          itemCount: chats.length,
+          itemCount: validChats.length,
           itemBuilder: (context, index) {
-            final chatData = chats[index].data() as Map<String, dynamic>;
-            final chatId = chats[index].id;
+            final chatData = validChats[index].data() as Map<String, dynamic>;
+            final chatId = validChats[index].id;
             return _buildChatTile(chatId, chatData);
           },
         );

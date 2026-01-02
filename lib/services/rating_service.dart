@@ -169,7 +169,7 @@ class RatingService {
     }
   }
 
-  /// Get all ratings for a seller as a stream
+  /// Get all ratings for a seller 
   Stream<List<Map<String, dynamic>>> getSellerRatings(String sellerId) {
     return _firestore
         .collection('users')
@@ -195,7 +195,7 @@ class RatingService {
     });
   }
 
-  /// Get seller's rating stats as a stream - FIXED VERSION with initial value
+  /// Get seller's rating stats
   Stream<Map<String, dynamic>> getSellerRatingStatsStream(String sellerId) {
     return _firestore
         .collection('users')

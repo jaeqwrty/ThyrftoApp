@@ -103,27 +103,8 @@ class MessageBubble extends StatelessWidget {
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
           margin: const EdgeInsets.only(bottom: 8),
-          padding: isImageMessage 
-              ? const EdgeInsets.all(4) 
-              : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           constraints: BoxConstraints(
             maxWidth: MediaQuery.of(context).size.width * 0.75,
-          ),
-          decoration: BoxDecoration(
-            color: isMe ? const Color(0xFF8B5CF6) : Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(18),
-              topRight: const Radius.circular(18),
-              bottomLeft: Radius.circular(isMe ? 18 : 4),
-              bottomRight: Radius.circular(isMe ? 4 : 18),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
           child: Column(
             crossAxisAlignment:
@@ -131,6 +112,7 @@ class MessageBubble extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (isImageMessage && imageUrl != null) ...[
+                // Image with NO container wrapper
                 GestureDetector(
                   onTap: () => onImageTap(imageUrl),
                   child: ClipRRect(
@@ -144,7 +126,10 @@ class MessageBubble extends StatelessWidget {
                         return Container(
                           width: MediaQuery.of(context).size.width * 0.65,
                           height: 200,
-                          color: Colors.grey[200],
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                           child: const Center(
                             child: CircularProgressIndicator(),
                           ),
@@ -154,7 +139,10 @@ class MessageBubble extends StatelessWidget {
                         return Container(
                           width: MediaQuery.of(context).size.width * 0.65,
                           height: 200,
-                          color: Colors.grey[200],
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                           child: const Icon(Icons.error),
                         );
                       },
@@ -162,46 +150,14 @@ class MessageBubble extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        timeText,
-                        style: TextStyle(
-                          color: isMe ? Colors.white70 : Colors.grey[500],
-                          fontSize: 11,
-                        ),
-                      ),
-                      if (isMe) ...[
-                        const SizedBox(width: 4),
-                        Icon(
-                          message['read'] == true ? Icons.done_all : Icons.done,
-                          size: 12,
-                          color: Colors.white70,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ] else ...[
-                Text(
-                  message['text'] ?? '',
-                  style: TextStyle(
-                    color: isMe ? Colors.white : Colors.black87,
-                    fontSize: 15,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 4),
+                // Timestamp
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       timeText,
                       style: TextStyle(
-                        color: isMe ? Colors.white70 : Colors.grey[500],
+                        color: Colors.grey[500],
                         fontSize: 11,
                       ),
                     ),
@@ -210,10 +166,67 @@ class MessageBubble extends StatelessWidget {
                       Icon(
                         message['read'] == true ? Icons.done_all : Icons.done,
                         size: 12,
-                        color: Colors.white70,
+                        color: Colors.grey[500],
                       ),
                     ],
                   ],
+                ),
+              ] else ...[
+                // Text message with bubble
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isMe ? const Color(0xFF8B5CF6) : Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(18),
+                      topRight: const Radius.circular(18),
+                      bottomLeft: Radius.circular(isMe ? 18 : 4),
+                      bottomRight: Radius.circular(isMe ? 4 : 18),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment:
+                        isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        message['text'] ?? '',
+                        style: TextStyle(
+                          color: isMe ? Colors.white : Colors.black87,
+                          fontSize: 15,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            timeText,
+                            style: TextStyle(
+                              color: isMe ? Colors.white70 : Colors.grey[500],
+                              fontSize: 11,
+                            ),
+                          ),
+                          if (isMe) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              message['read'] == true ? Icons.done_all : Icons.done,
+                              size: 12,
+                              color: Colors.white70,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ],

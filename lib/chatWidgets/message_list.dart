@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:thryfto/chatWidgets/messages_bubble.dart';
+import 'package:thryfto/global/app_colors.dart';
 
 class MessagesList extends StatefulWidget {
   final String chatId;
@@ -25,162 +25,180 @@ class MessagesList extends StatefulWidget {
 }
 
 class _MessagesListState extends State<MessagesList> {
-  bool _hasScrolled = false;
+  late Stream<QuerySnapshot> _messagesStream;
 
-  void _scrollToBottom() {
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (widget.scrollController.hasClients && !_hasScrolled) {
-        widget.scrollController.animateTo(
-          widget.scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-        _hasScrolled = true;
-      }
-    });
-  }
-
-  String _formatMessageTime(DateTime? dateTime) {
-    if (dateTime == null) return '';
-
-    final now = DateTime.now();
-    final yesterday = now.subtract(const Duration(days: 1));
-    final isToday = dateTime.day == now.day &&
-        dateTime.month == now.month &&
-        dateTime.year == now.year;
-    final isYesterday = dateTime.day == yesterday.day &&
-        dateTime.month == yesterday.month &&
-        dateTime.year == yesterday.year;
-
-    if (isToday) {
-      return 'Today';
-    } else if (isYesterday) {
-      return 'Yesterday';
-    } else {
-      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
-    }
+  @override
+  void initState() {
+    super.initState();
+    _messagesStream = FirebaseFirestore.instance
+        .collection('chats')
+        .doc(widget.chatId)
+        .collection('messages')
+        .orderBy('timestamp', descending: true)
+        .snapshots();
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
+    return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('chats')
           .doc(widget.chatId)
-          .collection('messages')
-          .orderBy('timestamp', descending: false)
           .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+      builder: (context, chatSnapshot) {
+        Timestamp? deletedTimestamp;
+
+        if (chatSnapshot.hasData && chatSnapshot.data != null) {
+          final chatData = chatSnapshot.data!.data() as Map<String, dynamic>?;
+          final deletedForTimestamps =
+              chatData?['deletedForTimestamps'] as Map<String, dynamic>?;
+          deletedTimestamp =
+              deletedForTimestamps?[widget.currentUserId] as Timestamp?;
         }
 
-        final messages = snapshot.data?.docs ?? [];
-
-        if (messages.isNotEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            widget.onMarkMessagesAsRead();
-            _scrollToBottom();
-          });
-        }
-
-        if (messages.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 20,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.chat_bubble_outline,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Start the conversation!',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[700],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Send a message to begin',
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return ListView.builder(
-          controller: widget.scrollController,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-          itemCount: messages.length,
-          itemBuilder: (context, index) {
-            final messageDoc = messages[index];
-            final messageData = messageDoc.data() as Map<String, dynamic>;
-            final messageId = messageDoc.id;
-            final isMe = messageData['senderId'] == widget.currentUserId;
-
-            bool showTimestamp = index == 0;
-            if (index > 0) {
-              final prevMessageData =
-                  messages[index - 1].data() as Map<String, dynamic>;
-              final prevTimestamp = prevMessageData['timestamp'] as Timestamp?;
-              final currentTimestamp = messageData['timestamp'] as Timestamp?;
-
-              if (prevTimestamp != null && currentTimestamp != null) {
-                final timeDiff = currentTimestamp
-                    .toDate()
-                    .difference(prevTimestamp.toDate());
-                showTimestamp = timeDiff.inMinutes.abs() > 5;
-              }
+        return StreamBuilder<QuerySnapshot>(
+          stream: _messagesStream, // Use the persistent stream to stop flickering
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
             }
 
-            return Column(
-              children: [
-                if (showTimestamp)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      _formatMessageTime(
-                          (messageData['timestamp'] as Timestamp?)?.toDate()),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                  ),
-                MessageBubble(
-                  message: messageData,
-                  messageId: messageId,
-                  isMe: isMe,
-                  onDeleteMessage: widget.onDeleteMessage,
-                  onImageTap: widget.onImageTap,
-                ),
-              ],
+            final allMessages = snapshot.data?.docs ?? [];
+            final messages = allMessages.where((doc) {
+              if (deletedTimestamp == null) return true;
+              final messageData = doc.data() as Map<String, dynamic>;
+              final messageTimestamp = messageData['timestamp'] as Timestamp?;
+              return messageTimestamp == null || messageTimestamp.compareTo(deletedTimestamp) > 0;
+            }).toList();
+
+            if (messages.isEmpty) return _buildEmptyState();
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              widget.onMarkMessagesAsRead(); // Added widget. prefix
+            });
+
+            return ListView.builder(
+              controller: widget.scrollController,
+              reverse: true,
+              padding: const EdgeInsets.all(16),
+              itemCount: messages.length,
+              itemBuilder: (context, index) {
+                final messageDoc = messages[index];
+                final messageData = messageDoc.data() as Map<String, dynamic>;
+                final isMe = messageData['senderId'] == widget.currentUserId;
+                final messageType = messageData['type'] ?? 'text';
+
+                return _buildMessageBubble(
+                  context,
+                  messageDoc.id,
+                  messageData,
+                  isMe,
+                  messageType,
+                );
+              },
             );
           },
         );
       },
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text(
+            'No messages yet',
+            style: TextStyle(fontSize: 18, color: Colors.grey[600], fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 8),
+          Text('Send a message to start the conversation',
+              style: TextStyle(fontSize: 14, color: Colors.grey[500])),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(BuildContext context, String messageId, Map<String, dynamic> messageData, bool isMe, String messageType) {
+    final timestamp = messageData['timestamp'] as Timestamp?;
+    final timeText = timestamp != null
+        ? '${timestamp.toDate().hour.toString().padLeft(2, '0')}:${timestamp.toDate().minute.toString().padLeft(2, '0')}'
+        : '';
+
+    return GestureDetector(
+      onLongPress: isMe ? () => widget.onDeleteMessage(messageId) : null, // Added widget. prefix
+      child: Align(
+        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+          child: messageType == 'image'
+              ? _buildImageMessage(messageData, timeText, isMe)
+              : _buildTextMessage(messageData, isMe, timeText),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextMessage(Map<String, dynamic> messageData, bool isMe, String timeText) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: isMe ? AppColors.primary : Colors.grey[200],
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(20),
+          topRight: const Radius.circular(20),
+          bottomLeft: isMe ? const Radius.circular(20) : Radius.zero,
+          bottomRight: isMe ? Radius.zero : const Radius.circular(20),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Text(messageData['text'] ?? '', style: TextStyle(color: isMe ? Colors.white : Colors.black87, fontSize: 15)),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(timeText, style: TextStyle(color: isMe ? Colors.white70 : Colors.grey[500], fontSize: 11)),
+              if (isMe) ...[
+                const SizedBox(width: 4),
+                Icon(messageData['read'] == true ? Icons.done_all : Icons.done, size: 12, color: isMe ? Colors.white70 : Colors.grey[500]),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageMessage(Map<String, dynamic> messageData, String timeText, bool isMe) {
+    final imageUrl = messageData['imageUrl'];
+    return Column(
+      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () => widget.onImageTap(imageUrl), // Added widget. prefix
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(imageUrl, fit: BoxFit.cover),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(timeText, style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+            if (isMe) ...[
+              const SizedBox(width: 4),
+              Icon(messageData['read'] == true ? Icons.done_all : Icons.done, size: 12, color: Colors.grey[500]),
+            ],
+          ],
+        ),
+      ],
     );
   }
 }

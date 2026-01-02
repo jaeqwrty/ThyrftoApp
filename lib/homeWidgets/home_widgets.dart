@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:thryfto/commonWidgets/image_placeholder.dart';
 import 'package:thryfto/commonWidgets/tag.dart';
 import 'package:thryfto/commonWidgets/user_avatar.dart';
+import 'package:thryfto/modals/comments_modal.dart';
 import 'package:thryfto/services/comments_service.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/pages/user_profile_page.dart';
 import 'package:thryfto/pages/listing_detail_page.dart';
-import 'package:thryfto/modals/comments.dart';
 import 'package:thryfto/modals/share_modal.dart';
 
 /// Format count helper function

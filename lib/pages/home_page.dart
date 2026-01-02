@@ -134,7 +134,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ... (Keep _buildEmptyState and _buildAppBar as they were)
   Widget _buildEmptyState() {
     return CustomScrollView(
       slivers: [

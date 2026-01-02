@@ -17,31 +17,17 @@ class ChatService {
     required String chatId,
   }) async {
     try {
-      if (currentUserId == null) {
-        print('Error: User not authenticated');
-        return null;
-      }
+      if (currentUserId == null) return null;
 
-      print('Starting image upload for chat: $chatId');
-
-      // Generate unique filename
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final ext = path.extension(imageFile.name).isEmpty
           ? '.jpg'
           : path.extension(imageFile.name);
       final fileName = 'chat_${chatId}_${timestamp}$ext';
 
-      print('Generated filename: $fileName');
-
-      // Create storage reference
       final storageRef = _storage.ref().child('chats/$chatId/$fileName');
-      print('Storage reference created: chats/$chatId/$fileName');
-
-      // Read file bytes
       final bytes = await imageFile.readAsBytes();
-      print('Image bytes read: ${bytes.length} bytes');
 
-      // Upload file with metadata
       final uploadTask = await storageRef.putData(
         bytes,
         SettableMetadata(
@@ -53,25 +39,13 @@ class ChatService {
         ),
       );
 
-      print('Upload complete, getting download URL...');
-
-      // Get download URL
-      final downloadUrl = await uploadTask.ref.getDownloadURL();
-      print('Image uploaded successfully: $downloadUrl');
-
-      return downloadUrl;
-    } on FirebaseException catch (e) {
-      print('Firebase Error uploading chat image:');
-      print('Code: ${e.code}');
-      print('Message: ${e.message}');
-      return null;
+      return await uploadTask.ref.getDownloadURL();
     } catch (e) {
-      print('General Error uploading chat image: $e');
+      print('Error uploading chat image: $e');
       return null;
     }
   }
 
-  // Get content type based on file extension
   String _getContentType(String filePath) {
     final ext = path.extension(filePath).toLowerCase();
     switch (ext) {
@@ -89,12 +63,10 @@ class ChatService {
     }
   }
 
-  // Delete chat image from storage
   Future<bool> deleteChatImage(String imageUrl) async {
     try {
       final ref = _storage.refFromURL(imageUrl);
       await ref.delete();
-      print('Image deleted successfully: $imageUrl');
       return true;
     } catch (e) {
       print('Error deleting chat image: $e');
@@ -102,40 +74,148 @@ class ChatService {
     }
   }
 
-  // Get or create chat
+  /// Get existing chat ID or create new one - ALWAYS returns a chat ID
+  /// This ensures only ONE conversation exists per user pair
   Future<String?> getOrCreateChat(String otherUserId) async {
     if (currentUserId == null) return null;
 
     try {
-      // Check if chat already exists
-      final existingChat = await _firestore
+      // First, search for existing chat
+      final existingChats = await _firestore
           .collection('chats')
           .where('participants', arrayContains: currentUserId)
           .get();
 
-      for (var doc in existingChat.docs) {
-        final participants = List<String>.from(doc.data()['participants']);
+      for (var doc in existingChats.docs) {
+        final chatData = doc.data();
+        final participants = List<String>.from(chatData['participants']);
+
+        // Check if this chat is with the target user
         if (participants.contains(otherUserId)) {
+          final deletedFor = List<String>.from(chatData['deletedFor'] ?? []);
+
+          // If user deleted this chat, check if we should restore or create new
+          if (deletedFor.contains(currentUserId)) {
+            final deletedForTimestamps = 
+                chatData['deletedForTimestamps'] as Map<String, dynamic>?;
+            final deletionTimestamp = 
+                deletedForTimestamps?[currentUserId] as Timestamp?;
+
+            if (deletionTimestamp != null) {
+              // Check if there are any messages after deletion
+              final messagesAfterDeletion = await _firestore
+                  .collection('chats')
+                  .doc(doc.id)
+                  .collection('messages')
+                  .where('timestamp', isGreaterThan: deletionTimestamp)
+                  .limit(1)
+                  .get();
+
+              // If no messages after deletion, don't restore - create new chat instead
+              if (messagesAfterDeletion.docs.isEmpty) {
+                print('Old chat was deleted with no new messages - creating fresh chat');
+                // Don't restore this old chat, create a new one below
+                continue;
+              }
+
+              // There are messages after deletion, so restore the chat
+              print('Restoring chat with new messages after deletion');
+              await _firestore.collection('chats').doc(doc.id).update({
+                'deletedFor': FieldValue.arrayRemove([currentUserId]),
+                'deletedForTimestamps.$currentUserId': FieldValue.delete(),
+              });
+              return doc.id;
+            }
+          }
+
+          // Chat exists and wasn't deleted by current user
           return doc.id;
         }
       }
 
-      // Create new chat
+      // No existing chat found - create new one
+      print('Creating new chat between $currentUserId and $otherUserId');
       final chatRef = await _firestore.collection('chats').add({
         'participants': [currentUserId, otherUserId],
         'createdAt': FieldValue.serverTimestamp(),
         'lastMessage': '',
         'lastMessageTime': FieldValue.serverTimestamp(),
+        'deletedFor': [],
+        'deletedForTimestamps': {},
       });
 
       return chatRef.id;
     } catch (e) {
-      print('Error getting or creating chat: $e');
+      print('Error getting/creating chat: $e');
       return null;
     }
   }
 
-  // Send message with notification - simplified version for conversation page
+  /// Create a new chat (ONLY used internally - prefer getOrCreateChat)
+  Future<String?> createChat(String otherUserId) async {
+    if (currentUserId == null) return null;
+
+    try {
+      // Double-check if chat already exists before creating
+      final existingChatId = await getOrCreateChat(otherUserId);
+      return existingChatId;
+    } catch (e) {
+      print('Error creating chat: $e');
+      return null;
+    }
+  }
+
+  /// Soft delete - stores deletion timestamp to filter messages
+  Future<bool> deleteChat(String chatId) async {
+    try {
+      if (currentUserId == null) return false;
+
+      final chatDoc = await _firestore.collection('chats').doc(chatId).get();
+      if (!chatDoc.exists) return false;
+
+      final chatData = chatDoc.data()!;
+      final participants = List<String>.from(chatData['participants']);
+      
+      // Mark as deleted for current user with timestamp
+      await _firestore.collection('chats').doc(chatId).update({
+        'deletedFor': FieldValue.arrayUnion([currentUserId]),
+        'deletedForTimestamps.$currentUserId': FieldValue.serverTimestamp(),
+      });
+
+      // If both users have deleted it, we can completely delete the chat
+      final deletedFor = List<String>.from(chatData['deletedFor'] ?? []);
+      deletedFor.add(currentUserId!);
+      
+      if (deletedFor.length == participants.length) {
+        // Both users deleted it - permanently delete the chat and all messages
+        final messagesSnapshot = await _firestore
+            .collection('chats')
+            .doc(chatId)
+            .collection('messages')
+            .get();
+
+        for (var messageDoc in messagesSnapshot.docs) {
+          final messageData = messageDoc.data();
+          
+          // Delete image if it exists
+          if (messageData['type'] == 'image' && messageData['imageUrl'] != null) {
+            await deleteChatImage(messageData['imageUrl']);
+          }
+          
+          await messageDoc.reference.delete();
+        }
+
+        // Delete the chat document
+        await _firestore.collection('chats').doc(chatId).delete();
+      }
+
+      return true;
+    } catch (e) {
+      print('Error deleting chat: $e');
+      return false;
+    }
+  }
+
   Future<void> sendMessageWithNotification({
     required String recipientId,
     required String messageText,
@@ -143,7 +223,6 @@ class ChatService {
     try {
       if (currentUserId == null) return;
 
-      // Get current user's name for notification
       final currentUserDoc =
           await _firestore.collection('users').doc(currentUserId!).get();
       final currentUserName = currentUserDoc.data()?['fullName'] ??
@@ -151,7 +230,6 @@ class ChatService {
           currentUserDoc.data()?['username'] ??
           'Someone';
 
-      // Create notification
       await _createNotification(
         recipientId: recipientId,
         type: 'message',
@@ -163,127 +241,11 @@ class ChatService {
       );
     } catch (e) {
       print('Error sending notification: $e');
-      // Don't throw - notification failure shouldn't block message sending
     }
   }
 
-  // Send message with notification - full version with chatId
-  Future<void> sendMessage({
-    required String chatId,
-    required String recipientId,
-    required String messageText,
-  }) async {
-    try {
-      if (currentUserId == null) return;
-
-      // Get current user's name for notification
-      final currentUserDoc =
-          await _firestore.collection('users').doc(currentUserId!).get();
-      final currentUserName = currentUserDoc.data()?['fullName'] ??
-          currentUserDoc.data()?['full_name'] ??
-          currentUserDoc.data()?['username'] ??
-          'Someone';
-
-      // Send the message
-      await _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .add({
-        'text': messageText,
-        'senderId': currentUserId,
-        'timestamp': FieldValue.serverTimestamp(),
-        'read': false,
-        'type': 'text',
-      });
-
-      // Update chat's last message
-      await _firestore.collection('chats').doc(chatId).update({
-        'lastMessage': messageText,
-        'lastMessageTime': FieldValue.serverTimestamp(),
-      });
-
-      // Create notification
-      await _createNotification(
-        recipientId: recipientId,
-        type: 'message',
-        title: 'New message from $currentUserName',
-        body: messageText.length > 50
-            ? '${messageText.substring(0, 50)}...'
-            : messageText,
-        relatedUserId: currentUserId,
-      );
-    } catch (e) {
-      print('Error sending message: $e');
-      rethrow;
-    }
-  }
-
-  // Send image message
-  Future<void> sendImageMessage({
-    required String chatId,
-    required String recipientId,
-    required String imageUrl,
-  }) async {
-    try {
-      if (currentUserId == null) return;
-
-      // Get current user's name for notification
-      final currentUserDoc =
-          await _firestore.collection('users').doc(currentUserId!).get();
-      final currentUserName = currentUserDoc.data()?['fullName'] ??
-          currentUserDoc.data()?['full_name'] ??
-          currentUserDoc.data()?['username'] ??
-          'Someone';
-
-      // Send the image message
-      await _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .add({
-        'imageUrl': imageUrl,
-        'senderId': currentUserId,
-        'timestamp': FieldValue.serverTimestamp(),
-        'read': false,
-        'type': 'image',
-      });
-
-      // Update chat's last message
-      await _firestore.collection('chats').doc(chatId).update({
-        'lastMessage': '📷 Photo',
-        'lastMessageTime': FieldValue.serverTimestamp(),
-      });
-
-      // Create notification
-      await _createNotification(
-        recipientId: recipientId,
-        type: 'message',
-        title: 'New photo from $currentUserName',
-        body: '📷 Sent a photo',
-        relatedUserId: currentUserId,
-      );
-    } catch (e) {
-      print('Error sending image message: $e');
-      rethrow;
-    }
-  }
-
-  // Get chat messages stream
-  Stream<QuerySnapshot> getChatMessages(String chatId) {
-    return _firestore
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .orderBy('timestamp', descending: true)
-        .snapshots();
-  }
-
-  // Get user's chats stream
   Stream<QuerySnapshot> getUserChats() {
-    if (currentUserId == null) {
-      return const Stream.empty();
-    }
+    if (currentUserId == null) return const Stream.empty();
 
     return _firestore
         .collection('chats')
@@ -291,40 +253,8 @@ class ChatService {
         .snapshots();
   }
 
-  /// Delete a chat conversation and all its messages (including images)
-  Future<bool> deleteChat(String chatId) async {
-    try {
-      // Get all messages to find and delete images
-      final messagesSnapshot = await _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .get();
-
-      // Delete all images from storage
-      for (var doc in messagesSnapshot.docs) {
-        final messageData = doc.data();
-        if (messageData['type'] == 'image' && messageData['imageUrl'] != null) {
-          await deleteChatImage(messageData['imageUrl']);
-        }
-        // Delete message document
-        await doc.reference.delete();
-      }
-
-      // Delete the chat document
-      await _firestore.collection('chats').doc(chatId).delete();
-
-      return true;
-    } catch (e) {
-      print('Error deleting chat: $e');
-      return false;
-    }
-  }
-
-  /// Delete a specific message from a chat (including image if present)
   Future<bool> deleteMessage(String chatId, String messageId) async {
     try {
-      // Get message data first
       final messageDoc = await _firestore
           .collection('chats')
           .doc(chatId)
@@ -334,15 +264,12 @@ class ChatService {
 
       if (messageDoc.exists) {
         final messageData = messageDoc.data();
-
-        // Delete image from storage if it's an image message
         if (messageData?['type'] == 'image' &&
             messageData?['imageUrl'] != null) {
           await deleteChatImage(messageData!['imageUrl']);
         }
       }
 
-      // Delete the message document
       await _firestore
           .collection('chats')
           .doc(chatId)
@@ -350,7 +277,6 @@ class ChatService {
           .doc(messageId)
           .delete();
 
-      // Update last message if needed
       final remainingMessages = await _firestore
           .collection('chats')
           .doc(chatId)
@@ -360,19 +286,15 @@ class ChatService {
           .get();
 
       if (remainingMessages.docs.isEmpty) {
-        // No messages left, update chat
         await _firestore.collection('chats').doc(chatId).update({
           'lastMessage': '',
           'lastMessageTime': FieldValue.serverTimestamp(),
         });
       } else {
-        // Update with the latest message
         final lastMsg = remainingMessages.docs.first.data();
-        final lastMessageText =
-            lastMsg['type'] == 'image' ? '📷 Photo' : lastMsg['text'] ?? '';
-
         await _firestore.collection('chats').doc(chatId).update({
-          'lastMessage': lastMessageText,
+          'lastMessage':
+              lastMsg['type'] == 'image' ? '📷 Photo' : lastMsg['text'] ?? '',
           'lastMessageTime':
               lastMsg['timestamp'] ?? FieldValue.serverTimestamp(),
         });
@@ -385,7 +307,6 @@ class ChatService {
     }
   }
 
-  /// Internal helper: Create notification in Firestore with sender details
   Future<void> _createNotification({
     required String recipientId,
     required String type,
@@ -396,7 +317,6 @@ class ChatService {
     Map<String, dynamic>? additionalData,
   }) async {
     try {
-      // Get sender's information
       String senderName = 'Someone';
       String? senderProfileImage;
 
@@ -427,10 +347,8 @@ class ChatService {
         'created_at': FieldValue.serverTimestamp(),
         'additional_data': additionalData ?? {},
       });
-      print('Notification created: $title');
     } catch (e) {
       print('Error creating notification: $e');
-      rethrow;
     }
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/chat_service.dart';
@@ -9,7 +10,7 @@ import 'package:thryfto/chatWidgets/messages_input.dart';
 import 'package:thryfto/chatWidgets/message_list.dart';
 
 class ConversationPage extends StatefulWidget {
-  final String chatId;
+  final String? chatId;
   final String otherUserId;
   final String otherUserName;
   final Map<String, dynamic> currentUser;
@@ -33,28 +34,79 @@ class _ConversationPageState extends State<ConversationPage> {
   final DatabaseService _db = DatabaseService();
   final ChatService _chatService = ChatService();
   final ImagePicker _picker = ImagePicker();
+
   bool _hasMarkedAsRead = false;
-  bool _isUploadingImage = false;
+  String? _activeChatId;
+  bool _isInitialized = false;
+
+  // Use ValueNotifier to prevent full widget rebuilds
+  final ValueNotifier<bool> _isUploadingImage = ValueNotifier<bool>(false);
+
+  @override
+  void initState() {
+    super.initState();
+    _isInitialized = true;
+    // If no chatId provided, get or create it immediately
+    if (widget.chatId == null) {
+      _ensureChatExists().then((chatId) {
+        if (mounted && chatId != null) {
+          setState(() {
+            _activeChatId = chatId;
+          });
+        }
+      });
+    } else {
+      _activeChatId = widget.chatId;
+    }
+  }
 
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _isUploadingImage.dispose();
     super.dispose();
+  }
+
+  Future<String?> _ensureChatExists() async {
+    if (_activeChatId != null) return _activeChatId;
+
+    try {
+      // Use getOrCreateChat to ensure we get the existing chat or create new one
+      final chatId = await _chatService.getOrCreateChat(widget.otherUserId);
+      if (chatId != null && _isInitialized && mounted) {
+        setState(() {
+          _activeChatId = chatId;
+        });
+      }
+      return chatId;
+    } catch (e) {
+      print('Error ensuring chat exists: $e');
+      return null;
+    }
   }
 
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
+    // Clear immediately for better UX
     _messageController.clear();
 
     try {
-      await _firestore
+      final chatId = await _ensureChatExists();
+      if (chatId == null) throw Exception('Failed to create chat');
+
+      // Use a WriteBatch to make updates atomic and prevent multiple UI "pings"
+      final batch = _firestore.batch();
+
+      final messageRef = _firestore
           .collection('chats')
-          .doc(widget.chatId)
+          .doc(chatId)
           .collection('messages')
-          .add({
+          .doc(); // Generates a new ID locally
+
+      batch.set(messageRef, {
         'senderId': _db.currentUserId,
         'text': text,
         'timestamp': FieldValue.serverTimestamp(),
@@ -62,21 +114,31 @@ class _ConversationPageState extends State<ConversationPage> {
         'type': 'text',
       });
 
-      await _firestore.collection('chats').doc(widget.chatId).update({
+      batch.update(_firestore.collection('chats').doc(chatId), {
         'lastMessage': text,
         'lastMessageTime': FieldValue.serverTimestamp(),
       });
 
-      await _chatService.sendMessageWithNotification(
-        recipientId: widget.otherUserId,
-        messageText: text,
-      );
+      // Commit both updates at once
+      await batch.commit();
 
-      _scrollToBottom();
+      // Removed _scrollToBottom() because a 'reverse: true' ListView
+      // automatically handles new items at the bottom without jitter.
+
+      _chatService
+          .sendMessageWithNotification(
+            recipientId: widget.otherUserId,
+            messageText: text,
+          )
+          .catchError((e) => print('Notification error: $e'));
     } catch (e) {
+      print('Error sending message: $e');
       if (mounted) {
-        _showErrorDialog(
-            'Failed to Send', 'Could not send your message. Please try again.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: const Text('Failed to send message'),
+              backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -91,13 +153,23 @@ class _ConversationPageState extends State<ConversationPage> {
       );
 
       if (image == null) return;
+      if (!mounted) return;
 
-      // Show preview dialog
       _showImagePreviewDialog(image);
     } catch (e) {
       print('Error picking image: $e');
       if (mounted) {
-        _showErrorDialog('Error', 'Failed to pick image. Please try again.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to pick image'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     }
   }
@@ -116,7 +188,6 @@ class _ConversationPageState extends State<ConversationPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: const BoxDecoration(
@@ -141,39 +212,29 @@ class _ConversationPageState extends State<ConversationPage> {
                     const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
+                      onPressed: () => Navigator.pop(context),
                     ),
                   ],
                 ),
               ),
-              // Image Preview
               Container(
                 constraints: BoxConstraints(
                   maxHeight: MediaQuery.of(context).size.height * 0.5,
                 ),
                 child: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
-                  ),
                   child: Image.file(
                     File(image.path),
                     fit: BoxFit.contain,
                   ),
                 ),
               ),
-              // Action Buttons
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
+                        onPressed: () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: BorderSide(color: Colors.grey[300]!),
@@ -222,52 +283,60 @@ class _ConversationPageState extends State<ConversationPage> {
   }
 
   Future<void> _sendImageMessage(XFile image) async {
-    setState(() => _isUploadingImage = true);
+    if (!mounted) return;
+    _isUploadingImage.value = true;
 
     try {
+      final chatId = await _ensureChatExists();
+      if (chatId == null) throw Exception('Failed to create chat');
+
       final imageUrl = await _chatService.uploadChatImage(
         imageFile: image,
-        chatId: widget.chatId,
+        chatId: chatId,
       );
 
-      if (imageUrl != null) {
-        await _firestore
-            .collection('chats')
-            .doc(widget.chatId)
-            .collection('messages')
-            .add({
-          'senderId': _db.currentUserId,
-          'imageUrl': imageUrl,
-          'timestamp': FieldValue.serverTimestamp(),
-          'read': false,
-          'type': 'image',
-        });
+      if (imageUrl == null) throw Exception('Failed to upload image');
 
-        await _firestore.collection('chats').doc(widget.chatId).update({
-          'lastMessage': '📷 Photo',
-          'lastMessageTime': FieldValue.serverTimestamp(),
-        });
+      // Use a WriteBatch for image messages as well
+      final batch = _firestore.batch();
+      final messageRef = _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc();
 
-        await _chatService.sendMessageWithNotification(
-          recipientId: widget.otherUserId,
-          messageText: '📷 Sent a photo',
-        );
+      batch.set(messageRef, {
+        'senderId': _db.currentUserId,
+        'imageUrl': imageUrl,
+        'timestamp': FieldValue.serverTimestamp(),
+        'read': false,
+        'type': 'image',
+      });
 
-        _scrollToBottom();
-      } else {
-        if (mounted) {
-          _showErrorDialog('Upload Failed', 'Could not upload the image.');
-        }
-      }
+      batch.update(_firestore.collection('chats').doc(chatId), {
+        'lastMessage': '📷 Photo',
+        'lastMessageTime': FieldValue.serverTimestamp(),
+      });
+
+      await batch.commit();
+
+      _chatService
+          .sendMessageWithNotification(
+            recipientId: widget.otherUserId,
+            messageText: '📷 Sent a photo',
+          )
+          .catchError((e) => print('Notification error: $e'));
     } catch (e) {
       print('Error sending image: $e');
       if (mounted) {
-        _showErrorDialog('Error', 'Failed to send image. Please try again.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: const Text('Failed to send image'),
+              backgroundColor: Colors.red),
+        );
       }
     } finally {
-      setState(() {
-        _isUploadingImage = false;
-      });
+      if (mounted) _isUploadingImage.value = false;
     }
   }
 
@@ -363,33 +432,23 @@ class _ConversationPageState extends State<ConversationPage> {
     );
   }
 
-  void _scrollToBottom() {
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
-
   Future<void> _markMessagesAsRead() async {
-    if (_hasMarkedAsRead) return;
+    if (_hasMarkedAsRead || _activeChatId == null) return;
 
     try {
       final messagesSnapshot = await _firestore
           .collection('chats')
-          .doc(widget.chatId)
+          .doc(_activeChatId)
           .collection('messages')
           .where('senderId', isNotEqualTo: _db.currentUserId)
           .where('read', isEqualTo: false)
           .get();
 
+      final batch = _firestore.batch();
       for (final doc in messagesSnapshot.docs) {
-        await doc.reference.update({'read': true});
+        batch.update(doc.reference, {'read': true});
       }
+      await batch.commit();
 
       _hasMarkedAsRead = true;
     } catch (e) {
@@ -397,195 +456,137 @@ class _ConversationPageState extends State<ConversationPage> {
     }
   }
 
-  void _showErrorDialog(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        contentPadding: const EdgeInsets.all(24),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child:
-                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text('OK',
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _deleteMessage(String messageId) async {
+    if (_activeChatId == null) return;
+
     final confirm = await _showFloatingDeleteDialog(
       title: 'Delete Message',
       message: 'Are you sure you want to delete this message?',
       icon: Icons.chat_bubble_outline,
     );
 
-    if (confirm == true) {
-      _showLoadingDialog();
+    if (confirm != true) return;
 
-      try {
-        await _firestore
-            .collection('chats')
-            .doc(widget.chatId)
-            .collection('messages')
-            .doc(messageId)
-            .delete();
+    try {
+      await _firestore
+          .collection('chats')
+          .doc(_activeChatId)
+          .collection('messages')
+          .doc(messageId)
+          .delete();
 
-        final remainingMessages = await _firestore
-            .collection('chats')
-            .doc(widget.chatId)
-            .collection('messages')
-            .orderBy('timestamp', descending: true)
-            .limit(1)
-            .get();
+      final remainingMessages = await _firestore
+          .collection('chats')
+          .doc(_activeChatId)
+          .collection('messages')
+          .orderBy('timestamp', descending: true)
+          .limit(1)
+          .get();
 
-        if (remainingMessages.docs.isEmpty) {
-          await _firestore.collection('chats').doc(widget.chatId).delete();
+      if (remainingMessages.docs.isEmpty) {
+        await _firestore.collection('chats').doc(_activeChatId).delete();
 
-          if (mounted) {
-            Navigator.pop(context);
-            Navigator.pop(context);
-
-            Future.delayed(const Duration(milliseconds: 300), () {
-              if (mounted) {
-                _showResultDialog(
-                  success: true,
-                  successTitle: 'Message Deleted',
-                  successMessage:
-                      'The conversation has been removed as there are no messages left.',
-                  failTitle: '',
-                  failMessage: '',
-                );
-              }
-            });
-          }
-        } else {
-          final lastMsg = remainingMessages.docs.first.data();
-          await _firestore.collection('chats').doc(widget.chatId).update({
-            'lastMessage':
-                lastMsg['type'] == 'image' ? '📷 Photo' : lastMsg['text'] ?? '',
-            'lastMessageTime':
-                lastMsg['timestamp'] ?? FieldValue.serverTimestamp(),
-          });
-
-          if (mounted) {
-            Navigator.pop(context);
-            _showResultDialog(
-              success: true,
-              successTitle: 'Message Deleted',
-              successMessage: 'The message has been successfully deleted.',
-              failTitle: '',
-              failMessage: '',
-            );
-          }
-        }
-      } catch (e) {
-        print('Error deleting message: $e');
         if (mounted) {
           Navigator.pop(context);
-          _showResultDialog(
-            success: false,
-            successTitle: '',
-            successMessage: '',
-            failTitle: 'Failed to Delete',
-            failMessage: 'Something went wrong. Please try again.',
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Conversation deleted - no messages left'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              margin: const EdgeInsets.all(16),
+              duration: const Duration(seconds: 2),
+            ),
           );
         }
+      } else {
+        final lastMsg = remainingMessages.docs.first.data();
+        await _firestore.collection('chats').doc(_activeChatId).update({
+          'lastMessage':
+              lastMsg['type'] == 'image' ? '📷 Photo' : lastMsg['text'] ?? '',
+          'lastMessageTime':
+              lastMsg['timestamp'] ?? FieldValue.serverTimestamp(),
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Message deleted'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              margin: const EdgeInsets.all(16),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error deleting message: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to delete message'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     }
   }
 
   Future<void> _deleteEntireChat() async {
+    if (_activeChatId == null) return;
+
     final confirm = await _showFloatingDeleteDialog(
       title: 'Delete Conversation',
       message:
-          'Are you sure you want to delete your entire conversation with ${widget.otherUserName}? This action cannot be undone.',
+          'Delete this conversation for yourself? ${widget.otherUserName} will still have it.',
       icon: Icons.forum_outlined,
     );
 
-    if (confirm == true) {
-      _showLoadingDialog();
+    if (confirm != true) return;
 
-      try {
-        final messagesSnapshot = await _firestore
-            .collection('chats')
-            .doc(widget.chatId)
-            .collection('messages')
-            .get();
+    try {
+      final success = await _chatService.deleteChat(_activeChatId!);
 
-        for (var doc in messagesSnapshot.docs) {
-          await doc.reference.delete();
-        }
+      if (mounted) {
+        Navigator.pop(context);
 
-        await _firestore.collection('chats').doc(widget.chatId).delete();
-
-        if (mounted) {
-          Navigator.pop(context);
-          Navigator.pop(context);
-
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (mounted) {
-              _showResultDialog(
-                success: true,
-                successTitle: 'Conversation Deleted',
-                successMessage:
-                    'The conversation has been successfully deleted.',
-                failTitle: '',
-                failMessage: '',
-              );
-            }
-          });
-        }
-      } catch (e) {
-        print('Error deleting chat: $e');
-        if (mounted) {
-          Navigator.pop(context);
-          _showResultDialog(
-            success: false,
-            successTitle: '',
-            successMessage: '',
-            failTitle: 'Failed to Delete',
-            failMessage: 'Something went wrong. Please try again.',
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Conversation deleted'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              margin: const EdgeInsets.all(16),
+              duration: const Duration(seconds: 2),
+            ),
           );
         }
+      }
+    } catch (e) {
+      print('Error deleting chat: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to delete conversation'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     }
   }
@@ -677,95 +678,6 @@ class _ConversationPageState extends State<ConversationPage> {
                     ),
                   ),
                 ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showLoadingDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black26,
-      builder: (context) => Center(
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const CircularProgressIndicator(),
-        ),
-      ),
-    );
-  }
-
-  void _showResultDialog({
-    required bool success,
-    required String successTitle,
-    required String successMessage,
-    required String failTitle,
-    required String failMessage,
-  }) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: success
-                      ? Colors.green.withOpacity(0.1)
-                      : Colors.red.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  success ? Icons.check_circle_outline : Icons.error_outline,
-                  size: 48,
-                  color: success ? Colors.green : Colors.red,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                success ? successTitle : failTitle,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                success ? successMessage : failMessage,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: success ? Colors.green : Colors.red,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'OK',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ),
               ),
             ],
           ),
@@ -906,27 +818,21 @@ class _ConversationPageState extends State<ConversationPage> {
             final displayName = fullName ?? username ?? widget.otherUserName;
             final profileImageUrl = otherUser?['profileImageUrl'] as String?;
 
-            // Real-time location retrieval
             String locationText = 'Location not set';
             bool hasLocation = false;
 
             if (otherUser != null) {
-              // Check for direct latitude/longitude fields (current structure)
               if (otherUser['latitude'] != null &&
                   otherUser['longitude'] != null &&
                   otherUser['address'] != null &&
                   otherUser['address'].toString().isNotEmpty) {
                 locationText = otherUser['address'];
                 hasLocation = true;
-              }
-              // Fall back to cityState field
-              else if (otherUser['cityState'] != null &&
+              } else if (otherUser['cityState'] != null &&
                   otherUser['cityState'].toString().isNotEmpty) {
                 locationText = otherUser['cityState'];
                 hasLocation = true;
-              }
-              // Fall back to nested location object (old structure)
-              else if (otherUser['location'] != null) {
+              } else if (otherUser['location'] != null) {
                 final location = otherUser['location'] as Map<String, dynamic>;
                 if (location['latitude'] != null &&
                     location['longitude'] != null &&
@@ -1010,43 +916,76 @@ class _ConversationPageState extends State<ConversationPage> {
           },
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.black87),
-            onPressed: _showChatOptions,
-          ),
+          if (_activeChatId != null)
+            IconButton(
+              icon: const Icon(Icons.more_vert, color: Colors.black87),
+              onPressed: _showChatOptions,
+            ),
         ],
       ),
       body: Column(
         children: [
           Expanded(
-            child: MessagesList(
-              chatId: widget.chatId,
-              currentUserId: _db.currentUserId ?? '',
-              scrollController: _scrollController,
-              onMarkMessagesAsRead: _markMessagesAsRead,
-              onDeleteMessage: _deleteMessage,
-              onImageTap: _showImagePreview,
-            ),
+            child: _activeChatId != null
+                ? MessagesList(
+                    chatId: _activeChatId!,
+                    currentUserId: _db.currentUserId ?? '',
+                    scrollController: _scrollController,
+                    onMarkMessagesAsRead: _markMessagesAsRead,
+                    onDeleteMessage: _deleteMessage,
+                    onImageTap: _showImagePreview,
+                  )
+                : Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.chat_bubble_outline,
+                            size: 64, color: Colors.grey[300]),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No messages yet',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Send a message to start the conversation',
+                          style:
+                              TextStyle(fontSize: 14, color: Colors.grey[500]),
+                        ),
+                      ],
+                    ),
+                  ),
           ),
-          if (_isUploadingImage)
-            Container(
-              padding: const EdgeInsets.all(12),
-              color: Colors.grey[100],
-              child: Row(
-                children: [
-                  const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Uploading image...',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
+          // Use ValueListenableBuilder instead of setState
+          ValueListenableBuilder<bool>(
+            valueListenable: _isUploadingImage,
+            builder: (context, isUploading, child) {
+              if (!isUploading) return const SizedBox.shrink();
+
+              return Container(
+                padding: const EdgeInsets.all(12),
+                color: Colors.grey[100],
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Uploading image...',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           MessageInput(
             controller: _messageController,
             onSendMessage: _sendMessage,

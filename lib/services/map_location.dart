@@ -327,7 +327,7 @@ class _LocationPickerState extends State<LocationPicker> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content:
-                  Text('Could not get your location. Please check settings.'),
+                  Text('Could not get your location. Please turn on location.'),
               backgroundColor: Colors.orange,
             ),
           );

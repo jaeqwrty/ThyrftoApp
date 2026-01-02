@@ -550,20 +550,58 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
   }
 
-  Future<void> _handleMessage(String fullName) async {
-    final chatId = await _chatService.getOrCreateChat(widget.userId);
-    if (chatId != null && mounted) {
-      Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => ConversationPage(
-                    chatId: chatId,
-                    otherUserId: widget.userId,
-                    otherUserName: fullName,
-                    currentUser: widget.currentUser,
-                  )));
-    }
+Future<void> _handleMessage(String fullName) async {
+  if (!mounted) return;
+  
+  // Show loading indicator
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Row(
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.backgroundWhite),
+            ),
+          ),
+          SizedBox(width: 12),
+          Text('Opening chat...'),
+        ],
+      ),
+      duration: Duration(seconds: 1),
+    ),
+  );
+
+  // Get or create chat - this ensures only one chat per user pair
+  final chatId = await _chatService.getOrCreateChat(widget.userId);
+  
+  if (!mounted) return;
+  
+  // Clear loading message
+  ScaffoldMessenger.of(context).clearSnackBars();
+
+  if (chatId != null) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ConversationPage(
+          chatId: chatId, // Always provide chat ID
+          otherUserId: widget.userId,
+          otherUserName: fullName,
+          currentUser: widget.currentUser,
+        ),
+      ),
+    );
+  } else {
+    _showSnackBar(
+      message: 'Failed to open chat. Please try again.',
+      icon: Icons.error_outline,
+      backgroundColor: AppColors.error,
+    );
   }
+}
 
   Future<void> _handleRating(String sellerName) async {
     final result = await RatingDialog.show(

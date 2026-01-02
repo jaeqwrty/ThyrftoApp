@@ -143,28 +143,6 @@ class LocationService {
     }
   }
 
-  /// Save listing location (seller's location at time of posting)
-  Future<bool> saveListingLocation({
-    required String listingId,
-    required double latitude,
-    required double longitude,
-    String? address,
-  }) async {
-    try {
-      await _firestore.collection('listings').doc(listingId).update({
-        'location': {
-          'latitude': latitude,
-          'longitude': longitude,
-          'address': address ?? 'Unknown location',
-        },
-      });
-      return true;
-    } catch (e) {
-      print('Error saving listing location: $e');
-      return false;
-    }
-  }
-
   /// Sort listings by distance from user's location
   List<Map<String, dynamic>> sortListingsByDistance({
     required List<Map<String, dynamic>> listings,
@@ -299,65 +277,12 @@ class LocationService {
     await Geolocator.openAppSettings();
   }
 
-  /// Calculate distance between user and listing
-  Future<String?> getDistanceToListing({
-    required String userId,
-    required Map<String, dynamic> listing,
-  }) async {
-    try {
-      final userLocation = await getUserLocation(userId);
-      if (userLocation == null) return null;
-
-      final listingLocation = listing['location'] as Map<String, dynamic>?;
-      if (listingLocation == null) return null;
-
-      final distance = calculateDistance(
-        userLocation['latitude'],
-        userLocation['longitude'],
-        listingLocation['latitude'],
-        listingLocation['longitude'],
-      );
-
-      return formatDistance(distance);
-    } catch (e) {
-      print('Error calculating distance: $e');
-      return null;
-    }
-  }
-
   /// Check if user has location set
   Future<bool> hasUserLocation(String userId) async {
     final location = await getUserLocation(userId);
     return location != null &&
         location['latitude'] != null &&
         location['longitude'] != null;
-  }
-
-  /// Get nearby listings within a radius (in km)
-  List<Map<String, dynamic>> getListingsWithinRadius({
-    required List<Map<String, dynamic>> listings,
-    required double userLat,
-    required double userLon,
-    required double radiusKm,
-  }) {
-    return listings.where((listing) {
-      final location = listing['location'] as Map<String, dynamic>?;
-
-      if (location == null ||
-          location['latitude'] == null ||
-          location['longitude'] == null) {
-        return false;
-      }
-
-      final distance = calculateDistance(
-        userLat,
-        userLon,
-        location['latitude'],
-        location['longitude'],
-      );
-
-      return distance <= radiusKm;
-    }).toList();
   }
 
   String formatLocationForDisplay(String fullAddress) {

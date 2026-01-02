@@ -1,16 +1,15 @@
 import 'dart:io';
 import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/auth_service.dart';
-import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/location_service.dart';
-import 'package:thryfto/commonWidgets/main_navigation.dart'; // UPDATED: Changed from home_page.dart
+import 'package:thryfto/commonWidgets/main_navigation.dart';
 import 'package:thryfto/services/map_location.dart';
+import 'package:thryfto/services/profile_picture_service.dart';
 
 class ProfileSetupPage extends StatefulWidget {
   const ProfileSetupPage({super.key});
@@ -21,7 +20,7 @@ class ProfileSetupPage extends StatefulWidget {
 
 class _ProfileSetupPageState extends State<ProfileSetupPage> {
   final _authService = AuthService();
-  final _databaseService = DatabaseService();
+  final _profileImageService = ProfileImageService();
   final _locationService = LocationService();
   final _bioController = TextEditingController();
 
@@ -44,15 +43,25 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final pickedFile = await _picker.pickImage(source: source);
+      final pickedFile = await _picker.pickImage(
+        source: source,
+        imageQuality: 70,
+        maxWidth: 1024,
+        maxHeight: 1024,
+      );
+      
       if (pickedFile != null) {
+        print('📸 Image picked: ${pickedFile.name}');
         final bytes = await pickedFile.readAsBytes();
+        print('📊 Image size: ${bytes.length} bytes');
+        
         setState(() {
           _imageFile = pickedFile;
           _imageBytes = bytes;
         });
       }
     } catch (e) {
+      print('❌ Error picking image: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to pick image: $e')),
@@ -207,6 +216,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   }
 
   Future<void> _completeSetup() async {
+    // Validate location
     if (_selectedLatitude == null || _selectedLongitude == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -221,21 +231,72 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
     try {
       final user = _authService.currentUser;
-      if (user == null) return;
-
-      String? imageUrl;
-      if (_imageFile != null) {
-        imageUrl =
-            await _databaseService.uploadProfileImage(_imageFile!, user.uid);
+      if (user == null) {
+        throw Exception('No authenticated user found');
       }
 
+      print('👤 User ID: ${user.uid}');
+      
+      // Upload profile image if selected
+      String? imageUrl;
+      if (_imageFile != null) {
+        print('⬆️ Starting image upload...');
+        
+        // Show uploading message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Text('Uploading image...'),
+                ],
+              ),
+              duration: Duration(seconds: 30),
+            ),
+          );
+        }
+        
+        imageUrl = await _profileImageService.uploadProfileImage(
+          _imageFile!,
+          user.uid,
+        );
+        
+        // Clear the uploading message
+        if (mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+        }
+        
+        if (imageUrl == null) {
+          print('❌ Image upload returned null');
+          throw Exception('Failed to upload profile image. Please try again.');
+        }
+        
+        print('✅ Image uploaded successfully: ${imageUrl.substring(0, 50)}...');
+      } else {
+        print('ℹ️ No image selected, skipping upload');
+      }
+
+      // Save location
+      print('📍 Saving location...');
       await _locationService.saveUserLocation(
         userId: user.uid,
         latitude: _selectedLatitude!,
         longitude: _selectedLongitude!,
         address: _selectedAddress ?? 'Location set',
       );
+      print('✅ Location saved');
 
+      // Complete onboarding
+      print('📝 Completing onboarding...');
       final success = await _authService.completeOnboarding(
         uid: user.uid,
         bio: _bioController.text.trim(),
@@ -245,31 +306,44 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       if (!mounted) return;
 
       if (success) {
+        print('✅ Onboarding completed successfully');
+        
+        // Fetch updated user profile
         final userProfile = await _authService.getUserProfile(user.uid);
         if (!mounted) return;
 
         if (userProfile != null) {
-          // UPDATED: Navigating to MainNavigation and clearing navigation stack
+          print('✅ User profile fetched');
+          print('   Profile image URL: ${userProfile['profileImageUrl']}');
+          
+          // Navigate to main app
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
                 builder: (context) => MainNavigation(user: userProfile)),
             (route) => false,
           );
+        } else {
+          throw Exception('Failed to fetch user profile');
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Failed to complete setup. Please try again.')),
-        );
+        throw Exception('Failed to complete setup');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ Error in _completeSetup: $e');
+      print('Stack trace: $stackTrace');
+      
       if (!mounted) return;
+      
+      setState(() => _isLoading = false);
+      
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
       );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -338,8 +412,6 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 20),
-
             // Profile Photo
             Center(
               child: GestureDetector(
@@ -378,13 +450,13 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
               ),
             ),
 
-            const SizedBox(height: 40),
+            const SizedBox(height: 20),
 
             // Bio
             TextField(
               controller: _bioController,
               maxLines: 2,
-              maxLength: 150,
+              maxLength: 50,
               decoration: InputDecoration(
                 labelText: 'Bio (Optional)',
                 hintText: 'Tell us a bit about yourself...',
@@ -406,7 +478,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
 
             // Location Section Header
             Row(
@@ -544,7 +616,6 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                   ),
                 ),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
                   side: const BorderSide(color: AppColors.primary),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
@@ -569,9 +640,8 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.primary), 
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.primary),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
                   ),

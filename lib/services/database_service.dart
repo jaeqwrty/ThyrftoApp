@@ -11,7 +11,7 @@ class DatabaseService {
 
   String? get currentUserId => _auth.currentUser?.uid;
 
-  // Upload images to Firebase Storage
+  // Upload images to Firebase Storage (for listings only)
   Future<List<String>> uploadImages(
     List<XFile> imageFiles,
     String listingId,
@@ -402,25 +402,6 @@ class DatabaseService {
       }
       return listings;
     });
-  }
-
-  // Upload profile image
-  Future<String?> uploadProfileImage(XFile imageFile, String userId) async {
-    try {
-      final ext = path.extension(imageFile.name).isEmpty
-          ? '.jpg'
-          : path.extension(imageFile.name);
-      final fileName = 'profile_$userId$ext';
-      final storageRef = _storage.ref().child('profiles/$userId/$fileName');
-      final bytes = await imageFile.readAsBytes();
-      final uploadTask = await storageRef.putData(
-        bytes,
-        SettableMetadata(contentType: _getContentType(imageFile.name)),
-      );
-      return await uploadTask.ref.getDownloadURL();
-    } catch (e) {
-      return null;
-    }
   }
 
   // --- Real-time Streams ---

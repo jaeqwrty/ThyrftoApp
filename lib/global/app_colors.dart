@@ -9,10 +9,10 @@ class AppColors {
   // ============================================
   
   /// Main brand color (Purple)
-  static const Color primary = Color(0xFF8B5CF6);
+  static const Color primary = Color.fromRGBO(139, 92, 246, 1);
   
   /// Lighter shade of primary color
-  static const Color primaryLight = Color(0xFFD946EF);
+  static const Color primaryLight = Color.fromRGBO(217, 70, 239, 1);
   
   /// Dark shade of primary color
   static const Color primaryDark = Color(0xFF7C3AED);

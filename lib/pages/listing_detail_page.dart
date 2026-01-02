@@ -388,9 +388,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 18),
-// Replace the "Seller Info" section in your listing_detail_page.dart with this:
 
-// Seller Info
                   if (isOwnListing) ...[
                     // OWNER VIEW: Show "Listing Status" instead of Seller Info
                     const Text(
@@ -777,19 +775,58 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
               child: SafeArea(
                 child: ElevatedButton.icon(
                   onPressed: () async {
+                    // Show loading indicator
+                    if (!mounted) return;
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Row(
+                          children: [
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Text('Opening chat...'),
+                          ],
+                        ),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+
+                    // Get or create chat - this ensures only one chat per user pair
                     final chatId = await _chatService
                         .getOrCreateChat(widget.listing['seller_id']);
-                    if (chatId != null && mounted) {
+
+                    if (!mounted) return;
+
+                    // Clear loading message
+                    ScaffoldMessenger.of(context).clearSnackBars();
+
+                    if (chatId != null) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => ConversationPage(
-                            chatId: chatId,
+                            chatId: chatId, // Always provide chat ID
                             otherUserId: widget.listing['seller_id'],
                             otherUserName:
                                 widget.listing['seller_name'] ?? 'Seller',
                             currentUser: widget.user,
                           ),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content:
+                              Text('Failed to open chat. Please try again.'),
+                          backgroundColor: Colors.red,
                         ),
                       );
                     }

@@ -35,12 +35,12 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   flutter_launcher_icons: ^0.13.1
 
-# --- ADD THIS SECTION AT THE BOTTOM ---
+
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   image_path: "assets/images/QualityThryftoLogo.png"
-  min_sdk_android: 21 # Icons will be generated for Android 5.0 and above
+  min_sdk_android: 21 
 # --------------------------------------
 
 flutter:

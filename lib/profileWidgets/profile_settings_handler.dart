@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/auth_service.dart';
-import 'package:thryfto/services/seeding_service.dart';
 import 'package:thryfto/services/block_service.dart';
 import 'package:thryfto/profileWidgets/profile_widgets.dart';
 import 'package:thryfto/pages/blocked_users_page.dart';
 import 'package:thryfto/shared/auth_wrapper.dart';
 
 class ProfileSettingsHandler {
-  static const Color brandPurple = Color(0xFF732D73);
   static void showSettingsMenu({
     required BuildContext context,
     required AuthService authService,
@@ -52,13 +50,13 @@ class ProfileSettingsHandler {
             const Divider(),
 
             // --- Dev Tools --
-            SettingsMenuItem(
-              icon: Icons.refresh,
-              title: 'Reset Database',
-              subtitle: 'Clears all listings (Dev Only)',
-              onTap: () => _handleResetDatabase(context, user),
-            ),
-            const Divider(),
+            // SettingsMenuItem(
+            //   icon: Icons.refresh,
+            //   title: 'Reset Database',
+            //   subtitle: 'Clears all listings (Dev Only)',
+            //   onTap: () => _handleResetDatabase(context, user),
+            // ),
+            // const Divider(),
 
             // --- Support ---
             SettingsMenuItem(
@@ -90,26 +88,26 @@ class ProfileSettingsHandler {
     );
   }
 
-  static Future<void> _handleResetDatabase(
-      BuildContext context, Map<String, dynamic> user) async {
-    final userId =
-        user['id'] ?? user['uid'] ?? FirebaseAuth.instance.currentUser?.uid;
+  // static Future<void> _handleResetDatabase(
+  //     BuildContext context, Map<String, dynamic> user) async {
+  //   final userId =
+  //       user['id'] ?? user['uid'] ?? FirebaseAuth.instance.currentUser?.uid;
 
-    if (userId != null) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Resetting database...')),
-      );
+  //   if (userId != null) {
+  //     Navigator.pop(context);
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text('Resetting database...')),
+  //     );
 
-      await SeedingService().clearAllData();
+  //     await SeedingService().clearAllData();
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Database reset successfully!')),
-        );
-      }
-    }
-  }
+  //     if (context.mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(content: Text('Database reset successfully!')),
+  //       );
+  //     }
+  //   }
+  // }
 
   static Future<void> _handleLogout(
       BuildContext context, AuthService authService) async {
@@ -263,7 +261,7 @@ class ProfileSettingsHandler {
                     height: 90, // Adjusted height slightly for a tighter feel
                     errorBuilder: (context, error, stackTrace) {
                       return const Icon(Icons.shopping_bag,
-                          size: 50, color: brandPurple);
+                          size: 50, color: AppColors.primary);
                     },
                   ),
                 ),
@@ -280,7 +278,7 @@ class ProfileSettingsHandler {
                         fontSize:
                             15, // Slightly smaller font helps the "tight" look
                         fontWeight: FontWeight.w700,
-                        color: brandPurple,
+                        color: AppColors.primary,
                       ),
                     ),
                     const SizedBox(
@@ -312,9 +310,9 @@ class ProfileSettingsHandler {
                         icon: Icons.chat_bubble_outline,
                         text: "Chat to negotiate and trade"),
 
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 5),
                     const Divider(),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 5),
                     const Text(
                       "Our mission is to promote sustainable reuse and help local sellers through thrift culture.",
                       textAlign: TextAlign.center,
@@ -327,7 +325,7 @@ class ProfileSettingsHandler {
                       child: ElevatedButton(
                         onPressed: () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: brandPurple,
+                          backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
@@ -360,7 +358,7 @@ class _FeatureRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: ProfileSettingsHandler.brandPurple),
+          Icon(icon, size: 20, color: AppColors.primary),
           const SizedBox(width: 12),
           Text(text,
               style:
