@@ -16,10 +16,16 @@ class ImageValidationService {
     'truck',
     'van',
     'motorcycle',
+    'motorbike',
+    'scooter',
     'bike',
+    'bicycle',
     'motor vehicle',
     'automotive',
     'transport',
+    'wheel',
+    'tire',
+    'engine',
     'house',
     'building',
     'home',
@@ -57,6 +63,72 @@ class ImageValidationService {
     'pet',
     'dog',
     'cat',
+  ];
+
+  // High-priority rejections (vehicles, buildings, furniture, appliances) - always reject these
+  static const List<String> _alwaysRejectCategories = [
+    // Vehicles
+    'car',
+    'vehicle',
+    'automobile',
+    'truck',
+    'van',
+    'motorcycle',
+    'motorbike',
+    'scooter',
+    'motor vehicle',
+    'automotive',
+    'bicycle',
+    // Buildings/Property
+    'house',
+    'home',
+    'building',
+    'property',
+    'real estate',
+    'architecture',
+    'apartment',
+    'residence',
+    'room',
+    'interior',
+    // Furniture
+    'furniture',
+    'table',
+    'chair',
+    'sofa',
+    'couch',
+    'bed',
+    'desk',
+    'cabinet',
+    'shelf',
+    'drawer',
+    'wardrobe',
+    'closet',
+    'mattress',
+    'bookshelf',
+    'stool',
+    'bench',
+    'ottoman',
+    'recliner',
+    'armchair',
+    // Home Appliances
+    'appliance',
+    'refrigerator',
+    'fridge',
+    'washing machine',
+    'dryer',
+    'microwave',
+    'oven',
+    'stove',
+    'dishwasher',
+    'air conditioner',
+    'heater',
+    'fan',
+    'vacuum',
+    'blender',
+    'toaster',
+    'coffee maker',
+    'television',
+    'tv',
   ];
 
   // Wearable/fashion categories (expanded list)
@@ -99,7 +171,7 @@ class ImageValidationService {
     'outfit',
   ];
 
-  // Core fabric/material terms that MUST be present
+  // Core fabric/material terms that suggest wearable items
   static const List<String> _fabricIndicators = [
     'clothing',
     'fabric',
@@ -116,6 +188,25 @@ class ImageValidationService {
     'collar',
     'wear',
     'fashion',
+    // Bag materials
+    'leather',
+    'canvas',
+    'nylon',
+    'bag',
+    'handbag',
+    'backpack',
+    'purse',
+    'tote',
+    'luggage',
+    // Shoe materials
+    'shoe',
+    'footwear',
+    'sneaker',
+    'boot',
+    // Accessories
+    'accessory',
+    'jewelry',
+    'watch',
   ];
 
   /// Validates if an image contains wearable items
@@ -201,30 +292,27 @@ class ImageValidationService {
 
       print('Has fabric: $hasFabricDetection, Has context: $hasValidContext');
 
-      // REJECT immediately if no fabric AND no valid context detected
-      if (!hasFabricDetection && !hasValidContext) {
-        // Check if it's a rejected item
-        for (var item in detectedItems) {
-          for (var rejected in _rejectedCategories) {
-            if (item == rejected || item.contains(rejected)) {
+      // FIRST: Check for high-priority rejections (vehicles) - ALWAYS reject these
+      for (int i = 0; i < detectedItems.length; i++) {
+        final item = detectedItems[i];
+        final score = detectedScores.length > i ? detectedScores[i] : 0.0;
+
+        for (var rejected in _alwaysRejectCategories) {
+          if (item == rejected || item.contains(rejected) || rejected.contains(item)) {
+            // Reject vehicles with any reasonable confidence (> 0.5) in top 10 results
+            if (score > 0.5 || i < 10) {
               return {
                 'isValid': false,
                 'message':
-                    'This appears to be a ${item}, not a wearable item. Please only post clothing, shoes, bags, or accessories.',
+                    'This appears to be a ${item}. Please only post clothing, shoes, bags, or accessories.',
                 'detectedItem': item,
               };
             }
           }
         }
-
-        return {
-          'isValid': false,
-          'message':
-              'No clothing or fabric detected. Please ensure your photo clearly shows wearable items (clothing, shoes, bags, or accessories).',
-        };
       }
 
-      // Calculate wearable confidence score
+      // Calculate wearable confidence score FIRST
       double wearableScore = 0.0;
       int wearableMatches = 0;
       double maxWearableScore = 0.0;
@@ -247,22 +335,10 @@ class ImageValidationService {
       print(
           'Wearable score: $wearableScore, Matches: $wearableMatches, Max score: $maxWearableScore');
 
-      // Require stronger detection now that we know fabric/context exists
-      bool hasStrongWearableDetection =
-          (wearableScore > 0.7 && maxWearableScore > 0.5) ||
-              (wearableMatches >= 2 && wearableScore > 0.5);
+      // If we have ANY wearable detection, be more lenient
+      bool hasWearableDetection = wearableMatches >= 1 && maxWearableScore > 0.4;
 
-      if (hasStrongWearableDetection) {
-        return {
-          'isValid': true,
-          'message': 'Image validated successfully!',
-          'detectedItems': detectedItems,
-          'wearableScore': wearableScore,
-          'wearableMatches': wearableMatches,
-        };
-      }
-
-      // Check for rejected categories with moderate detection
+      // Check for rejected categories with HIGH confidence first
       for (int i = 0; i < detectedItems.length; i++) {
         final item = detectedItems[i];
         final score = detectedScores.length > i ? detectedScores[i] : 0.0;
@@ -271,8 +347,8 @@ class ImageValidationService {
           if (item == rejected ||
               item.contains(rejected) ||
               rejected.contains(item)) {
-            // Reject if confidence is > 0.5 OR if it's in top 5 detections
-            if (score > 0.5 || i < 5) {
+            // Only reject if HIGH confidence AND no wearable detection
+            if (score > 0.7 && i < 3 && !hasWearableDetection) {
               return {
                 'isValid': false,
                 'message':
@@ -284,7 +360,18 @@ class ImageValidationService {
         }
       }
 
-      // Has fabric/context but weak wearable score - be lenient
+      // Accept if we have wearable detection
+      if (hasWearableDetection) {
+        return {
+          'isValid': true,
+          'message': 'Image validated successfully!',
+          'detectedItems': detectedItems,
+          'wearableScore': wearableScore,
+          'wearableMatches': wearableMatches,
+        };
+      }
+
+      // Accept if fabric/context detected (even without strong wearable score)
       if (hasFabricDetection || hasValidContext) {
         return {
           'isValid': true,
@@ -295,11 +382,35 @@ class ImageValidationService {
         };
       }
 
-      // Should not reach here, but safety rejection
+      // No wearable indicators found - check if it's clearly a rejected item
+      for (var item in detectedItems) {
+        for (var rejected in _rejectedCategories) {
+          if (item == rejected || item.contains(rejected)) {
+            return {
+              'isValid': false,
+              'message':
+                  'This appears to be a ${item}, not a wearable item. Please only post clothing, shoes, bags, or accessories.',
+              'detectedItem': item,
+            };
+          }
+        }
+      }
+
+      // If nothing clearly identified, give benefit of the doubt
+      // Only reject if we're confident it's NOT a wearable
+      if (detectedItems.isNotEmpty && wearableScore == 0.0) {
+        return {
+          'isValid': false,
+          'message':
+              'Unable to identify this as a wearable item. Please ensure your photo clearly shows clothing, shoes, bags, or accessories.',
+        };
+      }
+
+      // Default to accepting unclear images
       return {
-        'isValid': false,
-        'message':
-            'Unable to clearly identify this as a wearable item. Please ensure your photo shows clothing, shoes, bags, or accessories.',
+        'isValid': true,
+        'message': 'Image validated successfully!',
+        'detectedItems': detectedItems,
       };
     } catch (e) {
       print('Image validation error: $e');

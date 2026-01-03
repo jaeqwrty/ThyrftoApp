@@ -824,87 +824,68 @@ class PostDescription extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final description = listing['description'] ?? '';
-    const maxLines = 2;
     const maxLength = 30;
 
     if (description.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final textSpan = TextSpan(
-            text: description,
-            style: const TextStyle(
-              fontSize: 13,
-              height: 1.3,
-              fontFamily: 'SF Pro Display',
-            ),
-          );
+    final isOverflowing = description.length > maxLength;
 
-          final textPainter = TextPainter(
-            text: textSpan,
-            maxLines: maxLines,
-            textDirection: TextDirection.ltr,
-          )..layout(maxWidth: constraints.maxWidth);
+    if (isOverflowing) {
+      final truncatedText = description.substring(0, maxLength);
 
-          final isOverflowing =
-              textPainter.didExceedMaxLines || description.length > maxLength;
-
-          if (isOverflowing) {
-            return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ListingDetailPage(
-                      listing: listing,
-                      user: user,
-                    ),
-                  ),
-                );
-              },
-              child: RichText(
-                maxLines: maxLines,
-                overflow: TextOverflow.ellipsis,
-                text: TextSpan(
-                  style: const TextStyle(
-                    fontSize: 13,
-                    height: 1.3,
-                    color: Colors.black87,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                  children: [
-                    TextSpan(text: description),
-                    const TextSpan(
-                      text: '... ',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                    const TextSpan(
-                      text: 'see more',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 15),
+        child: GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ListingDetailPage(
+                  listing: listing,
+                  user: user,
                 ),
               ),
             );
-          }
-
-          return Text(
-            description,
-            style: const TextStyle(
-              fontSize: 15,
-              height: 1.3,
-              fontFamily: 'SF Pro Display',
+          },
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(
+                fontSize: 13,
+                height: 1.3,
+                color: Colors.black87,
+                fontFamily: 'SF Pro Display',
+              ),
+              children: [
+                TextSpan(text: truncatedText),
+                const TextSpan(
+                  text: '... ',
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const TextSpan(
+                  text: 'see more',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-            maxLines: maxLines,
-          );
-        },
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 15),
+      child: Text(
+        description,
+        style: const TextStyle(
+          fontSize: 13,
+          height: 1.3,
+          fontFamily: 'SF Pro Display',
+        ),
       ),
     );
   }
