@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/global/app_colors.dart';
+import 'package:thryfto/commonWidgets/empty_state.dart';
 import 'package:thryfto/profileWidgets/profile_dialogs.dart';
 import 'package:thryfto/profileWidgets/user_profileWidgets.dart';
 import 'package:thryfto/profileWidgets/profile_settings_handler.dart';
@@ -256,6 +257,20 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       return const Center(child: CircularProgressIndicator());
                     }
                     final listings = snapshot.data ?? [];
+
+                    // Show empty state when there are no listings
+                    if (listings.isEmpty) {
+                      return EmptyState(
+                        icon: Icons.storefront_outlined,
+                        title: _isOwnProfile
+                            ? 'No listings yet'
+                            : 'No listings available',
+                        subtitle: _isOwnProfile
+                            ? 'Start selling by creating your first listing'
+                            : 'This seller has no active listings at the moment',
+                      );
+                    }
+
                     return GridView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       gridDelegate:
@@ -550,58 +565,59 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
   }
 
-Future<void> _handleMessage(String fullName) async {
-  if (!mounted) return;
-  
-  // Show loading indicator
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Row(
-        children: [
-          SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.backgroundWhite),
+  Future<void> _handleMessage(String fullName) async {
+    if (!mounted) return;
+
+    // Show loading indicator
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(AppColors.backgroundWhite),
+              ),
             ),
-          ),
-          SizedBox(width: 12),
-          Text('Opening chat...'),
-        ],
-      ),
-      duration: Duration(seconds: 1),
-    ),
-  );
-
-  // Get or create chat - this ensures only one chat per user pair
-  final chatId = await _chatService.getOrCreateChat(widget.userId);
-  
-  if (!mounted) return;
-  
-  // Clear loading message
-  ScaffoldMessenger.of(context).clearSnackBars();
-
-  if (chatId != null) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ConversationPage(
-          chatId: chatId, // Always provide chat ID
-          otherUserId: widget.userId,
-          otherUserName: fullName,
-          currentUser: widget.currentUser,
+            SizedBox(width: 12),
+            Text('Opening chat...'),
+          ],
         ),
+        duration: Duration(seconds: 1),
       ),
     );
-  } else {
-    _showSnackBar(
-      message: 'Failed to open chat. Please try again.',
-      icon: Icons.error_outline,
-      backgroundColor: AppColors.error,
-    );
+
+    // Get or create chat - this ensures only one chat per user pair
+    final chatId = await _chatService.getOrCreateChat(widget.userId);
+
+    if (!mounted) return;
+
+    // Clear loading message
+    ScaffoldMessenger.of(context).clearSnackBars();
+
+    if (chatId != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ConversationPage(
+            chatId: chatId, // Always provide chat ID
+            otherUserId: widget.userId,
+            otherUserName: fullName,
+            currentUser: widget.currentUser,
+          ),
+        ),
+      );
+    } else {
+      _showSnackBar(
+        message: 'Failed to open chat. Please try again.',
+        icon: Icons.error_outline,
+        backgroundColor: AppColors.error,
+      );
+    }
   }
-}
 
   Future<void> _handleRating(String sellerName) async {
     final result = await RatingDialog.show(

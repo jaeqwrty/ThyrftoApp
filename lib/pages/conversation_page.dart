@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/global/app_colors.dart';
-import 'package:thryfto/services/chat_service.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:thryfto/chatWidgets/messages_input.dart';
 import 'package:thryfto/chatWidgets/message_list.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:thryfto/providers/chat_providers.dart';
 
-class ConversationPage extends StatefulWidget {
+class ConversationPage extends ConsumerStatefulWidget {
   final String? chatId;
   final String otherUserId;
   final String otherUserName;
@@ -24,15 +25,14 @@ class ConversationPage extends StatefulWidget {
   });
 
   @override
-  State<ConversationPage> createState() => _ConversationPageState();
+  ConsumerState<ConversationPage> createState() => _ConversationPageState();
 }
 
-class _ConversationPageState extends State<ConversationPage> {
+class _ConversationPageState extends ConsumerState<ConversationPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final DatabaseService _db = DatabaseService();
-  final ChatService _chatService = ChatService();
   final ImagePicker _picker = ImagePicker();
 
   bool _hasMarkedAsRead = false;
@@ -72,8 +72,9 @@ class _ConversationPageState extends State<ConversationPage> {
     if (_activeChatId != null) return _activeChatId;
 
     try {
-      // Use getOrCreateChat to ensure we get the existing chat or create new one
-      final chatId = await _chatService.getOrCreateChat(widget.otherUserId);
+      // Use Riverpod provider to get or create chat
+      final chatService = ref.read(chatServiceProvider);
+      final chatId = await chatService.getOrCreateChat(widget.otherUserId);
       if (chatId != null && _isInitialized && mounted) {
         setState(() {
           _activeChatId = chatId;
@@ -97,49 +98,20 @@ class _ConversationPageState extends State<ConversationPage> {
       final chatId = await _ensureChatExists();
       if (chatId == null) throw Exception('Failed to create chat');
 
-      // Use a WriteBatch to make updates atomic and prevent multiple UI "pings"
-      final batch = _firestore.batch();
-
-      final messageRef = _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .doc(); // Generates a new ID locally
-
-      batch.set(messageRef, {
-        'senderId': _db.currentUserId,
-        'text': text,
-        'timestamp': FieldValue.serverTimestamp(),
-        'read': false,
-        'type': 'text',
-      });
-
-      batch.update(_firestore.collection('chats').doc(chatId), {
-        'lastMessage': text,
-        'lastMessageTime': FieldValue.serverTimestamp(),
-      });
-
-      // Commit both updates at once
-      await batch.commit();
-
-      // Removed _scrollToBottom() because a 'reverse: true' ListView
-      // automatically handles new items at the bottom without jitter.
-
-      _chatService
-          .sendMessageWithNotification(
-            recipientId: widget.otherUserId,
-            messageText: text,
-          )
-          .catchError((e) => print('Notification error: $e'));
+      // Use Riverpod provider instead of manual batch operations
+      await ref.read(chatNotifierProvider(chatId).notifier).sendTextMessage(
+            text,
+            widget.otherUserId,
+          );
     } catch (e) {
       print('Error sending message: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: const Text('Failed to send message'),
-              backgroundColor: Colors.red),
-        );
-      }
+      // if (mounted) {
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     const SnackBar(
+      //         content: Text('Failed to send message'),
+      //         backgroundColor: Colors.red),
+      //   );
+      // }
     }
   }
 
@@ -290,51 +262,20 @@ class _ConversationPageState extends State<ConversationPage> {
       final chatId = await _ensureChatExists();
       if (chatId == null) throw Exception('Failed to create chat');
 
-      final imageUrl = await _chatService.uploadChatImage(
-        imageFile: image,
-        chatId: chatId,
-      );
-
-      if (imageUrl == null) throw Exception('Failed to upload image');
-
-      // Use a WriteBatch for image messages as well
-      final batch = _firestore.batch();
-      final messageRef = _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .doc();
-
-      batch.set(messageRef, {
-        'senderId': _db.currentUserId,
-        'imageUrl': imageUrl,
-        'timestamp': FieldValue.serverTimestamp(),
-        'read': false,
-        'type': 'image',
-      });
-
-      batch.update(_firestore.collection('chats').doc(chatId), {
-        'lastMessage': '📷 Photo',
-        'lastMessageTime': FieldValue.serverTimestamp(),
-      });
-
-      await batch.commit();
-
-      _chatService
-          .sendMessageWithNotification(
-            recipientId: widget.otherUserId,
-            messageText: '📷 Sent a photo',
-          )
-          .catchError((e) => print('Notification error: $e'));
+      // Use Riverpod provider instead of manual batch operations
+      await ref.read(chatNotifierProvider(chatId).notifier).sendImageMessage(
+            image,
+            widget.otherUserId,
+          );
     } catch (e) {
       print('Error sending image: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: const Text('Failed to send image'),
-              backgroundColor: Colors.red),
-        );
-      }
+      // if (mounted) {
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     SnackBar(
+      //         content: const Text('Failed to send image'),
+      //         backgroundColor: Colors.red),
+      //   );
+      // }
     } finally {
       if (mounted) _isUploadingImage.value = false;
     }
@@ -554,7 +495,9 @@ class _ConversationPageState extends State<ConversationPage> {
     if (confirm != true) return;
 
     try {
-      final success = await _chatService.deleteChat(_activeChatId!);
+      // Use Riverpod provider instead of service instance
+      final chatService = ref.read(chatServiceProvider);
+      final success = await chatService.deleteChat(_activeChatId!);
 
       if (mounted) {
         Navigator.pop(context);

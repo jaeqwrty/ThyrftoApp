@@ -1,25 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/commonWidgets/empty_state.dart';
 import 'package:thryfto/commonWidgets/error.dart';
 import 'package:thryfto/commonWidgets/search_bar.dart';
 import 'package:thryfto/global/app_colors.dart';
-import 'package:thryfto/services/database_service.dart';
-import 'package:thryfto/services/chat_service.dart';
+import 'package:thryfto/providers/chat_providers.dart';
 import 'package:thryfto/pages/conversation_page.dart';
 
-class ChatListPage extends StatefulWidget {
+class ChatListPage extends ConsumerStatefulWidget {
   final Map<String, dynamic> user;
 
   const ChatListPage({super.key, required this.user});
 
   @override
-  State<ChatListPage> createState() => _ChatListPageState();
+  ConsumerState<ChatListPage> createState() => _ChatListPageState();
 }
 
-class _ChatListPageState extends State<ChatListPage> {
-  final DatabaseService _db = DatabaseService();
-  final ChatService _chatService = ChatService();
+class _ChatListPageState extends ConsumerState<ChatListPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -30,6 +28,8 @@ class _ChatListPageState extends State<ChatListPage> {
   }
 
   Future<void> _deleteConversation(String chatId, String username) async {
+    final chatService = ref.read(chatServiceProvider);
+
     final confirm = await _showFloatingDeleteDialog(
       title: 'Delete Conversation',
       message:
@@ -41,7 +41,7 @@ class _ChatListPageState extends State<ChatListPage> {
       _showLoadingDialog();
 
       try {
-        final success = await _chatService.deleteChat(chatId);
+        final success = await chatService.deleteChat(chatId);
 
         if (mounted) {
           Navigator.pop(context);
@@ -375,67 +375,41 @@ class _ChatListPageState extends State<ChatListPage> {
   }
 
   Widget _buildChatList() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: _chatService.getUserChats(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    final chatsAsync = ref.watch(chatListProvider);
 
-        if (snapshot.hasError) {
-          return const ErrorState(message: 'Unable to load messages');
-        }
+    return chatsAsync.when(
+      data: (chats) {
+        // Filter chats based on deleted status and search query
+        final validChats = chats.where((chat) {
+          final chatData = chat.data() as Map<String, dynamic>;
+          final deletedForTimestamps =
+              chatData['deletedForTimestamps'] as Map<String, dynamic>?;
+          final currentUserId = ref.read(chatServiceProvider).currentUserId;
 
-        final chatDocs = snapshot.data?.docs ?? [];
-
-        // Filter out deleted chats AND chats with no visible messages
-        final List<QueryDocumentSnapshot> validChats = [];
-
-        for (var doc in chatDocs) {
-          final data = doc.data() as Map<String, dynamic>;
-          
-          // Check if user deleted this chat
-          final deletedFor = List<String>.from(data['deletedFor'] ?? []);
-          if (deletedFor.contains(_chatService.currentUserId)) {
-            // Get the deletion timestamp
-            final deletedForTimestamps = 
-                data['deletedForTimestamps'] as Map<String, dynamic>?;
-            final deletionTimestamp = 
-                deletedForTimestamps?[_chatService.currentUserId] as Timestamp?;
-
-            if (deletionTimestamp != null) {
-              // Check if lastMessageTime is after deletion timestamp
-              final lastMessageTime = data['lastMessageTime'] as Timestamp?;
-              
-              if (lastMessageTime == null || 
-                  lastMessageTime.compareTo(deletionTimestamp) <= 0) {
-                // No messages after deletion, skip this chat
-                continue;
-              }
-            }
+          if (deletedForTimestamps != null &&
+              deletedForTimestamps.containsKey(currentUserId)) {
+            return false;
           }
 
-          // Check if chat has any messages (lastMessage should not be empty)
-          final lastMessage = data['lastMessage'] as String?;
-          if (lastMessage == null || lastMessage.trim().isEmpty) {
-            continue;
-          }
+          return true;
+        }).toList();
 
-          validChats.add(doc);
-        }
+        // Filter by search query
+        final filteredChats = validChats.where((chat) {
+          if (_searchQuery.isEmpty) return true;
 
-        // Sort by last message time
-        validChats.sort((a, b) {
-          final aData = a.data() as Map<String, dynamic>;
-          final bData = b.data() as Map<String, dynamic>;
-          final aTime = (aData['lastMessageTime'] as Timestamp?)?.toDate() ??
-              DateTime(2000);
-          final bTime = (bData['lastMessageTime'] as Timestamp?)?.toDate() ??
-              DateTime(2000);
-          return bTime.compareTo(aTime);
-        });
+          final chatData = chat.data() as Map<String, dynamic>;
+          final participants = List<String>.from(chatData['participants']);
+          final otherUserId = participants.firstWhere(
+            (id) => id != ref.read(chatServiceProvider).currentUserId,
+            orElse: () => '',
+          );
 
-        if (validChats.isEmpty) {
+          // You could expand this to search by user name if you fetch user data
+          return otherUserId.toLowerCase().contains(_searchQuery);
+        }).toList();
+
+        if (filteredChats.isEmpty) {
           return const EmptyState(
             icon: Icons.chat_bubble_outline,
             title: 'No messages yet',
@@ -445,26 +419,34 @@ class _ChatListPageState extends State<ChatListPage> {
 
         return ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          itemCount: validChats.length,
+          itemCount: filteredChats.length,
           itemBuilder: (context, index) {
-            final chatData = validChats[index].data() as Map<String, dynamic>;
-            final chatId = validChats[index].id;
+            final chat = filteredChats[index];
+            final chatId = chat.id;
+            final chatData = chat.data() as Map<String, dynamic>;
             return _buildChatTile(chatId, chatData);
           },
         );
       },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => ErrorState(
+        message: 'Error loading chats: ${error.toString()}',
+      ),
     );
   }
 
   Widget _buildChatTile(String chatId, Map<String, dynamic> chatData) {
     final participants = List<String>.from(chatData['participants'] ?? []);
+    final chatService = ref.read(chatServiceProvider);
+    final dbService = ref.read(databaseServiceProvider);
+
     final otherUserId = participants.firstWhere(
-      (id) => id != _chatService.currentUserId,
+      (id) => id != chatService.currentUserId,
       orElse: () => '',
     );
 
     return StreamBuilder<Map<String, dynamic>?>(
-      stream: _db.getUserProfileStream(otherUserId),
+      stream: dbService.getUserProfileStream(otherUserId),
       builder: (context, userSnapshot) {
         if (userSnapshot.connectionState == ConnectionState.waiting) {
           return _buildSkeletonTile();

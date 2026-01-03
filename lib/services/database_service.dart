@@ -590,4 +590,36 @@ class DatabaseService {
       rethrow;
     }
   }
+
+  // Get listing by ID
+  Future<Map<String, dynamic>?> getListingById(String listingId) async {
+    try {
+      final doc = await _firestore.collection('listings').doc(listingId).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        data['id'] = doc.id;
+        return data;
+      }
+      return null;
+    } catch (e) {
+      print('Error getting listing by ID: $e');
+      return null;
+    }
+  }
+
+  // Get user profile (non-stream version)
+  Future<Map<String, dynamic>?> getUserProfile(String userId) async {
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        data['id'] = doc.id;
+        return data;
+      }
+      return null;
+    } catch (e) {
+      print('Error getting user profile: $e');
+      return null;
+    }
+  }
 }

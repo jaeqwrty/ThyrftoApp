@@ -47,6 +47,10 @@ class NotificationService {
         .where('recipient_id', isEqualTo: currentUserId)
         .orderBy('created_at', descending: true)
         .snapshots()
+        .handleError((error) {
+          print('Error getting notifications: $error');
+          return [];
+        })
         .map((snapshot) {
       return snapshot.docs.map((doc) {
         final data = doc.data();
@@ -67,6 +71,10 @@ class NotificationService {
         .where('recipient_id', isEqualTo: currentUserId)
         .where('is_read', isEqualTo: false)
         .snapshots()
+        .handleError((error) {
+          print('Error getting unread count: $error');
+          return 0;
+        })
         .map((snapshot) => snapshot.docs.length);
   }
 

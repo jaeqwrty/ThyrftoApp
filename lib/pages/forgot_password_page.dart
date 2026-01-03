@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:thryfto/global/app_colors.dart';
+import 'package:thryfto/services/auth_service.dart'; // Add this import
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -10,7 +10,7 @@ class ForgotPasswordPage extends StatefulWidget {
 }
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final AuthService _authService = AuthService(); // Use AuthService instead
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   bool _isLoading = false;
@@ -28,36 +28,23 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     setState(() => _isLoading = true);
 
     try {
-      await _auth.sendPasswordResetEmail(
-        email: _emailController.text.trim(),
-      );
+      // Use AuthService's resetPassword method
+      final result = await _authService.resetPassword(_emailController.text.trim());
       
       if (!mounted) return;
 
-      setState(() {
-        _emailSent = true;
-        _isLoading = false;
-      });
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      
-      String message;
-      switch (e.code) {
-        case 'user-not-found':
-          message = 'No account found with this email address.';
-          break;
-        case 'invalid-email':
-          message = 'Please enter a valid email address.';
-          break;
-        default:
-          message = 'An error occurred. Please try again.';
-      }
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+      if (result['success']) {
+        setState(() {
+          _emailSent = true;
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'])),
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -104,7 +91,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color:  AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -192,7 +179,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _handleResetPassword,
               style: ElevatedButton.styleFrom(
-                backgroundColor:  AppColors.primary,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -310,7 +297,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           child: ElevatedButton(
             onPressed: () => Navigator.pop(context),
             style: ElevatedButton.styleFrom(
-              backgroundColor:  AppColors.primary,
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
@@ -352,7 +339,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           width: 28,
           height: 28,
           decoration: BoxDecoration(
-            color:  AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
           child: Center(

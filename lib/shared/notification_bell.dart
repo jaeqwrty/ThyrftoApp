@@ -1,24 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:thryfto/services/notification_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:thryfto/providers/notification_providers.dart';
 
-class NotificationBell extends StatelessWidget {
-  final NotificationService notificationService;
+class NotificationBell extends ConsumerWidget {
   final VoidCallback onPressed;
 
   const NotificationBell({
     super.key,
-    required this.notificationService,
     required this.onPressed,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<int>(
-      stream: notificationService.getUnreadNotificationCount(),
-      initialData: 0,
-      builder: (context, snapshot) {
-        final unreadCount = snapshot.data ?? 0;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadCountAsync = ref.watch(unreadNotificationCountProvider);
 
+    return unreadCountAsync.when(
+      data: (unreadCount) {
         return Stack(
           children: [
             // Bell icon button
@@ -61,6 +58,24 @@ class NotificationBell extends StatelessWidget {
           ],
         );
       },
+      loading: () => IconButton(
+        icon: const Icon(Icons.notifications_none, size: 24),
+        onPressed: onPressed,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(
+          minWidth: 40,
+          minHeight: 40,
+        ),
+      ),
+      error: (_, __) => IconButton(
+        icon: const Icon(Icons.notifications_none, size: 24),
+        onPressed: onPressed,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(
+          minWidth: 40,
+          minHeight: 40,
+        ),
+      ),
     );
   }
 }

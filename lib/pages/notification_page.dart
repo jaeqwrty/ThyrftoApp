@@ -1,22 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:thryfto/global/app_colors.dart';
-import 'package:thryfto/services/notification_service.dart';
+import 'package:thryfto/providers/notification_providers.dart';
 import 'package:thryfto/services/database_service.dart';
+import 'package:thryfto/pages/listing_detail_page.dart';
+import 'package:thryfto/pages/conversation_page.dart';
+import 'package:thryfto/pages/user_profile_page.dart';
+import 'package:thryfto/modals/comments_modal.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-class NotificationsPage extends StatefulWidget {
+class NotificationsPage extends ConsumerStatefulWidget {
   const NotificationsPage({super.key});
 
   @override
-  State<NotificationsPage> createState() => _NotificationsPageState();
+  ConsumerState<NotificationsPage> createState() => _NotificationsPageState();
 }
 
-class _NotificationsPageState extends State<NotificationsPage> {
-  final NotificationService _notificationService = NotificationService();
+class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   final DatabaseService _db = DatabaseService();
 
   @override
   Widget build(BuildContext context) {
+    final notificationsAsync = ref.watch(userNotificationsProvider);
+    final notificationService = ref.watch(notificationServiceProvider);
+
     return Scaffold(
       backgroundColor: AppColors.backgroundWhite,
       appBar: AppBar(
@@ -34,7 +42,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         actions: [
           TextButton(
             onPressed: () async {
-              await _notificationService.markAllNotificationsAsRead();
+              await notificationService.markAllNotificationsAsRead();
             },
             child: Text(
               'Mark all read',
@@ -51,19 +59,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
           child: Divider(height: 1, color: AppColors.divider),
         ),
       ),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _notificationService.getUserNotifications(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return _buildErrorState();
-          }
-
-          final notifications = snapshot.data ?? [];
-
+      body: notificationsAsync.when(
+        data: (notifications) {
           if (notifications.isEmpty) {
             return _buildEmptyState();
           }
@@ -94,7 +91,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 ),
                 onDismissed: (direction) {
                   for (var notif in group['notifications'] as List) {
-                    _notificationService.deleteNotification(notif['id']);
+                    notificationService.deleteNotification(notif['id']);
                   }
                 },
                 child: InkWell(
@@ -102,7 +99,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     if (hasUnread) {
                       for (var notif in group['notifications'] as List) {
                         if (!(notif['is_read'] ?? false)) {
-                          await _notificationService.markNotificationAsRead(notif['id']);
+                          await notificationService.markNotificationAsRead(notif['id']);
                         }
                       }
                     }
@@ -122,6 +119,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
             },
           );
         },
+        error: (error, stackTrace) => _buildErrorState(),
+        loading: () => const Center(child: CircularProgressIndicator()),
       ),
     );
   }
@@ -131,21 +130,26 @@ class _NotificationsPageState extends State<NotificationsPage> {
     
     for (var notification in notifications) {
       final type = notification['type'];
-      
-      if (type == 'message') {
-        final key = '${notification['id']}_single';
-        groups[key] = [notification];
-        continue;
-      }
+      final senderId = notification['sender_id'] as String?;
+      final relatedListingId = notification['related_listing_id'] as String?;
 
       String groupKey;
-      if (type == 'rating') {
+      if (type == 'message') {
+        // Group messages by sender
+        groupKey = 'message_${senderId ?? 'unknown'}';
+      } else if (type == 'comment' || type == 'reply') {
+        // Group comments by listing
+        groupKey = 'comment_${relatedListingId ?? 'unknown'}';
+      } else if (type == 'rating') {
         groupKey = 'rating_${notification['recipient_id']}';
       } else if (type == 'follow' || type == 'favorite') {
         groupKey = 'follow_${notification['recipient_id']}';
       } else if (type == 'new_listing') {
         final listingId = notification['additional_data']?['listing_id'];
         groupKey = 'new_listing_${listingId ?? 'unknown'}';
+      } else if (type == 'like') {
+        // Group likes by listing
+        groupKey = 'like_${relatedListingId ?? 'unknown'}';
       } else {
         groupKey = '${type}_${notification['recipient_id']}';
       }
@@ -166,7 +170,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
       final uniqueUserIds = <String>{};
       for (var notif in notificationList) {
-        final userId = notif['related_user_id'] as String?;
+        final userId = notif['sender_id'] as String? ?? notif['related_user_id'] as String?;
         if (userId != null && userId.isNotEmpty) {
           uniqueUserIds.add(userId);
         }
@@ -409,15 +413,35 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   String _getGroupedTitle(String type, int uniqueCount, Map<String, dynamic> group) {
+    final notifications = group['notifications'] as List<Map<String, dynamic>>;
+    final count = notifications.length;
+    
     if (uniqueCount == 1) {
-      final notifications = group['notifications'] as List<Map<String, dynamic>>;
       final notif = notifications.first;
+      
+      // For messages, show message count if multiple
+      if (type == 'message' && count > 1) {
+        final senderName = notif['title']?.toString().replaceAll(' sent you a message', '') ?? 'Someone';
+        return '$senderName sent you $count messages';
+      }
+      
+      // For comments, show comment count if multiple
+      if (type == 'comment' && count > 1) {
+        final commenterName = notif['title']?.toString().split(' ').first ?? 'Someone';
+        return '$commenterName left $count comments on your listing';
+      }
+      
+      // For likes on same listing, show like count
+      if (type == 'like' && count > 1) {
+        final likerName = notif['title']?.toString().split(' ').first ?? 'Someone';
+        return '$likerName and ${count - 1} others liked your listing';
+      }
+      
       return "${notif['title'] ?? ''} ${notif['body'] ?? ''}";
     }
 
-    final notifications = group['notifications'] as List<Map<String, dynamic>>;
-    String firstName = 'Someone';
     final firstNotif = notifications.first;
+    String firstName = 'Someone';
     final body = firstNotif['body']?.toString() ?? '';
     
     if (body.isNotEmpty) {
@@ -437,6 +461,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
     final othersCount = uniqueCount - 1;
 
     switch (type) {
+      case 'message':
+        return othersCount == 1
+            ? "$firstName and 1 other sent you messages"
+            : "$firstName and $othersCount others sent you messages";
+      case 'comment':
+      case 'reply':
+        return othersCount == 1
+            ? "$firstName and 1 other commented on your listing"
+            : "$firstName and $othersCount others commented on your listing";
+      case 'like':
+        return othersCount == 1
+            ? "$firstName and 1 other liked your listing"
+            : "$firstName and $othersCount others liked your listing";
       case 'rating':
         return othersCount == 1
             ? "$firstName and 1 other rated you"
@@ -516,10 +553,173 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
   }
 
-  void _handleNotificationTap(Map<String, dynamic> group) {
+  void _handleNotificationTap(Map<String, dynamic> group) async {
     final type = group['type'];
-    final notifications = group['notifications'] as List<Map<String, dynamic>>;
+    final mostRecent = group['most_recent'] as Map<String, dynamic>;
+    final relatedListingId = mostRecent['related_listing_id'] as String?;
+    final relatedUserId = mostRecent['related_user_id'] as String?;
+    final senderId = mostRecent['sender_id'] as String?;
+    final additionalData = mostRecent['additional_data'] as Map<String, dynamic>?;
     
-    print('Notification group tapped: $type with ${notifications.length} items');
+    try {
+      switch (type) {
+        case 'like':
+          // Navigate to listing detail page
+          if (relatedListingId != null) {
+            final listing = await _db.getListingById(relatedListingId);
+            if (listing != null && mounted) {
+              final currentUser = await _getCurrentUser();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ListingDetailPage(
+                    listing: listing,
+                    user: currentUser,
+                  ),
+                ),
+              );
+            }
+          }
+          break;
+          
+        case 'comment':
+        case 'reply':
+          // Navigate to comments modal for the listing
+          if (relatedListingId != null && mounted) {
+            final currentUser = await _getCurrentUser();
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (context) => CommentsModal(
+                listingId: relatedListingId,
+                user: currentUser,
+              ),
+            );
+          }
+          break;
+          
+        case 'message':
+          // Navigate to conversation page
+          if (senderId != null && mounted) {
+            final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+            if (currentUserId != null) {
+              final conversationId = additionalData?['conversation_id'] as String?;
+              final currentUser = await _getCurrentUser();
+              final otherUser = await _db.getUserProfile(senderId);
+              
+              if (otherUser != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ConversationPage(
+                      chatId: conversationId,
+                      otherUserId: senderId,
+                      otherUserName: otherUser['username'] ?? otherUser['fullName'] ?? 'User',
+                      currentUser: currentUser,
+                    ),
+                  ),
+                );
+              }
+            }
+          }
+          break;
+          
+        case 'follow':
+        case 'favorite':
+          // Navigate to user profile
+          if (relatedUserId != null && mounted) {
+            final currentUser = await _getCurrentUser();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => UserProfilePage(
+                  userId: relatedUserId,
+                  currentUser: currentUser,
+                ),
+              ),
+            );
+          }
+          break;
+          
+        case 'new_listing':
+          // Navigate to listing detail page
+          final listingId = additionalData?['listing_id'] as String?;
+          if (listingId != null) {
+            final listing = await _db.getListingById(listingId);
+            if (listing != null && mounted) {
+              final currentUser = await _getCurrentUser();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ListingDetailPage(
+                    listing: listing,
+                    user: currentUser,
+                  ),
+                ),
+              );
+            }
+          }
+          break;
+          
+        case 'share':
+          // Navigate to listing detail page
+          if (relatedListingId != null) {
+            final listing = await _db.getListingById(relatedListingId);
+            if (listing != null && mounted) {
+              final currentUser = await _getCurrentUser();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ListingDetailPage(
+                    listing: listing,
+                    user: currentUser,
+                  ),
+                ),
+              );
+            }
+          }
+          break;
+          
+        case 'rating':
+          // Could navigate to ratings/reviews section if you have one
+          // For now, navigate to user profile
+          if (relatedUserId != null && mounted) {
+            final currentUser = await _getCurrentUser();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => UserProfilePage(
+                  userId: relatedUserId,
+                  currentUser: currentUser,
+                ),
+              ),
+            );
+          }
+          break;
+          
+        default:
+          print('Unknown notification type: $type');
+      }
+    } catch (e) {
+      print('Error handling notification tap: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to open notification'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+  
+  Future<Map<String, dynamic>> _getCurrentUser() async {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId != null) {
+      final userData = await _db.getUserProfile(currentUserId);
+      return userData ?? {'id': currentUserId};
+    }
+    return {};
   }
 }
