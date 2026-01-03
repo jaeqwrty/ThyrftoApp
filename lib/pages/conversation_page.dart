@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:thryfto/global/app_colors.dart';
+import 'package:thryfto/shared/app_colors.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -321,7 +321,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                      color: AppColors.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(Icons.camera_alt,
@@ -345,7 +345,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF8B5CF6).withOpacity(0.1),
+                      color: AppColors.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(Icons.photo_library,
@@ -743,7 +743,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,

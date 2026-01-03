@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:thryfto/global/app_colors.dart';
+import 'package:thryfto/shared/app_colors.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/services/block_service.dart';
 import 'package:thryfto/profileWidgets/profile_widgets.dart';

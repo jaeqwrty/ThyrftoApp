@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:thryfto/services/api_keys.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:thryfto/shared/app_colors.dart';
 
 class LocationPicker extends StatefulWidget {
   final double? initialLatitude;
@@ -533,7 +534,7 @@ class _LocationPickerState extends State<LocationPicker> {
                   borderRadius: BorderRadius.circular(25),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                      color: AppColors.primary.withOpacity(0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -564,7 +565,7 @@ class _LocationPickerState extends State<LocationPicker> {
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF8B5CF6),
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(25),
@@ -611,7 +612,7 @@ class _LocationPickerState extends State<LocationPicker> {
                   hintText: 'Type your city or area...',
                   hintStyle: TextStyle(color: Colors.grey[400]),
                   prefixIcon:
-                      const Icon(Icons.search, color: Color(0xFF8B5CF6)),
+                      const Icon(Icons.search, color: AppColors.primary),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear),
@@ -631,7 +632,7 @@ class _LocationPickerState extends State<LocationPicker> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF8B5CF6)),
+                    borderSide: const BorderSide(color: AppColors.primary),
                   ),
                   filled: true,
                   fillColor: Colors.grey[50],

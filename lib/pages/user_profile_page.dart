@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:thryfto/global/app_colors.dart';
+import 'package:thryfto/shared/app_colors.dart';
 import 'package:thryfto/commonWidgets/empty_state.dart';
 import 'package:thryfto/profileWidgets/profile_dialogs.dart';
 import 'package:thryfto/profileWidgets/user_profileWidgets.dart';

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:thryfto/services/comments_service.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/widgets/comments_widget.dart';
+import 'package:thryfto/shared/app_colors.dart';
 
 class CommentsModal extends StatefulWidget {
   final String listingId;
@@ -128,7 +129,7 @@ class _CommentsModalState extends State<CommentsModal> {
           ),
           IconButton(
             onPressed: _isSubmitting ? null : _submitComment,
-            icon: Icon(Icons.send, color: _isSubmitting ? Colors.grey : const Color(0xFF8B5CF6)),
+            icon: Icon(Icons.send, color: _isSubmitting ? Colors.grey : AppColors.primary),
           ),
         ],
       ),

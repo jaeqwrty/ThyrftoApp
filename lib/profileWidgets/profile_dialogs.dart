@@ -4,6 +4,7 @@ import 'package:thryfto/services/rating_service.dart';
 import 'package:thryfto/services/notification_service.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/profileWidgets/user_profileWidgets.dart';
+import 'package:thryfto/shared/app_colors.dart';
 
 /// Compact rating dialog for rating a seller - FIXED OVERFLOW ISSUES
 class RatingDialog {
@@ -217,7 +218,7 @@ class _RatingDialogContentState extends State<_RatingDialogContent> {
                       ElevatedButton(
                         onPressed: (rating > 0 && !isSubmitting) ? _handleSubmit : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF8B5CF6),
+                          backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           disabledBackgroundColor: Colors.grey[300],
                           elevation: 0,

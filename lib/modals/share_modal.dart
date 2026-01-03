@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:thryfto/shared/app_colors.dart';
 
 class ShareModal extends StatelessWidget {
   final Map<String, dynamic> listing;
@@ -175,7 +176,7 @@ ${listing['description'] ?? ''}''';
                         Text(
                           '₱${listing['price']?.toStringAsFixed(2) ?? '0.00'}',
                           style: const TextStyle(
-                            color: Color(0xFF8B5CF6),
+                            color: AppColors.primary,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
@@ -199,7 +200,7 @@ ${listing['description'] ?? ''}''';
                     icon: Icons.share,
                     title: 'Share via...',
                     subtitle: 'Share to other apps',
-                    color: const Color(0xFF8B5CF6),
+                    color: AppColors.primary,
                     onTap: () => _shareViaSheet(context),
                   ),
                   const SizedBox(height: 12),

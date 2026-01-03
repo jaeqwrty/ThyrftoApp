@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:intl/intl.dart';
+import 'package:thryfto/shared/app_colors.dart';
 
 class CommentItem extends StatelessWidget {
   final Map<String, dynamic> comment;
@@ -94,7 +95,7 @@ class RealtimeUserAvatar extends StatelessWidget {
   Widget _staticAvatar(String? url) {
     return CircleAvatar(
       radius: radius,
-      backgroundColor: const Color(0xFF8B5CF6),
+      backgroundColor: AppColors.primary,
       backgroundImage: (url != null && url.isNotEmpty) ? NetworkImage(url) : null,
       child: (url == null || url.isEmpty)
           ? Text(userName.isNotEmpty ? userName[0].toUpperCase() : '?',

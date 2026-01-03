@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:thryfto/global/app_colors.dart';
+import 'package:thryfto/shared/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:thryfto/providers/chat_providers.dart';
 

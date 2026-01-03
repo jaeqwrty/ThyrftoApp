@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/shared/app_colors.dart';
+
 /// Tag/Badge widget for displaying size, condition, etc.
 class TagBadge extends StatelessWidget {
   final String text;
@@ -18,7 +20,7 @@ class TagBadge extends StatelessWidget {
     return TagBadge(
       text: text,
       backgroundColor: Colors.purple.shade50,
-      textColor: const Color(0xFF8B5CF6),
+      textColor: AppColors.primary,
     );
   }
 

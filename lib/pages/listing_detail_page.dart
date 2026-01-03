@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:thryfto/global/app_colors.dart';
+import 'package:thryfto/shared/app_colors.dart';
 import 'package:thryfto/pages/conversation_page.dart';
 import 'package:thryfto/pages/profile_page.dart';
 import 'package:thryfto/pages/user_profile_page.dart';

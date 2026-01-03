@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/commonWidgets/empty_state.dart';
 import 'package:thryfto/commonWidgets/error.dart';
 import 'package:thryfto/commonWidgets/search_bar.dart';
-import 'package:thryfto/global/app_colors.dart';
+import 'package:thryfto/shared/app_colors.dart';
 import 'package:thryfto/providers/chat_providers.dart';
 import 'package:thryfto/pages/conversation_page.dart';
 
@@ -335,7 +335,7 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,

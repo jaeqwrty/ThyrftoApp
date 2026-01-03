@@ -6,7 +6,7 @@ import 'package:thryfto/commonWidgets/category_condition_selection.dart';
 import 'package:thryfto/commonWidgets/custom_elevated_button.dart';
 import 'package:thryfto/commonWidgets/custom_textfield.dart';
 import 'package:thryfto/commonWidgets/section_labels.dart';
-import 'package:thryfto/global/app_colors.dart';
+import 'package:thryfto/shared/app_colors.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/favorite_service.dart';
 import 'package:thryfto/services/image_validation_service.dart';
@@ -229,7 +229,7 @@ class _SellPageState extends State<SellPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,

@@ -8,6 +8,7 @@ import 'package:thryfto/commonWidgets/tag.dart';
 import 'package:thryfto/pages/listing_detail_page.dart';
 import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/services/block_service.dart';
+import 'package:thryfto/shared/app_colors.dart';
 
 class SearchPage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -102,7 +103,7 @@ class _SearchPageState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [

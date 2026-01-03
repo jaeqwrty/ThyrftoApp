@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:thryfto/global/app_colors.dart';
+import 'package:thryfto/shared/app_colors.dart';
 
 /// Reusable snackbar utilities for consistent messaging across the app
 class SnackbarUtils {

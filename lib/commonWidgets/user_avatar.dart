@@ -1,5 +1,6 @@
 /// User avatar with initial letter
 import 'package:flutter/material.dart';
+import 'package:thryfto/shared/app_colors.dart';
 
 class UserAvatar extends StatelessWidget {
   final String username;
@@ -19,7 +20,7 @@ class UserAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final avatar = CircleAvatar(
       radius: radius,
-      backgroundColor: backgroundColor ?? const Color(0xFF8B5CF6),
+      backgroundColor: backgroundColor ?? AppColors.primary,
       child: Text(
         username.isNotEmpty ? username[0].toUpperCase() : '?',
         style: TextStyle(

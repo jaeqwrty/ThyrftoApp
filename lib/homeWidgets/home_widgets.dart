@@ -6,7 +6,7 @@ import 'package:thryfto/modals/comments_modal.dart';
 import 'package:thryfto/services/comments_service.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/location_service.dart';
-import 'package:thryfto/global/app_colors.dart';
+import 'package:thryfto/shared/app_colors.dart';
 import 'package:thryfto/pages/user_profile_page.dart';
 import 'package:thryfto/pages/listing_detail_page.dart';
 import 'package:thryfto/modals/share_modal.dart';
@@ -170,7 +170,7 @@ class _PostCardState extends State<PostCard>
                   // Divider
                   Container(
                     height: 6,
-                    color: const Color(0xFFF5F5F7),
+                    color: AppColors.background,
                   ),
                 ],
               ),

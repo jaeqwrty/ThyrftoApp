@@ -4,6 +4,7 @@ import 'package:thryfto/pages/search_page.dart';
 import 'package:thryfto/pages/sell_page.dart';
 import 'package:thryfto/pages/chat_page.dart';
 import 'package:thryfto/pages/profile_page.dart';
+import 'package:thryfto/shared/app_colors.dart';
 
 class MainNavigation extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -39,7 +40,7 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
+      backgroundColor: AppColors.background,
       body: IndexedStack(
         index: _selectedIndex,
         children: _pages,
@@ -65,7 +66,7 @@ class _MainNavigationState extends State<MainNavigation> {
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFF8B5CF6),
+        selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.grey,
         elevation: 0,
         items: const [
