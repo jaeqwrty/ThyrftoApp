@@ -3,11 +3,11 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/shared/app_colors.dart';
+import 'package:thryfto/shared/common_modals.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/services/map_location.dart';
 import 'package:thryfto/services/profile_picture_service.dart';
-
 
 class EditProfilePage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -20,7 +20,8 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   final _authService = AuthService();
-  final _profileImageService = ProfileImageService(); // NEW: Use profile image service
+  final _profileImageService =
+      ProfileImageService(); // NEW: Use profile image service
   final _locationService = LocationService();
 
   final _fullNameController = TextEditingController();
@@ -90,7 +91,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         setState(() {
           _imageFile = pickedFile;
           _imageBytes = bytes;
-          _shouldDeleteImage = false; // Reset delete flag when new image is picked
+          _shouldDeleteImage =
+              false; // Reset delete flag when new image is picked
         });
       }
     } catch (e) {
@@ -103,57 +105,45 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   void _showImageSourceDialog() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    final hasImage = _currentProfileImageUrl != null || _imageBytes != null;
+
+    final items = [
+      OptionsModalItem(
+        icon: Icons.photo_library,
+        iconColor: AppColors.primary,
+        iconBackgroundColor: AppColors.primary,
+        title: 'Choose from Gallery',
+        onTap: () => _pickImage(ImageSource.gallery),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading:
-                  const Icon(Icons.photo_library, color: AppColors.primary),
-              title: const Text('Choose from Gallery'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.gallery);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: AppColors.primary),
-              title: const Text('Take a Photo'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.camera);
-              },
-            ),
-            if (_currentProfileImageUrl != null || _imageBytes != null) ...[
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Remove Photo'),
-                onTap: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _imageFile = null;
-                    _imageBytes = null;
-                    _currentProfileImageUrl = null;
-                    _shouldDeleteImage = true; // NEW: Mark for deletion
-                  });
-                },
-              ),
-            ],
-            const SizedBox(height: 10),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-          ],
+      OptionsModalItem(
+        icon: Icons.camera_alt,
+        iconColor: AppColors.primary,
+        iconBackgroundColor: AppColors.primary,
+        title: 'Take a Photo',
+        onTap: () => _pickImage(ImageSource.camera),
+      ),
+    ];
+
+    if (hasImage) {
+      items.add(
+        OptionsModalItem.delete(
+          title: 'Remove Photo',
+          onTap: () {
+            setState(() {
+              _imageFile = null;
+              _imageBytes = null;
+              _currentProfileImageUrl = null;
+              _shouldDeleteImage = true;
+            });
+          },
         ),
-      ),
+      );
+    }
+
+    CommonModals.showOptionsModal(
+      context,
+      title: 'Profile Photo',
+      items: items,
     );
   }
 
@@ -297,7 +287,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         newImageUrl = ''; // Empty string to remove from database
       } else if (_imageFile != null) {
         // User selected a new image
-        newImageUrl = await _profileImageService.uploadProfileImage(_imageFile!, userId);
+        newImageUrl =
+            await _profileImageService.uploadProfileImage(_imageFile!, userId);
         if (newImageUrl == null) {
           throw Exception('Failed to upload profile image');
         }

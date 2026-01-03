@@ -5,6 +5,8 @@ import 'package:thryfto/commonWidgets/empty_state.dart';
 import 'package:thryfto/commonWidgets/error.dart';
 import 'package:thryfto/commonWidgets/search_bar.dart';
 import 'package:thryfto/shared/app_colors.dart';
+import 'package:thryfto/shared/common_dialogs.dart';
+import 'package:thryfto/shared/common_modals.dart';
 import 'package:thryfto/providers/chat_providers.dart';
 import 'package:thryfto/pages/conversation_page.dart';
 
@@ -30,7 +32,8 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
   Future<void> _deleteConversation(String chatId, String username) async {
     final chatService = ref.read(chatServiceProvider);
 
-    final confirm = await _showFloatingDeleteDialog(
+    final confirm = await CommonDialogs.showDeleteConfirmationDialog(
+      context,
       title: 'Delete Conversation',
       message:
           'Delete this conversation for yourself? $username will still have it.',
@@ -38,7 +41,7 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
     );
 
     if (confirm == true) {
-      _showLoadingDialog();
+      CommonDialogs.showLoadingDialog(context);
 
       try {
         final success = await chatService.deleteChat(chatId);
@@ -47,7 +50,8 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
           Navigator.pop(context);
 
           if (success) {
-            _showResultDialog(
+            CommonDialogs.showResultDialog(
+              context,
               success: true,
               successTitle: 'Conversation Deleted',
               successMessage:
@@ -63,7 +67,8 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
         print('Error deleting conversation: $e');
         if (mounted) {
           Navigator.pop(context);
-          _showResultDialog(
+          CommonDialogs.showResultDialog(
+            context,
             success: false,
             successTitle: '',
             successMessage: '',
@@ -75,260 +80,19 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
     }
   }
 
-  Future<bool?> _showFloatingDeleteDialog({
-    required String title,
-    required String message,
-    required IconData icon,
-  }) {
-    return showDialog<bool>(
-      context: context,
-      barrierColor: Colors.black54,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        elevation: 8,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 48, color: Colors.red),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: Colors.grey[600],
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 28),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(color: Colors.grey[300]!),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        'Cancel',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        'Delete',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showLoadingDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black26,
-      builder: (context) => Center(
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const CircularProgressIndicator(),
-        ),
-      ),
-    );
-  }
-
-  void _showResultDialog({
-    required bool success,
-    required String successTitle,
-    required String successMessage,
-    required String failTitle,
-    required String failMessage,
-  }) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: success
-                      ? Colors.green.withOpacity(0.1)
-                      : Colors.red.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  success ? Icons.check_circle_outline : Icons.error_outline,
-                  size: 48,
-                  color: success ? Colors.green : Colors.red,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                success ? successTitle : failTitle,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                success ? successMessage : failMessage,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: success ? Colors.green : Colors.red,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'OK',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // Dialog methods now use CommonDialogs utility
 
   void _showChatOptions(String chatId, String username) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 12, bottom: 8),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Text(
-                    'Conversation Options',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.delete_outline,
-                        color: Colors.red, size: 24),
-                  ),
-                  title: const Text(
-                    'Delete Conversation',
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 15,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'This action cannot be undone',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _deleteConversation(chatId, username);
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        );
-      },
+    CommonModals.showOptionsModal(
+      context,
+      title: 'Conversation Options',
+      items: [
+        OptionsModalItem.delete(
+          title: 'Delete Conversation',
+          subtitle: 'This action cannot be undone',
+          onTap: () => _deleteConversation(chatId, username),
+        ),
+      ],
     );
   }
 

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/shared/app_colors.dart';
+import 'package:thryfto/shared/common_modals.dart';
 import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/commonWidgets/main_navigation.dart';
@@ -49,12 +50,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         maxWidth: 1024,
         maxHeight: 1024,
       );
-      
+
       if (pickedFile != null) {
         print('📸 Image picked: ${pickedFile.name}');
         final bytes = await pickedFile.readAsBytes();
         print('📊 Image size: ${bytes.length} bytes');
-        
+
         setState(() {
           _imageFile = pickedFile;
           _imageBytes = bytes;
@@ -71,42 +72,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   }
 
   void _showImageSourceDialog() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading:
-                  const Icon(Icons.photo_library, color: AppColors.primary),
-              title: const Text('Choose from Gallery'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.gallery);
-              },
-            ),
-            if (!kIsWeb)
-              ListTile(
-                leading: const Icon(Icons.camera_alt, color: AppColors.primary),
-                title: const Text('Take a Photo'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.camera);
-                },
-              ),
-            const SizedBox(height: 10),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-          ],
-        ),
-      ),
+    CommonModals.showImageSourceModal(
+      context,
+      onGallery: () => _pickImage(ImageSource.gallery),
+      onCamera: () => _pickImage(ImageSource.camera),
+      showCamera: !kIsWeb,
     );
   }
 
@@ -236,12 +206,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       }
 
       print('👤 User ID: ${user.uid}');
-      
+
       // Upload profile image if selected
       String? imageUrl;
       if (_imageFile != null) {
         print('⬆️ Starting image upload...');
-        
+
         // Show uploading message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -264,22 +234,22 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             ),
           );
         }
-        
+
         imageUrl = await _profileImageService.uploadProfileImage(
           _imageFile!,
           user.uid,
         );
-        
+
         // Clear the uploading message
         if (mounted) {
           ScaffoldMessenger.of(context).clearSnackBars();
         }
-        
+
         if (imageUrl == null) {
           print('❌ Image upload returned null');
           throw Exception('Failed to upload profile image. Please try again.');
         }
-        
+
         print('✅ Image uploaded successfully: ${imageUrl.substring(0, 50)}...');
       } else {
         print('ℹ️ No image selected, skipping upload');
@@ -307,7 +277,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
       if (success) {
         print('✅ Onboarding completed successfully');
-        
+
         // Fetch updated user profile
         final userProfile = await _authService.getUserProfile(user.uid);
         if (!mounted) return;
@@ -315,7 +285,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         if (userProfile != null) {
           print('✅ User profile fetched');
           print('   Profile image URL: ${userProfile['profileImageUrl']}');
-          
+
           // Navigate to main app
           Navigator.pushAndRemoveUntil(
             context,
@@ -332,11 +302,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     } catch (e, stackTrace) {
       print('❌ Error in _completeSetup: $e');
       print('Stack trace: $stackTrace');
-      
+
       if (!mounted) return;
-      
+
       setState(() => _isLoading = false);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),

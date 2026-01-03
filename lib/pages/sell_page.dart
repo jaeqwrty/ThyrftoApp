@@ -7,6 +7,7 @@ import 'package:thryfto/commonWidgets/custom_elevated_button.dart';
 import 'package:thryfto/commonWidgets/custom_textfield.dart';
 import 'package:thryfto/commonWidgets/section_labels.dart';
 import 'package:thryfto/shared/app_colors.dart';
+import 'package:thryfto/shared/common_modals.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/favorite_service.dart';
 import 'package:thryfto/services/image_validation_service.dart';
@@ -608,35 +609,10 @@ class _SellPageState extends State<SellPage> {
   }
 
   void _showImageSourceDialog() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading:
-                  const Icon(Icons.photo_library, color: Color(0xFF8B5CF6)),
-              title: const Text('Choose from Gallery'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImagesFromGallery();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: Color(0xFF8B5CF6)),
-              title: const Text('Take a Photo'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImageFromCamera();
-              },
-            ),
-          ],
-        ),
-      ),
+    CommonModals.showImageSourceModal(
+      context,
+      onGallery: _pickImagesFromGallery,
+      onCamera: _pickImageFromCamera,
     );
   }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/shared/app_colors.dart';
+import 'package:thryfto/shared/common_dialogs.dart';
+import 'package:thryfto/shared/common_modals.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -281,94 +283,25 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
   }
 
   void _showImageSourceDialog() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 12, bottom: 8),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Text(
-                    'Send Photo',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.camera_alt,
-                        color: AppColors.primary, size: 24),
-                  ),
-                  title: const Text(
-                    'Take Photo',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 15,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _pickImage(ImageSource.camera);
-                  },
-                ),
-                ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.photo_library,
-                        color: AppColors.primary, size: 24),
-                  ),
-                  title: const Text(
-                    'Choose from Gallery',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 15,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _pickImage(ImageSource.gallery);
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        );
-      },
+    CommonModals.showOptionsModal(
+      context,
+      title: 'Send Photo',
+      items: [
+        OptionsModalItem(
+          icon: Icons.camera_alt,
+          iconColor: AppColors.primary,
+          iconBackgroundColor: AppColors.primary,
+          title: 'Take Photo',
+          onTap: () => _pickImage(ImageSource.camera),
+        ),
+        OptionsModalItem(
+          icon: Icons.photo_library,
+          iconColor: AppColors.primary,
+          iconBackgroundColor: AppColors.primary,
+          title: 'Choose from Gallery',
+          onTap: () => _pickImage(ImageSource.gallery),
+        ),
+      ],
     );
   }
 
@@ -629,115 +562,21 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
   }
 
   void _showChatOptions() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 12, bottom: 8),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Text(
-                    'Conversation Options',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.delete_outline,
-                        color: Colors.red, size: 24),
-                  ),
-                  title: const Text(
-                    'Delete Entire Conversation',
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 15,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'This action cannot be undone',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _deleteEntireChat();
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        );
-      },
+    CommonModals.showOptionsModal(
+      context,
+      title: 'Conversation Options',
+      items: [
+        OptionsModalItem.delete(
+          title: 'Delete Entire Conversation',
+          subtitle: 'This action cannot be undone',
+          onTap: _deleteEntireChat,
+        ),
+      ],
     );
   }
 
   void _showImagePreview(String imageUrl) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.black87,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(10),
-        child: Stack(
-          children: [
-            Center(
-              child: InteractiveViewer(
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.contain,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return const Center(child: CircularProgressIndicator());
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.error,
-                        color: Colors.white, size: 48);
-                  },
-                ),
-              ),
-            ),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    CommonDialogs.showImagePreviewDialog(context, imageUrl);
   }
 
   @override

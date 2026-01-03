@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:thryfto/shared/app_colors.dart';
+import 'package:thryfto/shared/common_dialogs.dart';
 import 'package:thryfto/pages/conversation_page.dart';
 import 'package:thryfto/pages/profile_page.dart';
 import 'package:thryfto/pages/user_profile_page.dart';
@@ -42,22 +43,12 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   }
 
   Future<void> _handleMarkAsSold() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Mark as Sold?'),
-        content: const Text(
-            'This will hide the item from search results but keep it on your profile.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
-              child: const Text('Confirm')),
-        ],
-      ),
+    final confirmed = await CommonDialogs.showConfirmationDialog(
+      context,
+      title: 'Mark as Sold?',
+      message:
+          'This will hide the item from search results but keep it on your profile.',
+      confirmText: 'Confirm',
     );
 
     if (confirmed == true) {
@@ -901,24 +892,12 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   }
 
   Future<void> _handleDelete() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Listing'),
-        content: const Text(
-            'Are you sure you want to delete this listing? This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await CommonDialogs.showDeleteConfirmationDialog(
+      context,
+      title: 'Delete Listing',
+      message:
+          'Are you sure you want to delete this listing? This action cannot be undone.',
+      icon: Icons.delete_outline,
     );
 
     if (confirmed == true) {

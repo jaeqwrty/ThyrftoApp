@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:thryfto/shared/common_modals.dart';
 
 class MessageBubble extends StatelessWidget {
   final Map<String, dynamic> message;
@@ -18,71 +19,15 @@ class MessageBubble extends StatelessWidget {
   });
 
   void _showMessageOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 12, bottom: 8),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Text(
-                    'Message Options',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.delete_outline,
-                        color: Colors.red, size: 24),
-                  ),
-                  title: const Text(
-                    'Delete Message',
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 15,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    onDeleteMessage(messageId);
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        );
-      },
+    CommonModals.showOptionsModal(
+      context,
+      title: 'Message Options',
+      items: [
+        OptionsModalItem.delete(
+          title: 'Delete Message',
+          onTap: () => onDeleteMessage(messageId),
+        ),
+      ],
     );
   }
 
@@ -92,7 +37,7 @@ class MessageBubble extends StatelessWidget {
     final timeText = timestamp != null
         ? '${timestamp.toDate().hour.toString().padLeft(2, '0')}:${timestamp.toDate().minute.toString().padLeft(2, '0')}'
         : '';
-    
+
     final messageType = message['type'] ?? 'text';
     final isImageMessage = messageType == 'image';
     final imageUrl = message['imageUrl'] as String?;
@@ -174,7 +119,8 @@ class MessageBubble extends StatelessWidget {
               ] else ...[
                 // Text message with bubble
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: isMe ? const Color(0xFF8B5CF6) : Colors.white,
                     borderRadius: BorderRadius.only(
@@ -192,8 +138,9 @@ class MessageBubble extends StatelessWidget {
                     ],
                   ),
                   child: Column(
-                    crossAxisAlignment:
-                        isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                    crossAxisAlignment: isMe
+                        ? CrossAxisAlignment.end
+                        : CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
@@ -218,7 +165,9 @@ class MessageBubble extends StatelessWidget {
                           if (isMe) ...[
                             const SizedBox(width: 4),
                             Icon(
-                              message['read'] == true ? Icons.done_all : Icons.done,
+                              message['read'] == true
+                                  ? Icons.done_all
+                                  : Icons.done,
                               size: 12,
                               color: Colors.white70,
                             ),

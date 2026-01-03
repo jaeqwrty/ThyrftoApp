@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/shared/app_colors.dart';
+import 'package:thryfto/shared/common_modals.dart';
 import 'package:thryfto/commonWidgets/empty_state.dart';
 import 'package:thryfto/profileWidgets/profile_dialogs.dart';
 import 'package:thryfto/profileWidgets/user_profileWidgets.dart';
@@ -295,57 +296,42 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
-  void _showProfileMenu(String userId, String username, String fullName) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.share_outlined),
-              title: const Text('Share Profile'),
-              onTap: () {
-                Navigator.pop(context);
-                ProfileSettingsHandler.handleShareProfile(
-                  context: context,
-                  userId: userId,
-                  username: username,
-                );
-              },
-            ),
-            StreamBuilder<bool>(
-              stream: _blockService.isUserBlockedStream(userId),
-              builder: (context, snapshot) {
-                final isBlocked = snapshot.data ?? false;
+  void _showProfileMenu(String userId, String username, String fullName) async {
+    // Get current block status
+    final isBlocked = await _blockService.isUserBlockedStream(userId).first;
 
-                return ListTile(
-                  leading: Icon(
-                    isBlocked ? Icons.block : Icons.block_outlined,
-                    color: AppColors.error,
-                  ),
-                  title: Text(
-                    isBlocked ? 'Unblock User' : 'Block User',
-                    style: const TextStyle(color: AppColors.error),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    if (isBlocked) {
-                      _handleUnblock(userId, fullName);
-                    } else {
-                      _handleBlock(userId, fullName);
-                    }
-                  },
-                );
-              },
-            ),
-            const SizedBox(height: 10),
-          ],
+    CommonModals.showOptionsModal(
+      context,
+      title: 'Profile Options',
+      items: [
+        OptionsModalItem(
+          icon: Icons.share_outlined,
+          iconColor: AppColors.primary,
+          iconBackgroundColor: AppColors.primary,
+          title: 'Share Profile',
+          onTap: () {
+            ProfileSettingsHandler.handleShareProfile(
+              context: context,
+              userId: userId,
+              username: username,
+            );
+          },
         ),
-      ),
+        // Dynamic block/unblock item
+        OptionsModalItem(
+          icon: isBlocked ? Icons.block : Icons.block_outlined,
+          iconColor: AppColors.error,
+          iconBackgroundColor: AppColors.error,
+          title: isBlocked ? 'Unblock User' : 'Block User',
+          onTap: () {
+            if (isBlocked) {
+              _handleUnblock(userId, fullName);
+            } else {
+              _handleBlock(userId, fullName);
+            }
+          },
+        ),
+      ],
     );
   }
 
