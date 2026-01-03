@@ -8,6 +8,7 @@ import 'package:thryfto/commonWidgets/listing_form_widgets.dart';
 import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/database_service.dart';
 
+
 class EditListingPage extends StatefulWidget {
   final Map<String, dynamic> listing;
   final Map<String, dynamic> user;

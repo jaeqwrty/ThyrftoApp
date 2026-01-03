@@ -10,6 +10,7 @@ import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/favorite_service.dart';
 import 'package:thryfto/services/image_validation_service.dart';
+import 'package:thryfto/shared/snackbar_utils.dart';
 
 class SellPage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -47,29 +48,6 @@ class _SellPageState extends State<SellPage> {
     _descriptionController.dispose();
     _sizeController.dispose();
     super.dispose();
-  }
-
-  void _showMessage(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              isError ? Icons.error_outline : Icons.check_circle,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: isError ? Colors.red : Colors.green,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-    );
   }
 
   void _showSuccessDialog(String title, double price) {
@@ -169,7 +147,7 @@ class _SellPageState extends State<SellPage> {
   Future<void> _handleCreateListing() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedImages.isEmpty) {
-      _showMessage('Please add at least one image', isError: true);
+      SnackbarUtils.showError(context, 'Please add at least one image');
       return;
     }
 
@@ -182,7 +160,7 @@ class _SellPageState extends State<SellPage> {
 
       if (!validationResult['isValid']) {
         setState(() => _isLoading = false);
-        _showMessage(validationResult['message'], isError: true);
+        SnackbarUtils.showError(context, validationResult['message']);
         return;
       }
 
@@ -238,13 +216,13 @@ class _SellPageState extends State<SellPage> {
         // Show success dialog
         _showSuccessDialog(listingTitle, listingPrice);
       } else {
-        _showMessage(result['message'] ?? 'Failed to create listing',
-            isError: true);
+        SnackbarUtils.showError(
+            context, result['message'] ?? 'Failed to create listing');
       }
     } catch (e) {
       setState(() => _isLoading = false);
       if (!mounted) return;
-      _showMessage('Error: $e', isError: true);
+      SnackbarUtils.showError(context, 'Error: $e');
     }
   }
 

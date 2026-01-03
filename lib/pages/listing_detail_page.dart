@@ -9,6 +9,7 @@ import 'package:thryfto/pages/edit_listing_page.dart';
 import 'package:thryfto/modals/share_modal.dart';
 import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/services/listing_status_service.dart';
+import 'package:thryfto/shared/snackbar_utils.dart';
 
 class ListingDetailPage extends StatefulWidget {
   final Map<String, dynamic> listing;
@@ -65,15 +66,9 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
       if (mounted) {
         setState(() => _isSoldProcessing = false);
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Listing marked as sold!')),
-          );
+          SnackbarUtils.showSuccess(context, 'Listing marked as sold!');
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Failed to update status'),
-                backgroundColor: Colors.red),
-          );
+          SnackbarUtils.showError(context, 'Failed to update status');
         }
       }
     }
@@ -180,46 +175,13 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                               'Bookmark toggled successfully! New state: $_isBookmarked');
 
                           if (mounted) {
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    Icon(
-                                      _isBookmarked
-                                          ? Icons.bookmark
-                                          : Icons.bookmark_border,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      _isBookmarked
-                                          ? 'Added to bookmarks'
-                                          : 'Removed from bookmarks',
-                                    ),
-                                  ],
-                                ),
-                                duration: const Duration(seconds: 2),
-                                behavior: SnackBarBehavior.floating,
-                                backgroundColor: _isBookmarked
-                                    ? AppColors.primary
-                                    : Colors.grey[700],
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                            );
+                            SnackbarUtils.showBookmark(context, _isBookmarked);
                           }
                         } catch (e) {
                           print('Error toggling bookmark: $e');
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Failed to bookmark: $e'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
+                            SnackbarUtils.showError(
+                                context, 'Failed to bookmark: $e');
                           }
                         }
                       }
@@ -822,13 +784,8 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                         ),
                       );
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content:
-                              Text('Failed to open chat. Please try again.'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
+                      SnackbarUtils.showError(
+                          context, 'Failed to open chat. Please try again.');
                     }
                   },
                   icon: const Icon(Icons.message, size: 15),
@@ -970,14 +927,10 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
         final success = await _db.deleteListing(listingId);
         if (mounted) {
           if (success) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Listing deleted successfully')),
-            );
+            SnackbarUtils.showSuccess(context, 'Listing deleted successfully');
             Navigator.pop(context);
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Failed to delete listing')),
-            );
+            SnackbarUtils.showError(context, 'Failed to delete listing');
           }
         }
       }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/global/app_colors.dart';
 import 'package:thryfto/services/database_service.dart';

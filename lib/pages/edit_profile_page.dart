@@ -8,6 +8,7 @@ import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/services/map_location.dart';
 import 'package:thryfto/services/profile_picture_service.dart';
 
+
 class EditProfilePage extends StatefulWidget {
   final Map<String, dynamic> user;
 
