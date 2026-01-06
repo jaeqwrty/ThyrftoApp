@@ -2,25 +2,26 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/shared/app_colors.dart';
 import 'package:thryfto/shared/common_modals.dart';
-import 'package:thryfto/services/auth_service.dart';
+import 'package:thryfto/shared/snackbar_utils.dart';
+import 'package:thryfto/providers/auth_providers.dart';
 import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/commonWidgets/main_navigation.dart';
 import 'package:thryfto/services/map_location.dart';
 import 'package:thryfto/services/profile_picture_service.dart';
 
-class ProfileSetupPage extends StatefulWidget {
+class ProfileSetupPage extends ConsumerStatefulWidget {
   const ProfileSetupPage({super.key});
 
   @override
-  State<ProfileSetupPage> createState() => _ProfileSetupPageState();
+  ConsumerState<ProfileSetupPage> createState() => _ProfileSetupPageState();
 }
 
-class _ProfileSetupPageState extends State<ProfileSetupPage> {
-  final _authService = AuthService();
+class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
   final _profileImageService = ProfileImageService();
   final _locationService = LocationService();
   final _bioController = TextEditingController();
@@ -35,6 +36,26 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   double? _selectedLongitude;
   String? _selectedAddress;
   String? _locationError;
+  String? _userFullName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final authService = ref.read(authServiceProvider);
+    final user = authService.currentUser;
+    if (user != null) {
+      final userProfile = await authService.getUserProfile(user.uid);
+      if (userProfile != null && mounted) {
+        setState(() {
+          _userFullName = userProfile['fullName'] ?? '';
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -64,9 +85,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     } catch (e) {
       print('❌ Error picking image: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick image: $e')),
-        );
+        SnackbarUtils.showError(context, 'Failed to pick image: $e');
       }
     }
   }
@@ -92,7 +111,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       if (position == null) {
         setState(() {
           _locationError =
-              'Could not get your location. Please check settings.';
+              'Could not get your location. Please turn on your location.';
           _isLoadingLocation = false;
         });
         return;
@@ -188,11 +207,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   Future<void> _completeSetup() async {
     // Validate location
     if (_selectedLatitude == null || _selectedLongitude == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please set your location before continuing'),
-          backgroundColor: Colors.orange,
-        ),
+      SnackbarUtils.showError(
+        context,
+        'Please set your location to help buyers find items near you',
       );
       return;
     }
@@ -200,7 +217,8 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     setState(() => _isLoading = true);
 
     try {
-      final user = _authService.currentUser;
+      final authService = ref.read(authServiceProvider);
+      final user = authService.currentUser;
       if (user == null) {
         throw Exception('No authenticated user found');
       }
@@ -267,7 +285,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
       // Complete onboarding
       print('📝 Completing onboarding...');
-      final success = await _authService.completeOnboarding(
+      final success = await authService.completeOnboarding(
         uid: user.uid,
         bio: _bioController.text.trim(),
         profileImageUrl: imageUrl,
@@ -279,7 +297,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         print('✅ Onboarding completed successfully');
 
         // Fetch updated user profile
-        final userProfile = await _authService.getUserProfile(user.uid);
+        final userProfile = await authService.getUserProfile(user.uid);
         if (!mounted) return;
 
         if (userProfile != null) {
@@ -345,17 +363,21 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         ),
       );
     } else {
-      return Container(
-        width: 120,
-        height: 120,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppColors.backgroundGreyDark,
-        ),
-        child: Icon(
-          Icons.person_outline,
-          size: 60,
-          color: Colors.grey[400],
+      // Show initials with background color when no image
+      final initial = (_userFullName != null && _userFullName!.isNotEmpty)
+          ? _userFullName![0].toUpperCase()
+          : '?';
+
+      return CircleAvatar(
+        radius: 60,
+        backgroundColor: Colors.grey[200],
+        child: Text(
+          initial,
+          style: GoogleFonts.poppins(
+            color: Colors.black,
+            fontSize: 40,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       );
     }

@@ -6,6 +6,7 @@ import 'package:thryfto/commonWidgets/category_condition_selection.dart';
 import 'package:thryfto/commonWidgets/custom_elevated_button.dart';
 import 'package:thryfto/commonWidgets/custom_textfield.dart';
 import 'package:thryfto/commonWidgets/section_labels.dart';
+import 'package:thryfto/commonWidgets/listing_form_fields.dart';
 import 'package:thryfto/shared/app_colors.dart';
 import 'package:thryfto/shared/common_modals.dart';
 import 'package:thryfto/services/database_service.dart';
@@ -252,7 +253,7 @@ class _SellPageState extends State<SellPage> {
               const SizedBox(height: 12),
               const SectionLabel(text: 'Title'),
               const SizedBox(height: 4),
-              _buildTitleField(),
+              ListingFormFields.buildTitleField(_titleController),
               const SizedBox(height: 12),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -264,7 +265,7 @@ class _SellPageState extends State<SellPage> {
                       children: [
                         const SectionLabel(text: 'Price'),
                         const SizedBox(height: 4),
-                        _buildPriceField(),
+                        ListingFormFields.buildPriceField(_priceController),
                       ],
                     ),
                   ),
@@ -276,7 +277,7 @@ class _SellPageState extends State<SellPage> {
                       children: [
                         const SectionLabel(text: 'Size'),
                         const SizedBox(height: 4),
-                        _buildSizeField(),
+                        ListingFormFields.buildSizeField(_sizeController),
                       ],
                     ),
                   ),
@@ -325,148 +326,6 @@ class _SellPageState extends State<SellPage> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildTitleField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowMedium,
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller: _titleController,
-        maxLength: 30,
-        buildCounter: (context,
-                {required currentLength, required isFocused, maxLength}) =>
-            null,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-        decoration: InputDecoration(
-          hintText: 'e.g., Vintage Denim Jacket',
-          hintStyle: TextStyle(fontSize: 14, color: Colors.grey[400]),
-          prefixIcon: Icon(Icons.title, size: 20, color: Colors.grey[400]),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        ),
-        validator: (value) {
-          if (value == null || value.isEmpty) return 'Please enter a title';
-          return null;
-        },
-      ),
-    );
-  }
-
-  Widget _buildPriceField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowMedium,
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller: _priceController,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF8B5CF6),
-        ),
-        decoration: InputDecoration(
-          hintText: '0.00',
-          hintStyle: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey[300],
-          ),
-          prefixIcon: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              '₱',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-                height: 1.25,
-              ),
-            ),
-          ),
-          prefixIconConstraints:
-              const BoxConstraints(minWidth: 0, minHeight: 0),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        ),
-        validator: (value) {
-          if (value == null || value.isEmpty) return 'Required';
-          if (double.tryParse(value) == null) return 'Invalid';
-          return null;
-        },
-      ),
-    );
-  }
-
-  Widget _buildSizeField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowMedium,
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: TextFormField(
-        controller: _sizeController,
-        maxLength: 6,
-        buildCounter: (context,
-                {required currentLength, required isFocused, maxLength}) =>
-            null,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-        decoration: InputDecoration(
-          hintText: 'M, L, XL...',
-          hintStyle: TextStyle(fontSize: 14, color: Colors.grey[400]),
-          prefixIcon: Icon(Icons.straighten, size: 20, color: Colors.grey[400]),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        ),
-        validator: (value) {
-          if (value == null || value.isEmpty) return 'Required';
-          return null;
-        },
       ),
     );
   }

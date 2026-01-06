@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:thryfto/shared/app_colors.dart';
-import 'package:thryfto/services/auth_service.dart';
+import 'package:thryfto/providers/auth_providers.dart';
 import 'package:thryfto/services/block_service.dart';
 import 'package:thryfto/profileWidgets/profile_widgets.dart';
 import 'package:thryfto/pages/blocked_users_page.dart';
@@ -11,7 +12,7 @@ import 'package:thryfto/shared/auth_wrapper.dart';
 class ProfileSettingsHandler {
   static void showSettingsMenu({
     required BuildContext context,
-    required AuthService authService,
+    required WidgetRef ref,
     required Map<String, dynamic> user,
   }) {
     final blockService = BlockService();
@@ -72,7 +73,7 @@ class ProfileSettingsHandler {
               textColor: Colors.red,
               onTap: () {
                 Navigator.pop(context);
-                _handleLogout(context, authService);
+                _handleLogout(context, ref);
               },
             ),
           ],
@@ -81,9 +82,7 @@ class ProfileSettingsHandler {
     );
   }
 
-
-  static Future<void> _handleLogout(
-      BuildContext context, AuthService authService) async {
+  static Future<void> _handleLogout(BuildContext context, WidgetRef ref) async {
     final confirmed = await ConfirmationDialog.show(
       context,
       title: 'Logout',
@@ -92,7 +91,8 @@ class ProfileSettingsHandler {
       confirmColor: Colors.red,
     );
     if (confirmed == true) {
-      await authService.signOut();
+      final signOut = ref.read(signOutProvider);
+      await signOut();
       if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const AuthWrapper()),

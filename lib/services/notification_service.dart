@@ -48,10 +48,9 @@ class NotificationService {
         .orderBy('created_at', descending: true)
         .snapshots()
         .handleError((error) {
-          print('Error getting notifications: $error');
-          return [];
-        })
-        .map((snapshot) {
+      print('Error getting notifications: $error');
+      return [];
+    }).map((snapshot) {
       return snapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
@@ -72,19 +71,15 @@ class NotificationService {
         .where('is_read', isEqualTo: false)
         .snapshots()
         .handleError((error) {
-          print('Error getting unread count: $error');
-          return 0;
-        })
-        .map((snapshot) => snapshot.docs.length);
+      print('Error getting unread count: $error');
+      return 0;
+    }).map((snapshot) => snapshot.docs.length);
   }
 
   /// Mark notification as read
   Future<void> markNotificationAsRead(String notificationId) async {
     try {
-      await _firestore
-          .collection('notifications')
-          .doc(notificationId)
-          .update({
+      await _firestore.collection('notifications').doc(notificationId).update({
         'is_read': true,
       });
     } catch (e) {
@@ -104,9 +99,17 @@ class NotificationService {
           .where('is_read', isEqualTo: false)
           .get();
 
+      // Use batch write to update all notifications at once
+      // This prevents the countdown effect and updates the count to zero instantly
+      if (unreadNotifications.docs.isEmpty) return;
+
+      final batch = _firestore.batch();
       for (var doc in unreadNotifications.docs) {
-        await doc.reference.update({'is_read': true});
+        batch.update(doc.reference, {'is_read': true});
       }
+
+      // Commit all updates in a single atomic operation
+      await batch.commit();
     } catch (e) {
       print('Error marking all notifications as read: $e');
       rethrow;

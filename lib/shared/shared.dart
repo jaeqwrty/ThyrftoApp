@@ -16,3 +16,4 @@ export 'app_logo.dart';
 export 'auth_wrapper.dart';
 export 'notification_bell.dart';
 export 'snackbar_utils.dart';
+export 'input_decorations.dart';

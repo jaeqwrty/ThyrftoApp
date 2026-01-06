@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/shared/app_colors.dart';
 import 'package:thryfto/shared/common_modals.dart';
-import 'package:thryfto/services/auth_service.dart';
+import 'package:thryfto/shared/snackbar_utils.dart';
+import 'package:thryfto/providers/auth_providers.dart';
 import 'package:thryfto/services/location_service.dart';
 import 'package:thryfto/services/map_location.dart';
 import 'package:thryfto/services/profile_picture_service.dart';
 
-class EditProfilePage extends StatefulWidget {
+class EditProfilePage extends ConsumerStatefulWidget {
   final Map<String, dynamic> user;
 
   const EditProfilePage({super.key, required this.user});
 
   @override
-  State<EditProfilePage> createState() => _EditProfilePageState();
+  ConsumerState<EditProfilePage> createState() => _EditProfilePageState();
 }
 
-class _EditProfilePageState extends State<EditProfilePage> {
-  final _authService = AuthService();
+class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   final _profileImageService =
       ProfileImageService(); // NEW: Use profile image service
   final _locationService = LocationService();
@@ -97,15 +98,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick image: $e')),
-        );
+        SnackbarUtils.showError(context, 'Failed to pick image: $e');
       }
     }
   }
 
   void _showImageSourceDialog() {
-    final hasImage = _currentProfileImageUrl != null || _imageBytes != null;
+    // Only show remove option if there's an actual image (URL with value or bytes)
+    final hasImage = (_currentProfileImageUrl != null &&
+            _currentProfileImageUrl!.isNotEmpty) ||
+        _imageBytes != null;
 
     final items = [
       OptionsModalItem(
@@ -297,13 +299,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
         newImageUrl = _currentProfileImageUrl;
       }
 
-      final success = await _authService.updateUserProfile(
-        uid: userId,
-        fullName: _fullNameController.text.trim(),
-        username: _usernameController.text.trim(),
-        bio: _bioController.text.trim(),
-        profileImageUrl: newImageUrl ?? '',
-      );
+      final success = await ref.read(authServiceProvider).updateUserProfile(
+            uid: userId,
+            fullName: _fullNameController.text.trim(),
+            username: _usernameController.text.trim(),
+            bio: _bioController.text.trim(),
+            profileImageUrl: newImageUrl ?? '',
+          );
 
       if (!success) {
         throw Exception('Username may already be taken');
@@ -320,19 +322,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      SnackbarUtils.showSuccess(context, 'Profile updated successfully!');
 
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      SnackbarUtils.showError(context, 'Error: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -407,10 +402,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             child: (_imageBytes == null &&
                                     (_currentProfileImageUrl == null ||
                                         _currentProfileImageUrl!.isEmpty))
-                                ? Icon(
-                                    Icons.person_outline,
-                                    size: 60,
-                                    color: Colors.grey[400],
+                                ? CircleAvatar(
+                                    radius: 60,
+                                    backgroundColor: Colors.grey[200],
+                                    child: Text(
+                                      _fullNameController.text.isNotEmpty
+                                          ? _fullNameController.text[0]
+                                              .toUpperCase()
+                                          : '?',
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.black,
+                                        fontSize: 40,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   )
                                 : null,
                           ),

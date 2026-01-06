@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/commonWidgets/empty_state.dart';
@@ -9,24 +10,22 @@ import 'package:thryfto/profileWidgets/profile_dialogs.dart';
 import 'package:thryfto/profileWidgets/profile_widgets.dart';
 import 'package:thryfto/profileWidgets/profile_settings_handler.dart';
 import 'package:thryfto/profileWidgets/user_profileWidgets.dart';
-import 'package:thryfto/services/auth_service.dart';
 import 'package:thryfto/services/database_service.dart';
 import 'package:thryfto/services/rating_service.dart';
 import 'package:thryfto/services/favorite_service.dart';
 import 'package:thryfto/services/location_service.dart';
 
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends ConsumerStatefulWidget {
   final Map<String, dynamic> user;
   const ProfilePage({super.key, required this.user});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage>
+class _ProfilePageState extends ConsumerState<ProfilePage>
     with SingleTickerProviderStateMixin {
   final DatabaseService _db = DatabaseService();
-  final AuthService _authService = AuthService();
   final FavoritesService _favoritesService = FavoritesService();
   final RatingService _ratingService = RatingService();
   final LocationService _locationService = LocationService();
@@ -46,7 +45,10 @@ class _ProfilePageState extends State<ProfilePage>
         FirebaseAuth.instance.currentUser?.uid;
 
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('users').doc(userId).snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .snapshots(),
       builder: (context, snapshot) {
         // Use stream data if available; fallback to the initial widget.user map
         Map<String, dynamic> userData = widget.user;
@@ -54,7 +56,8 @@ class _ProfilePageState extends State<ProfilePage>
           userData = snapshot.data!.data() as Map<String, dynamic>;
         }
 
-        final fullName = userData['fullName'] ?? userData['full_name'] ?? 'User';
+        final fullName =
+            userData['fullName'] ?? userData['full_name'] ?? 'User';
         final username = userData['username'] ?? 'unknown';
         final profileImageUrl = userData['profileImageUrl'] as String?;
         final bio = userData['bio'] as String?;
@@ -76,7 +79,7 @@ class _ProfilePageState extends State<ProfilePage>
                 icon: const Icon(Icons.menu, color: Colors.black),
                 onPressed: () => ProfileSettingsHandler.showSettingsMenu(
                   context: context,
-                  authService: _authService,
+                  ref: ref,
                   user: userData, // Pass the most recent data
                 ),
               ),
@@ -87,21 +90,23 @@ class _ProfilePageState extends State<ProfilePage>
             children: [
               // --- Header: Avatar + (Name & Stats) ---
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
                     CircleAvatar(
                       radius: 40,
                       backgroundColor: Colors.grey[200],
-                      backgroundImage:
-                          (profileImageUrl != null && profileImageUrl.isNotEmpty)
-                              ? NetworkImage(profileImageUrl)
-                              : null,
-                      child: (profileImageUrl == null || profileImageUrl.isEmpty)
-                          ? Text(fullName[0].toUpperCase(),
-                              style: const TextStyle(
-                                  color: Colors.black, fontSize: 28))
+                      backgroundImage: (profileImageUrl != null &&
+                              profileImageUrl.isNotEmpty)
+                          ? NetworkImage(profileImageUrl)
                           : null,
+                      child:
+                          (profileImageUrl == null || profileImageUrl.isEmpty)
+                              ? Text(fullName[0].toUpperCase(),
+                                  style: const TextStyle(
+                                      color: Colors.black, fontSize: 28))
+                              : null,
                     ),
                     const SizedBox(width: 40),
                     Expanded(
@@ -165,7 +170,8 @@ class _ProfilePageState extends State<ProfilePage>
                                       .where('user_id', isEqualTo: userId)
                                       .snapshots(),
                                   builder: (context, s) => _buildStatColumn(
-                                      '${s.data?.docs.length ?? 0}', 'following'),
+                                      '${s.data?.docs.length ?? 0}',
+                                      'following'),
                                 ),
                               ),
                             ],
@@ -179,13 +185,14 @@ class _ProfilePageState extends State<ProfilePage>
 
               // --- Identity: Bio, Location & Compact Rating ---
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(displayBio,
-                        style:
-                            const TextStyle(fontSize: 14, color: Colors.black87)),
+                        style: const TextStyle(
+                            fontSize: 14, color: Colors.black87)),
                     const SizedBox(height: 4),
                     LocationWidget(
                         userId: userId!, locationService: _locationService),

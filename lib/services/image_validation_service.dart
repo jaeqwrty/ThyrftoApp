@@ -344,7 +344,9 @@ class ImageValidationService {
         final score = detectedScores.length > i ? detectedScores[i] : 0.0;
 
         for (var rejected in _alwaysRejectCategories) {
-          if (item == rejected || item.contains(rejected) || rejected.contains(item)) {
+          if (item == rejected ||
+              item.contains(rejected) ||
+              rejected.contains(item)) {
             // Reject with any reasonable confidence (> 0.4) in top 15 results
             // Lower threshold for food items to be more strict
             if (score > 0.4 || i < 15) {
@@ -383,7 +385,8 @@ class ImageValidationService {
           'Wearable score: $wearableScore, Matches: $wearableMatches, Max score: $maxWearableScore');
 
       // If we have ANY wearable detection, be more lenient
-      bool hasWearableDetection = wearableMatches >= 1 && maxWearableScore > 0.4;
+      bool hasWearableDetection =
+          wearableMatches >= 1 && maxWearableScore > 0.4;
 
       // Check for rejected categories with HIGH confidence first
       for (int i = 0; i < detectedItems.length; i++) {
@@ -414,12 +417,28 @@ class ImageValidationService {
         for (int i = 0; i < detectedItems.length; i++) {
           final item = detectedItems[i];
           final score = detectedScores.length > i ? detectedScores[i] : 0.0;
-          
+
           // Check against food-specific terms
-          final foodTerms = ['food', 'meal', 'dish', 'cuisine', 'drink', 'beverage', 
-                           'coffee', 'tea', 'snack', 'fast food', 'sandwich', 
-                           'burger', 'pizza', 'wrap', 'burrito', 'bread', 'pastry'];
-          
+          final foodTerms = [
+            'food',
+            'meal',
+            'dish',
+            'cuisine',
+            'drink',
+            'beverage',
+            'coffee',
+            'tea',
+            'snack',
+            'fast food',
+            'sandwich',
+            'burger',
+            'pizza',
+            'wrap',
+            'burrito',
+            'bread',
+            'pastry'
+          ];
+
           for (var foodTerm in foodTerms) {
             if (item == foodTerm || item.contains(foodTerm)) {
               // If food is detected with moderate confidence in top results, reject it
@@ -434,7 +453,7 @@ class ImageValidationService {
             }
           }
         }
-        
+
         // Accept if wearable detection passes food check
         return {
           'isValid': true,

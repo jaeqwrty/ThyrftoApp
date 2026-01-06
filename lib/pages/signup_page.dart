@@ -1,26 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:thryfto/shared/app_colors.dart';
-import 'package:thryfto/services/auth_service.dart';
+import 'package:thryfto/providers/auth_providers.dart';
 import 'package:thryfto/shared/app_logo.dart';
 import 'package:thryfto/shared/auth_wrapper.dart';
 import 'package:thryfto/widgets/auth_widgets.dart';
 
-class SignUpScreen extends StatefulWidget {
+class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
 
   @override
-  State<SignUpScreen> createState() => _SignUpScreenState();
+  ConsumerState<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _SignUpScreenState extends State<SignUpScreen> {
-  final _authService = AuthService();
+class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   final _fullNameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
@@ -37,20 +36,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
-
-    final result = await _authService.signUp(
-      fullName: _fullNameController.text.trim(),
-      username: _usernameController.text.trim(),
-      email: _emailController.text.trim(),
-      cityState: '', // Will be set during profile setup
-      password: _passwordController.text,
-      confirmPassword: _confirmPasswordController.text,
-    );
+    final result = await ref.read(signUpProvider.notifier).signUp(
+          fullName: _fullNameController.text.trim(),
+          username: _usernameController.text.trim(),
+          email: _emailController.text.trim(),
+          cityState: '', // Will be set during profile setup
+          password: _passwordController.text,
+          confirmPassword: _confirmPasswordController.text,
+        );
 
     if (!mounted) return;
-
-    setState(() => _isLoading = false);
 
     if (result['success']) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -81,6 +76,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final signUpState = ref.watch(signUpProvider);
+    final isLoading = signUpState.isLoading;
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -199,7 +197,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     const SizedBox(height: 24),
                     buildPrimaryButton(
                       text: 'Sign Up',
-                      isLoading: _isLoading,
+                      isLoading: isLoading,
                       onPressed: _handleSignUp,
                     ),
                     const SizedBox(height: 16),

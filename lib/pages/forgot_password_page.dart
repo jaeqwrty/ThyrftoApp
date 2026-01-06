@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:thryfto/shared/app_colors.dart';
-import 'package:thryfto/services/auth_service.dart';
+import 'package:thryfto/providers/auth_providers.dart';
 
-
-class ForgotPasswordPage extends StatefulWidget {
+class ForgotPasswordPage extends ConsumerStatefulWidget {
   const ForgotPasswordPage({super.key});
 
   @override
-  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+  ConsumerState<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  final AuthService _authService = AuthService(); // Use AuthService instead
+class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   bool _isLoading = false;
@@ -30,8 +29,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
     try {
       // Use AuthService's resetPassword method
-      final result = await _authService.resetPassword(_emailController.text.trim());
-      
+      final authService = ref.read(authServiceProvider);
+      final result =
+          await authService.resetPassword(_emailController.text.trim());
+
       if (!mounted) return;
 
       if (result['success']) {
@@ -156,7 +157,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                borderSide:
+                    const BorderSide(color: AppColors.primary, width: 2),
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -167,7 +169,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               if (value == null || value.trim().isEmpty) {
                 return 'Please enter your email';
               }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                  .hasMatch(value)) {
                 return 'Please enter a valid email';
               }
               return null;

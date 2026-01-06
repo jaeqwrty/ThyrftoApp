@@ -1,25 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:thryfto/shared/app_colors.dart';
-import 'package:thryfto/services/auth_service.dart';
+import 'package:thryfto/providers/auth_providers.dart';
 import 'package:thryfto/pages/signup_page.dart';
 import 'package:thryfto/pages/forgot_password_page.dart';
 import 'package:thryfto/shared/app_logo.dart';
 import 'package:thryfto/widgets/auth_widgets.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  final _authService = AuthService();
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-  bool _isLoading = false;
   // State variable to toggle password visibility
   bool _obscurePassword = true;
 
@@ -33,20 +32,16 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
-
-    final result = await _authService.login(
-      _emailController.text.trim(),
-      _passwordController.text,
-    );
+    final result = await ref.read(loginProvider.notifier).login(
+          _emailController.text.trim(),
+          _passwordController.text,
+        );
 
     if (!mounted) return;
 
     if (result['success']) {
-      setState(() => _isLoading = false);
       // The AuthWrapper will automatically redirect to HomeScreen
     } else {
-      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result['message']),
@@ -58,6 +53,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loginState = ref.watch(loginProvider);
+    final isLoading = loginState.isLoading;
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -150,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 24),
                     buildPrimaryButton(
                       text: 'Log In',
-                      isLoading: _isLoading,
+                      isLoading: isLoading,
                       onPressed: _handleLogin,
                     ),
                     const SizedBox(height: 24),
