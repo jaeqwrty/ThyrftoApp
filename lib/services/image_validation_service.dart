@@ -52,6 +52,21 @@ class ImageValidationService {
     'dish',
     'drink',
     'beverage',
+    'coffee',
+    'tea',
+    'snack',
+    'breakfast',
+    'lunch',
+    'dinner',
+    'bread',
+    'sandwich',
+    'burger',
+    'pizza',
+    'fast food',
+    'cuisine',
+    'ingredient',
+    'plate',
+    'tableware',
     'plant',
     'tree',
     'flower',
@@ -65,7 +80,7 @@ class ImageValidationService {
     'cat',
   ];
 
-  // High-priority rejections (vehicles, buildings, furniture, appliances) - always reject these
+  // High-priority rejections (vehicles, buildings, furniture, appliances, food) - always reject these
   static const List<String> _alwaysRejectCategories = [
     // Vehicles
     'car',
@@ -129,6 +144,37 @@ class ImageValidationService {
     'coffee maker',
     'television',
     'tv',
+    // Food & Beverage Products
+    'food',
+    'meal',
+    'dish',
+    'cuisine',
+    'drink',
+    'beverage',
+    'coffee',
+    'tea',
+    'snack',
+    'fast food',
+    'junk food',
+    'breakfast',
+    'lunch',
+    'dinner',
+    'bread',
+    'sandwich',
+    'burger',
+    'pizza',
+    'wrap',
+    'burrito',
+    'taco',
+    'pastry',
+    'dessert',
+    'cake',
+    'cookie',
+    'ingredient',
+    'produce',
+    'grocery',
+    'edible',
+    'consumable',
   ];
 
   // Wearable/fashion categories (expanded list)
@@ -292,15 +338,16 @@ class ImageValidationService {
 
       print('Has fabric: $hasFabricDetection, Has context: $hasValidContext');
 
-      // FIRST: Check for high-priority rejections (vehicles) - ALWAYS reject these
+      // FIRST: Check for high-priority rejections (vehicles, food, etc.) - ALWAYS reject these
       for (int i = 0; i < detectedItems.length; i++) {
         final item = detectedItems[i];
         final score = detectedScores.length > i ? detectedScores[i] : 0.0;
 
         for (var rejected in _alwaysRejectCategories) {
           if (item == rejected || item.contains(rejected) || rejected.contains(item)) {
-            // Reject vehicles with any reasonable confidence (> 0.5) in top 10 results
-            if (score > 0.5 || i < 10) {
+            // Reject with any reasonable confidence (> 0.4) in top 15 results
+            // Lower threshold for food items to be more strict
+            if (score > 0.4 || i < 15) {
               return {
                 'isValid': false,
                 'message':
@@ -360,8 +407,35 @@ class ImageValidationService {
         }
       }
 
-      // Accept if we have wearable detection
+      // Before accepting wearable detection, do final check for food items
+      // Reject if food is detected even with wearable items present
       if (hasWearableDetection) {
+        // Check if food/beverage is strongly detected
+        for (int i = 0; i < detectedItems.length; i++) {
+          final item = detectedItems[i];
+          final score = detectedScores.length > i ? detectedScores[i] : 0.0;
+          
+          // Check against food-specific terms
+          final foodTerms = ['food', 'meal', 'dish', 'cuisine', 'drink', 'beverage', 
+                           'coffee', 'tea', 'snack', 'fast food', 'sandwich', 
+                           'burger', 'pizza', 'wrap', 'burrito', 'bread', 'pastry'];
+          
+          for (var foodTerm in foodTerms) {
+            if (item == foodTerm || item.contains(foodTerm)) {
+              // If food is detected with moderate confidence in top results, reject it
+              if (score > 0.5 && i < 10) {
+                return {
+                  'isValid': false,
+                  'message':
+                      'This appears to be a food/beverage item (${item}). Please only post clothing, shoes, bags, or accessories.',
+                  'detectedItem': item,
+                };
+              }
+            }
+          }
+        }
+        
+        // Accept if wearable detection passes food check
         return {
           'isValid': true,
           'message': 'Image validated successfully!',
