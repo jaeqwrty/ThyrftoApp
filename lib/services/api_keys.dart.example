@@ -1,4 +1,0 @@
-class ApiKeys {
-  static const String googleMapsApiKey = 'Geocode_API_HERE';
-  static const String googleVisionApiKey ='';
-}
