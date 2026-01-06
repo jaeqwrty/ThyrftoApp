@@ -11,12 +11,6 @@ class AppColors {
   /// Main brand color (Purple)
   static const Color primary = Color.fromRGBO(139, 92, 246, 1);
 
-  /// Lighter shade of primary color
-  static const Color primaryLight = Color.fromRGBO(217, 70, 239, 1);
-
-  /// Dark shade of primary color
-  static const Color primaryDark = Color(0xFF7C3AED);
-
   /// Very light primary for backgrounds
   static Color primaryBackground = primary.withOpacity(0.1);
 
@@ -52,9 +46,6 @@ class AppColors {
   /// Tertiary text color (light grey)
   static Color textTertiary = Colors.grey[500]!;
 
-  /// Hint text color
-  static Color textHint = Colors.grey[400]!;
-
   /// White text
   static const Color textWhite = Colors.white;
 
@@ -64,23 +55,16 @@ class AppColors {
 
   /// Success/Green color
   static const Color success = Colors.green;
-  static Color successLight = Colors.green.shade50;
-  static Color successDark = Colors.green.shade700;
 
   /// Error/Red color
   static const Color error = Colors.red;
   static Color errorLight = Colors.red.shade50;
-  static Color errorDark = Colors.red.shade700;
 
   /// Warning/Orange color
   static const Color warning = Colors.orange;
-  static Color warningLight = Colors.orange.shade50;
-  static Color warningDark = Colors.orange.shade700;
 
   /// Info/Blue color
   static const Color info = Colors.blue;
-  static Color infoLight = Colors.blue.shade50;
-  static Color infoDark = Colors.blue.shade700;
 
   // ============================================
   // UI ELEMENT COLORS
@@ -95,32 +79,6 @@ class AppColors {
   /// Divider color
   static Color divider = Colors.grey[100]!;
 
-  /// Icon color
-  static Color icon = Colors.grey[400]!;
-
-  /// Icon color dark
-  static const Color iconDark = Colors.black87;
-
-  // ============================================
-  // CATEGORY/TAG COLORS
-  // ============================================
-
-  /// Purple tag background
-  static Color tagPurpleBackground = Colors.purple.shade50;
-  static const Color tagPurpleText = Color(0xFF8B5CF6);
-
-  /// Green tag background
-  static Color tagGreenBackground = Colors.green.shade50;
-  static Color tagGreenText = Colors.green.shade700;
-
-  /// Blue tag background
-  static Color tagBlueBackground = Colors.blue.shade50;
-  static Color tagBlueText = Colors.blue.shade700;
-
-  /// Orange tag background
-  static Color tagOrangeBackground = Colors.orange.shade50;
-  static Color tagOrangeText = Colors.orange.shade700;
-
   // ============================================
   // STATUS COLORS
   // ============================================
@@ -130,12 +88,6 @@ class AppColors {
 
   /// Star/Rating color
   static const Color rating = Colors.amber;
-
-  /// Location color
-  static const Color location = Color(0xFF8B5CF6);
-
-  /// Sold badge color
-  static Color soldBadge = Colors.black.withOpacity(0.7);
 
   // ============================================
   // SHADOW COLORS
@@ -157,10 +109,4 @@ class AppColors {
   static Color overlayDark = Colors.black54;
 
   static Color overlayLight = Colors.black26;
-
-  static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
 }
