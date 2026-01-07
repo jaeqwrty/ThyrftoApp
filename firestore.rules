@@ -25,8 +25,7 @@ service cloud.firestore {
       allow read: if true;
       
       // Users can only manage their own profile
-      // DEV BYPASS: Allow a@test.com to manage all users for reset/seeding
-      allow create, update, delete: if isOwner(userId) || request.auth.token.email == "a@test.com";
+      allow create, update, delete: if isOwner(userId);
     }
     
     // Listings collection
@@ -34,12 +33,9 @@ service cloud.firestore {
       allow read: if true;
       
       // Users can only manage their own listings
-      // DEV BYPASS: Allow a@test.com to manage all listings for reset/seeding
-      allow create: if (isAuthenticated() && request.resource.data.seller_id == request.auth.uid)
-                    || request.auth.token.email == "a@test.com";
+      allow create: if isAuthenticated() && request.resource.data.seller_id == request.auth.uid;
       
-      allow update, delete: if (isAuthenticated() && resource.data.seller_id == request.auth.uid)
-                    || request.auth.token.email == "a@test.com";
+      allow update, delete: if isAuthenticated() && resource.data.seller_id == request.auth.uid;
     }
     
     // Likes collection
@@ -108,6 +104,79 @@ service cloud.firestore {
         // Messages cannot be updated or deleted
         allow update, delete: if false;
       }
+    }
+    
+    // Blocks collection
+    match /blocks/{blockId} {
+      // Users can read blocks where they are the blocker
+      allow read: if isAuthenticated() 
+        && resource.data.blocker_id == request.auth.uid;
+      
+      // Users can create blocks for themselves (where they are the blocker)
+      allow create: if isAuthenticated() 
+        && request.resource.data.blocker_id == request.auth.uid
+        && request.resource.data.blocked_id != request.auth.uid;
+      
+      // Users can delete their own blocks
+      allow delete: if isAuthenticated() 
+        && resource.data.blocker_id == request.auth.uid;
+      
+      // Blocks cannot be updated
+      allow update: if false;
+    }
+    
+    // Favorites collection
+    match /favorites/{favoriteId} {
+      // Anyone authenticated can read favorites
+      allow read: if isAuthenticated();
+      
+      // Users can create favorites for themselves
+      allow create: if isAuthenticated() 
+        && request.resource.data.user_id == request.auth.uid;
+      
+      // Users can delete their own favorites
+      allow delete: if isAuthenticated() 
+        && resource.data.user_id == request.auth.uid;
+      
+      // Favorites cannot be updated
+      allow update: if false;
+    }
+    
+    // Notifications collection
+    match /notifications/{notificationId} {
+      // Users can only read their own notifications
+      allow read: if isAuthenticated() 
+        && resource.data.recipient_id == request.auth.uid;
+      
+      // Anyone can create notifications (for sending notifications to others)
+      allow create: if isAuthenticated();
+      
+      // Users can update their own notifications (mark as read)
+      allow update: if isAuthenticated() 
+        && resource.data.recipient_id == request.auth.uid;
+      
+      // Users can delete their own notifications
+      allow delete: if isAuthenticated() 
+        && resource.data.recipient_id == request.auth.uid;
+    }
+    
+    // Ratings collection
+    match /ratings/{ratingId} {
+      // Anyone can read ratings (for displaying seller ratings)
+      allow read: if true;
+      
+      // Users can create ratings for others (not themselves)
+      allow create: if isAuthenticated() 
+        && request.resource.data.rater_id == request.auth.uid
+        && request.resource.data.seller_id != request.auth.uid;
+      
+      // Users can update their own ratings
+      allow update: if isAuthenticated() 
+        && resource.data.rater_id == request.auth.uid;
+      
+      // Users can delete their own ratings
+      allow delete: if isAuthenticated() 
+        && resource.data.rater_id == request.auth.uid;
     }
   }
 }

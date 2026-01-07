@@ -10,6 +10,7 @@ import 'package:thryfto/features/profile/widgets/profile_dialogs.dart';
 import 'package:thryfto/features/profile/widgets/profile_widgets.dart';
 import 'package:thryfto/features/profile/widgets/profile_settings_handler.dart';
 import 'package:thryfto/features/profile/widgets/user_profileWidgets.dart';
+import 'package:thryfto/features/profile/widgets/profile_stat_column.dart';
 import 'package:thryfto/core/services/database_service.dart';
 import 'package:thryfto/core/services/rating_service.dart';
 import 'package:thryfto/core/services/favorite_service.dart';
@@ -124,8 +125,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
                             children: [
                               StreamBuilder<List<Map<String, dynamic>>>(
                                 stream: _db.getUserListings(userId!),
-                                builder: (context, s) => _buildStatColumn(
-                                    '${s.data?.length ?? 0}', 'posts'),
+                                builder: (context, s) => ProfileStatColumn(
+                                    value: '${s.data?.length ?? 0}',
+                                    label: 'posts'),
                               ),
                               const SizedBox(width: 30),
 
@@ -145,8 +147,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
                                 child: StreamBuilder<int>(
                                   stream: _favoritesService
                                       .getFavoritesCountStream(userId),
-                                  builder: (context, s) => _buildStatColumn(
-                                      '${s.data ?? 0}', 'followers'),
+                                  builder: (context, s) => ProfileStatColumn(
+                                      value: '${s.data ?? 0}',
+                                      label: 'followers'),
                                 ),
                               ),
                               const SizedBox(width: 30),
@@ -169,9 +172,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
                                       .collection('favorites')
                                       .where('user_id', isEqualTo: userId)
                                       .snapshots(),
-                                  builder: (context, s) => _buildStatColumn(
-                                      '${s.data?.docs.length ?? 0}',
-                                      'following'),
+                                  builder: (context, s) => ProfileStatColumn(
+                                      value: '${s.data?.docs.length ?? 0}',
+                                      label: 'following'),
                                 ),
                               ),
                             ],
@@ -255,18 +258,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
           ),
         );
       },
-    );
-  }
-
-  Widget _buildStatColumn(String value, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(value,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        Text(label,
-            style: const TextStyle(fontSize: 12, color: Colors.black54)),
-      ],
     );
   }
 

@@ -7,6 +7,7 @@ import 'package:thryfto/shared/widgets/empty_state.dart';
 import 'package:thryfto/features/profile/widgets/profile_dialogs.dart';
 import 'package:thryfto/features/profile/widgets/user_profileWidgets.dart';
 import 'package:thryfto/features/profile/widgets/profile_settings_handler.dart';
+import 'package:thryfto/features/profile/widgets/profile_stat_column.dart';
 import 'package:thryfto/core/services/database_service.dart';
 import 'package:thryfto/core/services/chat_service.dart';
 import 'package:thryfto/core/services/favorite_service.dart';
@@ -83,12 +84,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     fontSize: 18,
                     fontWeight: FontWeight.bold)),
             actions: [
-              IconButton(
-                icon:
-                    const Icon(Icons.more_horiz, color: AppColors.textPrimary),
-                onPressed: () =>
-                    _showProfileMenu(widget.userId, username, fullName),
-              ),
+              if (!_isOwnProfile)
+                IconButton(
+                  icon: const Icon(Icons.more_horiz,
+                      color: AppColors.textPrimary),
+                  onPressed: () =>
+                      _showProfileMenu(widget.userId, username, fullName),
+                ),
             ],
           ),
           body: Column(
@@ -132,15 +134,17 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             children: [
                               StreamBuilder<List<Map<String, dynamic>>>(
                                 stream: _db.getUserListings(widget.userId),
-                                builder: (context, s) => _buildStatColumn(
-                                    '${s.data?.length ?? 0}', 'posts'),
+                                builder: (context, s) => ProfileStatColumn(
+                                    value: '${s.data?.length ?? 0}',
+                                    label: 'posts'),
                               ),
                               const SizedBox(width: 30),
                               StreamBuilder<int>(
                                 stream: _favoritesService
                                     .getFavoritesCountStream(widget.userId),
-                                builder: (context, s) => _buildStatColumn(
-                                    '${s.data ?? 0}', 'followers'),
+                                builder: (context, s) => ProfileStatColumn(
+                                    value: '${s.data ?? 0}',
+                                    label: 'followers'),
                               ),
                               const SizedBox(width: 30),
                               StreamBuilder<QuerySnapshot>(
@@ -148,8 +152,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                     .collection('favorites')
                                     .where('user_id', isEqualTo: widget.userId)
                                     .snapshots(),
-                                builder: (context, s) => _buildStatColumn(
-                                    '${s.data?.docs.length ?? 0}', 'following'),
+                                builder: (context, s) => ProfileStatColumn(
+                                    value: '${s.data?.docs.length ?? 0}',
+                                    label: 'following'),
                               ),
                             ],
                           ),
@@ -297,8 +302,18 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   void _showProfileMenu(String userId, String username, String fullName) async {
-    // Get current block status
-    final isBlocked = await _blockService.isUserBlockedStream(userId).first;
+    // Get current block status with error handling
+    bool isBlocked = false;
+    try {
+      isBlocked = await _blockService.isUserBlockedStream(userId).first;
+    } catch (e) {
+      print('Error checking block status: $e');
+      // Default to false if there's an error
+      isBlocked = false;
+    }
+
+    // Check if widget is still mounted after async operation
+    if (!mounted) return;
 
     CommonModals.showOptionsModal(
       context,
@@ -486,19 +501,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStatColumn(String value, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(value,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-        Text(label,
-            style: const TextStyle(fontSize: 12, color: AppColors.textPrimary)),
-      ],
     );
   }
 
