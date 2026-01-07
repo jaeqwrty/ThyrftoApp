@@ -36,7 +36,7 @@ class _SearchPageState extends State<SearchPage> {
   final List<String> _categories = [
     'All',
     'Clothing',
-    'Shoes',
+    'Shoewear',
     'Accessories',
     'Bags',
   ];

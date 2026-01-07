@@ -41,7 +41,7 @@ class _SellPageState extends State<SellPage> {
   static const int _maxImages = 5;
 
   final List<String> _conditions = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
-  final List<String> _categories = ['Clothing', 'Shoes', 'Accessories', 'Bags'];
+  final List<String> _categories = ['Clothing', 'Shoewear', 'Accessories', 'Bags'];
 
   @override
   void dispose() {

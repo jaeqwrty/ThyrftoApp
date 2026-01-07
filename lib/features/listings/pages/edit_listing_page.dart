@@ -41,7 +41,7 @@ class _EditListingPageState extends State<EditListingPage> {
   List<XFile> _newImageFiles = [];
   bool _isLoading = false;
 
-  final List<String> _categories = ['Clothing', 'Shoes', 'Accessories', 'Bags'];
+  final List<String> _categories = ['Clothing', 'Shoewear', 'Accessories', 'Bags'];
   final List<String> _conditions = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
   static const int _maxImages = 5;
 
