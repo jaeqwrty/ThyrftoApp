@@ -7,13 +7,48 @@ import 'package:thryfto/features/home/pages/notification_page.dart';
 import 'package:thryfto/shared/widgets/notification_bell.dart';
 import 'package:thryfto/core/providers/home_providers.dart';
 
-class HomePage extends ConsumerWidget {
+class HomePage extends ConsumerStatefulWidget {
   final Map<String, dynamic> user;
+  final VoidCallback? onScrollToTop;
 
-  const HomePage({super.key, required this.user});
+  const HomePage({super.key, required this.user, this.onScrollToTop});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomePage> createState() => HomePageState();
+}
+
+class HomePageState extends ConsumerState<HomePage> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.onScrollToTop != null) {
+      // Listen for scroll to top callback
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // This will be called from MainNavigation
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -36,6 +71,7 @@ class HomePage extends ConsumerWidget {
             ref.read(sortedListingsProvider.notifier).refresh();
           },
           child: CustomScrollView(
+            controller: _scrollController,
             slivers: [
               _buildAppBar(context),
               SliverList(
@@ -45,7 +81,7 @@ class HomePage extends ConsumerWidget {
                     return PostCard(
                       key: ValueKey(listing['id']),
                       listing: listing,
-                      user: user,
+                      user: widget.user,
                       db: ref.read(databaseServiceProvider),
                       onBlockedUser: () {
                         ref.read(sortedListingsProvider.notifier).refresh();
@@ -72,6 +108,7 @@ class HomePage extends ConsumerWidget {
 
   Widget _buildEmptyState(BuildContext context) {
     return CustomScrollView(
+      controller: _scrollController,
       slivers: [
         _buildAppBar(context),
         SliverFillRemaining(
@@ -79,9 +116,14 @@ class HomePage extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.shopping_bag_outlined, size: 80, color: Colors.grey[400]),
+                Icon(Icons.shopping_bag_outlined,
+                    size: 80, color: Colors.grey[400]),
                 const SizedBox(height: 16),
-                Text('No listings yet', style: TextStyle(fontSize: 18, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+                Text('No listings yet',
+                    style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500)),
               ],
             ),
           ),
@@ -105,12 +147,19 @@ class HomePage extends ConsumerWidget {
         ).createShader(bounds),
         child: Text(
           'Thryfto',
-          style: GoogleFonts.righteous(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.2),
+          style: GoogleFonts.righteous(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: 1.2),
         ),
       ),
       actions: [
         NotificationBell(
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsPage())),
+          onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const NotificationsPage())),
         ),
         const SizedBox(width: 7),
       ],

@@ -17,6 +17,7 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
+  final GlobalKey<HomePageState> _homePageKey = GlobalKey<HomePageState>();
 
   // List of all 5 main pages
   late final List<Widget> _pages;
@@ -25,15 +26,20 @@ class _MainNavigationState extends State<MainNavigation> {
   void initState() {
     super.initState();
     _pages = [
-      HomePage(user: widget.user),      // Index 0: Home
-      SearchPage(user: widget.user),    // Index 1: Search
-      SellPage(user: widget.user),      // Index 2: Sell
-      ChatListPage(user: widget.user),  // Index 3: Chats
-      ProfilePage(user: widget.user),   // Index 4: Profile
+      HomePage(key: _homePageKey, user: widget.user), // Index 0: Home
+      SearchPage(user: widget.user), // Index 1: Search
+      SellPage(user: widget.user), // Index 2: Sell
+      ChatListPage(user: widget.user), // Index 3: Chats
+      ProfilePage(user: widget.user), // Index 4: Profile
     ];
   }
 
   void _onItemTapped(int index) {
+    // If tapping Home while already on Home, scroll to top
+    if (index == 0 && _selectedIndex == 0) {
+      _homePageKey.currentState?.scrollToTop();
+      return;
+    }
     setState(() => _selectedIndex = index);
   }
 
