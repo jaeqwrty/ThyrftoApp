@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
+import 'package:thryfto/core/providers/auth_providers.dart';
 import 'package:thryfto/core/utils/common_dialogs.dart';
 import 'package:thryfto/core/utils/common_modals.dart';
 import 'package:thryfto/core/services/database_service.dart';
@@ -357,7 +358,16 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
           .get();
 
       if (remainingMessages.docs.isEmpty) {
-        await _firestore.collection('chats').doc(_activeChatId).delete();
+        // Soft delete the chat instead of hard deleting
+        final userId = ref.read(authServiceProvider).currentUser?.uid;
+        if (userId != null) {
+          await _firestore.collection('chats').doc(_activeChatId).update({
+            'lastMessage': '',
+            'lastMessageTime': FieldValue.serverTimestamp(),
+            'deletedFor': FieldValue.arrayUnion([userId]),
+            'deletedForTimestamps.$userId': FieldValue.serverTimestamp(),
+          });
+        }
 
         if (mounted) {
           Navigator.pop(context);

@@ -175,6 +175,12 @@ class ChatService {
 
       final chatData = chatDoc.data()!;
       final participants = List<String>.from(chatData['participants']);
+      final deletedFor = List<String>.from(chatData['deletedFor'] ?? []);
+      
+      // Check if current user already deleted it
+      if (deletedFor.contains(currentUserId)) {
+        return true; // Already deleted for this user
+      }
       
       // Mark as deleted for current user with timestamp
       await _firestore.collection('chats').doc(chatId).update({
@@ -182,11 +188,10 @@ class ChatService {
         'deletedForTimestamps.$currentUserId': FieldValue.serverTimestamp(),
       });
 
-      // If both users have deleted it, we can completely delete the chat
-      final deletedFor = List<String>.from(chatData['deletedFor'] ?? []);
+      // Check if both users have now deleted it
       deletedFor.add(currentUserId!);
       
-      if (deletedFor.length == participants.length) {
+      if (deletedFor.length >= participants.length) {
         // Both users deleted it - permanently delete the chat and all messages
         final messagesSnapshot = await _firestore
             .collection('chats')
@@ -205,7 +210,7 @@ class ChatService {
           await messageDoc.reference.delete();
         }
 
-        // Delete the chat document
+        // Delete the chat document (now allowed by security rules when both users deleted)
         await _firestore.collection('chats').doc(chatId).delete();
       }
 

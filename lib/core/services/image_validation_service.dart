@@ -300,74 +300,19 @@ class ImageValidationService {
     'wool', 'silk', 'polyester', 'material',
   ];
 
-  // Visual cues that suggest wearable items
-  static const List<String> _visualCues = [
-    'hanger',
-    'clothing hanger',
-    'coat hanger',
-    'mannequin',
-    'model',
-    'person',
-    'human',
-    'worn',
-    'outfit',
-  ];
-
-  // Core fabric/material terms that suggest wearable items
-  // NOTE: Removed 'leather' as standalone - motorcycles have leather seats
-  static const List<String> _fabricIndicators = [
-    'clothing',
-    'fabric',
-    'textile',
-    'garment',
-    'apparel',
-    'shirt',
-    'top',
-    'dress',
-    'pants',
-    'jacket',
-    'coat',
-    'sleeve',
-    'collar',
-    'wear',
-    'fashion',
-    'cardigan',
-    'sweater',
-    'knit',
-    'knitwear',
-    'wool',
-    'pullover',
-    'hoodie',
-    'sweatshirt',
-    'blouse',
-    // Bag-specific (not just material)
-    'handbag',
-    'backpack',
-    'purse',
-    'tote bag',
-    'clutch bag',
-    'satchel',
-    // Shoe-specific
-    'sneaker',
-    'boot',
-    'sandal',
-    'loafer',
-    'heel',
-    'footwear',
-    // Accessories
-    'jewelry',
-    'necklace',
-    'bracelet',
-    'earring',
-    'scarf',
-    'hat',
-    'beanie',
-    'cap',
-  ];
-
-  // Helper to check if item matches any in a list
-
-  // Strict check - exact or very close match only
+  // Helper method for word boundary matching
+  static bool _matchesWithWordBoundary(String item, String pattern) {
+    if (item == pattern) return true;
+    final itemWords = item.split(RegExp(r'[\s\-_/]'));
+    final patternWords = pattern.split(RegExp(r'[\s\-_/]'));
+    for (var word in patternWords) {
+      if (word.length > 2 && itemWords.contains(word)) return true;
+    }
+    if (pattern.length > 3) {
+      return RegExp(r'\b' + RegExp.escape(pattern) + r'\b').hasMatch(item);
+    }
+    return false;
+  }
 
   /// Validates if an image contains wearable items
   /// Returns a Map with 'isValid' (bool) and 'message' (String)
@@ -447,78 +392,47 @@ class ImageValidationService {
 
         // Check if any face takes up a significant portion of the image
         // or has high detection confidence (indicating it's prominent)
-        for (var face in faces) {
-          final boundingPoly = face['boundingPoly'];
-          final detectionConfidence =
-              (face['detectionConfidence'] as num?)?.toDouble() ?? 0.0;
-          final landmarkingConfidence =
-              (face['landmarkingConfidence'] as num?)?.toDouble() ?? 0.0;
-
-          print(
-              '👤 Face detection confidence: $detectionConfidence, landmarking: $landmarkingConfidence');
-
-          // Calculate face size relative to image (approximate)
-          if (boundingPoly != null && boundingPoly['vertices'] != null) {
-            final vertices = boundingPoly['vertices'] as List;
-            if (vertices.length >= 4) {
-              // Get bounding box dimensions
-              final xs = vertices
-                  .map((v) => (v['x'] as num?)?.toDouble() ?? 0.0)
-                  .toList();
-              final ys = vertices
-                  .map((v) => (v['y'] as num?)?.toDouble() ?? 0.0)
-                  .toList();
-
-              final minX = xs.reduce((a, b) => a < b ? a : b);
-              final maxX = xs.reduce((a, b) => a > b ? a : b);
-              final minY = ys.reduce((a, b) => a < b ? a : b);
-              final maxY = ys.reduce((a, b) => a > b ? a : b);
-
-              final faceWidth = maxX - minX;
-              final faceHeight = maxY - minY;
-              final faceArea = faceWidth * faceHeight;
-
-              print(
-                  '👤 Face dimensions: ${faceWidth}x${faceHeight}, area: $faceArea');
-
-              // If face is detected with high confidence OR takes up significant area
-              // (Large face area suggests it's a selfie or portrait)
-              // Face area > 40000 pixels suggests prominent face (roughly 200x200 or larger)
-              if (detectionConfidence > 0.7 || faceArea > 40000) {
-                print(
-                    '❌ FACE REJECTION: Face is too prominent (confidence: $detectionConfidence, area: $faceArea)');
-                return {
-                  'isValid': false,
-                  'message':
-                      'Please focus on the item you\'re selling, not on faces. Take a photo that clearly shows the clothing, shoes, bag, or accessory.',
-                  'detectedItem': 'face',
-                };
-              }
-            }
-          }
-
-          // Also reject if face detection confidence is very high regardless of size
-          if (detectionConfidence > 0.85) {
-            print(
-                '❌ FACE REJECTION: Very high face confidence ($detectionConfidence)');
-            return {
-              'isValid': false,
-              'message':
-                  'Please focus on the item you\'re selling, not on faces. Take a photo that clearly shows the clothing, shoes, bag, or accessory.',
-              'detectedItem': 'face',
-            };
-          }
-        }
-
-        // If multiple faces detected, likely not a product photo
         if (faces.length >= 2) {
-          print('❌ FACE REJECTION: Multiple faces detected (${faces.length})');
+          print('❌ FACE REJECTION: Multiple faces detected');
           return {
             'isValid': false,
             'message':
-                'Please focus on the item you\'re selling. Photos with multiple people are not suitable for product listings.',
+                'Please focus on the item. Photos with multiple people are not suitable.',
             'detectedItem': 'multiple faces',
           };
+        }
+
+        for (var face in faces) {
+          final confidence =
+              (face['detectionConfidence'] as num?)?.toDouble() ?? 0.0;
+          final vertices = face['boundingPoly']?['vertices'] as List?;
+
+          if (confidence > 0.85) {
+            print('❌ FACE REJECTION: High confidence ($confidence)');
+            return {
+              'isValid': false,
+              'message': 'Please focus on the item, not on faces.',
+              'detectedItem': 'face',
+            };
+          }
+
+          if (vertices != null && vertices.length >= 4) {
+            final xs = vertices.map((v) => (v['x'] as num?)?.toDouble() ?? 0.0);
+            final ys = vertices.map((v) => (v['y'] as num?)?.toDouble() ?? 0.0);
+            final area = (xs.reduce((a, b) => a > b ? a : b) -
+                    xs.reduce((a, b) => a < b ? a : b)) *
+                (ys.reduce((a, b) => a > b ? a : b) -
+                    ys.reduce((a, b) => a < b ? a : b));
+
+            if (confidence > 0.7 || area > 40000) {
+              print('❌ FACE REJECTION: Prominent face');
+              return {
+                'isValid': false,
+                'message': 'Please focus on the item, not on faces.',
+                'detectedItem': 'face',
+              };
+            }
+          }
         }
       }
 
@@ -548,229 +462,90 @@ class ImageValidationService {
         final score = detectedScores.length > i ? detectedScores[i] : 0.0;
 
         for (var rejected in _absoluteRejectCategories) {
-          // Use strict matching for absolute rejections
-          if (item == rejected ||
-              item.contains(rejected) ||
-              (rejected.length > 3 && item.contains(rejected))) {
-            // Very low threshold for vehicles - reject if detected at all in top 20 results
-            if (score > 0.25 || i < 20) {
-              print(
-                  '❌ ABSOLUTE REJECTION: Found "$item" matching "$rejected" (score: $score, index: $i)');
-              return {
-                'isValid': false,
-                'message':
-                    'This appears to be a ${_getReadableCategory(rejected)}. Please only post clothing, shoes, bags, or accessories.',
-                'detectedItem': item,
-              };
-            }
+          if (_matchesWithWordBoundary(item, rejected) &&
+              (score > 0.25 || i < 20)) {
+            print(
+                '❌ ABSOLUTE REJECTION: Found "$item" matching "$rejected" (score: $score, index: $i)');
+            return {
+              'isValid': false,
+              'message':
+                  'Unable to identify suitable item in this image. Please try a different photo.',
+              'detectedItem': item,
+            };
           }
         }
       }
 
-      // ========================================
-      // STEP 2: FOOD REJECTION CHECK (STRICT!)
-      // Check for food items - reject with low threshold
-      // ========================================
+      // STEP 2: FOOD REJECTION CHECK
       for (int i = 0; i < detectedItems.length; i++) {
         final item = detectedItems[i];
         final score = detectedScores.length > i ? detectedScores[i] : 0.0;
 
         for (var foodItem in _foodRejectCategories) {
-          if (item == foodItem ||
-              item.contains(foodItem) ||
-              (foodItem.length > 3 && item.contains(foodItem))) {
-            // Low threshold for food - reject if detected in top 15 results
-            if (score > 0.3 || i < 15) {
-              print(
-                  '❌ FOOD REJECTION: Found "$item" matching "$foodItem" (score: $score, index: $i)');
-              return {
-                'isValid': false,
-                'message':
-                    'This appears to be a food/beverage item ($item). Please only post clothing, shoes, bags, or accessories.',
-                'detectedItem': item,
-              };
-            }
+          if (_matchesWithWordBoundary(item, foodItem) &&
+              (score > 0.3 || i < 15)) {
+            print(
+                '❌ FOOD REJECTION: Found "$item" matching "$foodItem" (score: $score, index: $i)');
+            return {
+              'isValid': false,
+              'message':
+                  'Unable to identify suitable item in this image. Please try a different photo.',
+              'detectedItem': item,
+            };
           }
         }
       }
 
-      // ========================================
       // STEP 3: GENERAL REJECTION CHECK
-      // Check for other non-wearable items
-      // ========================================
       for (int i = 0; i < detectedItems.length; i++) {
         final item = detectedItems[i];
         final score = detectedScores.length > i ? detectedScores[i] : 0.0;
 
         for (var rejected in _rejectedCategories) {
-          if (item == rejected || item.contains(rejected)) {
-            // Higher threshold for general rejections, but still catch them
-            if (score > 0.5 && i < 10) {
-              print(
-                  '❌ GENERAL REJECTION: Found "$item" matching "$rejected" (score: $score, index: $i)');
-              return {
-                'isValid': false,
-                'message':
-                    'This appears to be a ${_getReadableCategory(rejected)}. Please only post clothing, shoes, bags, or accessories.',
-                'detectedItem': item,
-              };
-            }
+          if (_matchesWithWordBoundary(item, rejected) &&
+              score > 0.5 &&
+              i < 10) {
+            print(
+                '❌ GENERAL REJECTION: Found "$item" matching "$rejected" (score: $score, index: $i)');
+            return {
+              'isValid': false,
+              'message':
+                  'Unable to identify suitable item in this image. Please try a different photo.',
+              'detectedItem': item,
+            };
           }
         }
       }
 
-      // ========================================
       // STEP 4: WEARABLE DETECTION
-      // Now check if this IS a wearable item
-      // ========================================
-      double wearableScore = 0.0;
-      int wearableMatches = 0;
-      double maxWearableScore = 0.0;
-      String bestWearableMatch = '';
+      double maxScore = 0.0;
+      int matches = 0;
 
       for (int i = 0; i < detectedItems.length; i++) {
         final item = detectedItems[i];
         final score = detectedScores.length > i ? detectedScores[i] : 0.0;
-
         for (var allowed in _allowedCategories) {
           if (item == allowed ||
               item.contains(allowed) ||
               allowed.contains(item)) {
-            wearableScore += score;
-            wearableMatches++;
-            if (score > maxWearableScore) {
-              maxWearableScore = score;
-              bestWearableMatch = item;
-            }
+            matches++;
+            if (score > maxScore) maxScore = score;
             break;
           }
         }
       }
 
-      print(
-          '✅ Wearable score: $wearableScore, Matches: $wearableMatches, Max: $maxWearableScore, Best: $bestWearableMatch');
+      print('✅ Wearable matches: $matches, Max score: $maxScore');
 
-      // Check for fabric/clothing indicators
-      bool hasFabricDetection = false;
-      String fabricMatch = '';
-      for (var item in detectedItems) {
-        for (var fabric in _fabricIndicators) {
-          if (item.contains(fabric) || fabric.contains(item)) {
-            hasFabricDetection = true;
-            fabricMatch = item;
-            break;
-          }
-        }
-        if (hasFabricDetection) break;
-      }
-
-      // Check for visual context (hanger, mannequin, person wearing clothes)
-      bool hasValidContext = false;
-      for (var item in detectedItems) {
-        for (var cue in _visualCues) {
-          if (item.contains(cue) || cue.contains(item)) {
-            hasValidContext = true;
-            break;
-          }
-        }
-        if (hasValidContext) break;
-      }
-
-      print(
-          '📋 Has fabric: $hasFabricDetection ($fabricMatch), Has context: $hasValidContext');
-
-      // ========================================
       // STEP 5: ACCEPTANCE LOGIC
-      // Require strong wearable evidence to accept
-      // ========================================
-
-      // Strong wearable detection - accept
-      if (wearableMatches >= 2 && maxWearableScore > 0.5) {
-        print('✅ ACCEPTED: Strong wearable detection');
+      if ((matches >= 2 && maxScore > 0.5) ||
+          (matches >= 1 && maxScore > 0.6)) {
+        print('✅ ACCEPTED');
         return {
           'isValid': true,
           'message': 'Image validated successfully!',
-          'detectedItems': detectedItems,
-          'wearableScore': wearableScore,
-          'wearableMatches': wearableMatches,
+          'detectedItems': detectedItems
         };
-      }
-
-      // Single strong wearable match with fabric detection
-      if (wearableMatches >= 1 &&
-          maxWearableScore > 0.6 &&
-          hasFabricDetection) {
-        print('✅ ACCEPTED: Wearable with fabric detection');
-        return {
-          'isValid': true,
-          'message': 'Image validated successfully!',
-          'detectedItems': detectedItems,
-          'wearableScore': wearableScore,
-          'wearableMatches': wearableMatches,
-        };
-      }
-
-      // Fabric detection with valid context (person, hanger, etc.)
-      if (hasFabricDetection && hasValidContext) {
-        print('✅ ACCEPTED: Fabric with valid context');
-        return {
-          'isValid': true,
-          'message': 'Image validated successfully!',
-          'detectedItems': detectedItems,
-          'wearableScore': wearableScore,
-        };
-      }
-
-      // Single exact clothing match with decent confidence
-      final exactClothingTerms = [
-        'shirt',
-        'dress',
-        'pants',
-        'jeans',
-        'jacket',
-        'coat',
-        'sweater',
-        'hoodie',
-        'blouse',
-        'skirt',
-        'shorts',
-        'suit',
-        'blazer',
-        'cardigan',
-        'shoe',
-        'sneaker',
-        'boot',
-        'sandal',
-        'heel',
-        'loafer',
-        'bag',
-        'handbag',
-        'backpack',
-        'purse',
-        'wallet',
-        'tote',
-        'hat',
-        'cap',
-        'scarf',
-        'belt',
-        'watch',
-        'jewelry',
-        'necklace',
-        'bracelet'
-      ];
-
-      for (int i = 0; i < detectedItems.length; i++) {
-        final item = detectedItems[i];
-        final score = detectedScores.length > i ? detectedScores[i] : 0.0;
-
-        if (exactClothingTerms.contains(item) && score > 0.4) {
-          print('✅ ACCEPTED: Exact clothing match "$item"');
-          return {
-            'isValid': true,
-            'message': 'Image validated successfully!',
-            'detectedItems': detectedItems,
-          };
-        }
       }
 
       // ========================================
@@ -780,7 +555,7 @@ class ImageValidationService {
       return {
         'isValid': false,
         'message':
-            'Unable to identify this as a wearable item. Please ensure your photo clearly shows clothing, shoes, bags, or accessories.',
+            'Unable to identify suitable item in this image. Please try a different photo.',
       };
     } catch (e) {
       print('Image validation error: $e');
@@ -789,32 +564,6 @@ class ImageValidationService {
         'message': 'Error validating image: $e',
       };
     }
-  }
-
-  // Helper to get readable category name for error messages
-  String _getReadableCategory(String category) {
-    final categoryMap = {
-      'motorcycle': 'motorcycle/vehicle',
-      'motorbike': 'motorcycle/vehicle',
-      'motor scooter': 'scooter/vehicle',
-      'scooter': 'scooter/vehicle',
-      'car': 'car/vehicle',
-      'automobile': 'vehicle',
-      'truck': 'truck/vehicle',
-      'bicycle': 'bicycle',
-      'bike': 'bike',
-      'wheel': 'vehicle',
-      'tire': 'vehicle',
-      'food': 'food item',
-      'meal': 'food item',
-      'wrap': 'food item',
-      'burrito': 'food item',
-      'sandwich': 'food item',
-      'snack': 'food item',
-      'drink': 'beverage',
-      'beverage': 'beverage',
-    };
-    return categoryMap[category] ?? category;
   }
 
   /// Validates multiple images
