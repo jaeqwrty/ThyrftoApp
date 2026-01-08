@@ -47,4 +47,4 @@ app.*.map.json
 #DO NOT COMMIT - API Keys
 lib/core/services/api_keys.dart
 lib/firebase_options.dart
-Users/johnm/thryfto-app/DEFENSE_PREPARATION.md
+DEFENSE_PREPARATION.md
