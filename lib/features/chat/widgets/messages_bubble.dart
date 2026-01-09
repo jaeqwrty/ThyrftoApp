@@ -57,7 +57,7 @@ class MessageBubble extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (isImageMessage && imageUrl != null) ...[
-                // Image with NO container wrapper
+                // Image
                 GestureDetector(
                   onTap: () => onImageTap(imageUrl),
                   child: ClipRRect(

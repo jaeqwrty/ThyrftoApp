@@ -187,6 +187,7 @@ class AuthService {
     required String uid,
     required String bio,
     String? profileImageUrl,
+    String? address,
   }) async {
     try {
       final data = {
@@ -197,6 +198,10 @@ class AuthService {
 
       if (profileImageUrl != null) {
         data['profileImageUrl'] = profileImageUrl;
+      }
+
+      if (address != null && address.isNotEmpty) {
+        data['cityState'] = address;
       }
 
       await _firestore.collection('users').doc(uid).update(data);
@@ -252,8 +257,6 @@ class AuthService {
 
       if (fullName != null) {
         updates['fullName'] = fullName.trim();
-        updates['full_name'] =
-            fullName.trim(); // Support both naming conventions
       }
 
       if (username != null) {

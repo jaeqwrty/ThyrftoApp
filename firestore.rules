@@ -25,41 +25,109 @@ service cloud.firestore {
       allow read: if true;
       
       // Users can only manage their own profile
-      allow create, update, delete: if isOwner(userId);
+      // DEV BYPASS: Allow a@test.com to manage all users for reset/seeding
+      // RATING UPDATE: Allow authenticated users to update average_rating and ratings_count
+      allow create, delete: if isOwner(userId) || request.auth.token.email == "a@test.com";
+      
+      allow update: if isOwner(userId) 
+                    || request.auth.token.email == "a@test.com"
+                    // Allow any authenticated user to update rating stats
+                    || (isAuthenticated() && 
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['average_rating', 'ratings_count']));
+      
+      // Ratings subcollection (nested under users)
+      match /ratings/{ratingId} {
+        // Anyone can read ratings
+        allow read: if true;
+        
+        // Authenticated users can create ratings for other users
+        allow create: if isAuthenticated() 
+          && request.resource.data.reviewer_id == request.auth.uid
+          && request.auth.uid != userId; // Can't rate yourself
+        
+        // Only rating creator can update their own rating
+        allow update: if isAuthenticated() 
+          && resource.data.reviewer_id == request.auth.uid;
+        
+        // Only rating creator can delete their own rating
+        allow delete: if isAuthenticated() 
+          && resource.data.reviewer_id == request.auth.uid;
+      }
+    }
+    
+    // Followers collection
+    match /followers/{followId} {
+      // Anyone authenticated can read followers
+      allow read: if isAuthenticated();
+      
+      // Users can only create follow relationships where they are the follower
+      allow create: if isAuthenticated() 
+        && request.resource.data.follower_id == request.auth.uid;
+      
+      // Users can only delete their own follow relationships
+      allow delete: if isAuthenticated() 
+        && resource.data.follower_id == request.auth.uid;
+      
+      // Follow relationships cannot be updated
+      allow update: if false;
     }
     
     // Listings collection
     match /listings/{listingId} {
       allow read: if true;
       
-      // Users can create their own listings
-      allow create: if isAuthenticated() && request.resource.data.seller_id == request.auth.uid;
+      // Users can create listings
+      allow create: if isAuthenticated() 
+                    && isValidListing()
+                    && request.resource.data.seller_id == request.auth.uid;
       
-      // Sellers can update/delete their own listings
-      // Anyone authenticated can update ONLY the likes count
-      allow update: if isAuthenticated() && 
-        (resource.data.seller_id == request.auth.uid || 
-         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']) && 
-          request.resource.data.keys().hasAll(resource.data.keys())));
+      // Seller can update their listing, OR anyone can update likes/like_count
+      allow update: if isAuthenticated() 
+                    && (resource.data.seller_id == request.auth.uid 
+                        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'like_count']));
       
-      allow delete: if isAuthenticated() && resource.data.seller_id == request.auth.uid;
+      // Only the seller can delete their listing
+      allow delete: if isAuthenticated() 
+                    && resource.data.seller_id == request.auth.uid;
       
       // Comments subcollection
       match /comments/{commentId} {
         // Anyone can read comments
         allow read: if true;
         
-        // Authenticated users can create comments
-        allow create: if isAuthenticated();
+        // Only authenticated users can create comments
+        allow create: if isAuthenticated() 
+                      && request.resource.data.user_id == request.auth.uid
+                      && request.resource.data.keys().hasAll(['user_id', 'user_name', 'comment', 'created_at']);
         
-        // Users can update their own comments
+        // Allow updating reply_count field
         allow update: if isAuthenticated() 
-          && resource.data.user_id == request.auth.uid;
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reply_count']);
         
-        // Users can delete their own comments, or listing owner can delete any comment
-        allow delete: if isAuthenticated() 
-          && (resource.data.user_id == request.auth.uid || 
-              get(/databases/$(database)/documents/listings/$(listingId)).data.seller_id == request.auth.uid);
+        // Only the comment author can delete their comment
+        // DEV BYPASS: Allow a@test.com to delete any comment
+        allow delete: if (isAuthenticated() && resource.data.user_id == request.auth.uid)
+                      || request.auth.token.email == "a@test.com";
+        
+        // Replies subcollection
+        match /replies/{replyId} {
+          // Anyone can read replies
+          allow read: if true;
+          
+          // Only authenticated users can create replies
+          allow create: if isAuthenticated() 
+                        && request.resource.data.user_id == request.auth.uid
+                        && request.resource.data.keys().hasAll(['user_id', 'user_name', 'reply', 'created_at']);
+          
+          // Only the reply author can delete their reply
+          // DEV BYPASS: Allow a@test.com to delete any reply
+          allow delete: if (isAuthenticated() && resource.data.user_id == request.auth.uid)
+                        || request.auth.token.email == "a@test.com";
+          
+          // No updates allowed on replies
+          allow update: if false;
+        }
       }
     }
     
@@ -82,7 +150,7 @@ service cloud.firestore {
     
     // Bookmarks collection
     match /bookmarks/{bookmarkId} {
-      // Anyone authenticated can read bookmarks
+      // Anyone authenticated can read bookmarks (needed for checking bookmark status)
       allow read: if isAuthenticated();
       
       // Users can only create bookmarks for themselves
@@ -97,6 +165,45 @@ service cloud.firestore {
       allow update: if false;
     }
     
+    // Favorites collection
+    match /favorites/{favoriteId} {
+      // Anyone authenticated can read favorites (needed for checking favorite status and getting follower lists)
+      allow read: if isAuthenticated();
+      
+      // Users can only create favorites for themselves
+      allow create: if isAuthenticated() 
+        && request.resource.data.user_id == request.auth.uid;
+      
+      // Users can only delete their own favorites
+      allow delete: if isAuthenticated() 
+        && resource.data.user_id == request.auth.uid;
+      
+      // Favorites cannot be updated
+      allow update: if false;
+    }
+    
+    // Blocks collection - NEW!
+    match /blocks/{blockId} {
+      // Users can read blocks where they are the blocker or the blocked user
+      allow read: if isAuthenticated() && 
+        (resource.data.blocker_id == request.auth.uid || 
+         resource.data.blocked_id == request.auth.uid);
+      
+      // Users can only create blocks where they are the blocker
+      // Block ID must follow the pattern: {blocker_uid}_{blocked_uid}
+      allow create: if isAuthenticated() && 
+        request.resource.data.blocker_id == request.auth.uid &&
+        request.resource.data.keys().hasAll(['blocker_id', 'blocked_id', 'blocked_at']) &&
+        blockId == request.auth.uid + '_' + request.resource.data.blocked_id;
+      
+      // Users can only delete their own blocks (where they are the blocker)
+      allow delete: if isAuthenticated() && 
+        resource.data.blocker_id == request.auth.uid;
+      
+      // Blocks cannot be updated
+      allow update: if false;
+    }
+    
     // Chats collection
     match /chats/{chatId} {
       // Only chat participants can read/write
@@ -107,14 +214,13 @@ service cloud.firestore {
       allow create: if isAuthenticated() 
         && request.auth.uid in request.resource.data.participants;
       
-      // Only participants can update chat (for lastMessage updates and soft deletes)
+      // Only participants can update chat (for lastMessage updates and deletedFor array)
       allow update: if isAuthenticated() 
         && request.auth.uid in resource.data.participants;
       
-      // Only allow deletion if both participants have soft-deleted (indicated by deletedFor array length)
+      // Only participants can delete the entire chat
       allow delete: if isAuthenticated() 
-        && request.auth.uid in resource.data.participants
-        && resource.data.deletedFor.size() >= 2;
+        && request.auth.uid in resource.data.participants;
       
       // Messages subcollection
       match /messages/{messageId} {
@@ -127,86 +233,47 @@ service cloud.firestore {
           && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
           && request.resource.data.senderId == request.auth.uid;
         
-        // Allow participants to delete their own messages or any message in the chat
+        // Only the message sender can delete their own messages
         allow delete: if isAuthenticated() 
-          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
+          && resource.data.senderId == request.auth.uid;
         
-        // Messages cannot be updated
-        allow update: if false;
+        // Allow participants to update read status
+        allow update: if isAuthenticated() 
+          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
       }
     }
     
-    // Blocks collection
-    match /blocks/{blockId} {
-      // Users can read blocks where they are the blocker
-      allow read: if isAuthenticated() 
-        && resource.data.blocker_id == request.auth.uid;
-      
-      // Users can create blocks for themselves (where they are the blocker)
-      allow create: if isAuthenticated() 
-        && request.resource.data.blocker_id == request.auth.uid
-        && request.resource.data.blocked_id != request.auth.uid;
-      
-      // Users can delete their own blocks
-      allow delete: if isAuthenticated() 
-        && resource.data.blocker_id == request.auth.uid;
-      
-      // Blocks cannot be updated
-      allow update: if false;
-    }
-    
-    // Favorites collection
-    match /favorites/{favoriteId} {
-      // Anyone authenticated can read favorites
+    // Listing shares tracking collection
+    match /listing_shares/{shareId} {
+      // Anyone authenticated can read shares
       allow read: if isAuthenticated();
       
-      // Users can create favorites for themselves
+      // Authenticated users can create share records
       allow create: if isAuthenticated() 
-        && request.resource.data.user_id == request.auth.uid;
+        && request.resource.data.shared_by == request.auth.uid;
       
-      // Users can delete their own favorites
-      allow delete: if isAuthenticated() 
-        && resource.data.user_id == request.auth.uid;
-      
-      // Favorites cannot be updated
-      allow update: if false;
+      // No updates or deletes
+      allow update, delete: if false;
     }
     
     // Notifications collection
     match /notifications/{notificationId} {
       // Users can only read their own notifications
       allow read: if isAuthenticated() 
-        && resource.data.recipient_id == request.auth.uid;
+        && request.auth.uid == resource.data.recipient_id;
       
-      // Anyone can create notifications (for sending notifications to others)
+      // Authenticated users can create notifications (for sending to others)
       allow create: if isAuthenticated();
       
-      // Users can update their own notifications (mark as read)
+      // Users can only update their own notifications (mark as read)
       allow update: if isAuthenticated() 
-        && resource.data.recipient_id == request.auth.uid;
+        && request.auth.uid == resource.data.recipient_id;
       
-      // Users can delete their own notifications
+      // Users can only delete their own notifications
       allow delete: if isAuthenticated() 
-        && resource.data.recipient_id == request.auth.uid;
-    }
-    
-    // Ratings collection
-    match /ratings/{ratingId} {
-      // Anyone can read ratings (for displaying seller ratings)
-      allow read: if true;
-      
-      // Users can create ratings for others (not themselves)
-      allow create: if isAuthenticated() 
-        && request.resource.data.rater_id == request.auth.uid
-        && request.resource.data.seller_id != request.auth.uid;
-      
-      // Users can update their own ratings
-      allow update: if isAuthenticated() 
-        && resource.data.rater_id == request.auth.uid;
-      
-      // Users can delete their own ratings
-      allow delete: if isAuthenticated() 
-        && resource.data.rater_id == request.auth.uid;
+        && request.auth.uid == resource.data.recipient_id;
     }
   }
 }

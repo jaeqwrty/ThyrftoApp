@@ -289,6 +289,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
         uid: user.uid,
         bio: _bioController.text.trim(),
         profileImageUrl: imageUrl,
+        address: _selectedAddress ?? 'Location set',
       );
 
       if (!mounted) return;
