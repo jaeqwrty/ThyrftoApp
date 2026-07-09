@@ -9,26 +9,14 @@ class SnackbarUtils {
     String message, {
     Duration duration = const Duration(seconds: 2),
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(
-              Icons.check_circle,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: Colors.green,
-        duration: duration,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
+    _showCustomNotification(
+      context: context,
+      title: 'Success',
+      message: message,
+      icon: Icons.check_circle_rounded,
+      primaryColor: const Color(0xFF10B981), // Emerald green
+      iconBgColor: const Color(0xFF10B981).withOpacity(0.1),
+      duration: duration,
     );
   }
 
@@ -38,26 +26,14 @@ class SnackbarUtils {
     String message, {
     Duration duration = const Duration(seconds: 3),
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(
-              Icons.error_outline,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: Colors.red,
-        duration: duration,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
+    _showCustomNotification(
+      context: context,
+      title: 'Error',
+      message: message,
+      icon: Icons.error_outline_rounded,
+      primaryColor: const Color(0xFFEF4444), // Coral red
+      iconBgColor: const Color(0xFFEF4444).withOpacity(0.1),
+      duration: duration,
     );
   }
 
@@ -66,28 +42,16 @@ class SnackbarUtils {
     BuildContext context,
     String message, {
     Duration duration = const Duration(seconds: 2),
-    IconData icon = Icons.info_outline,
+    IconData icon = Icons.info_outline_rounded,
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              icon,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: AppColors.primary,
-        duration: duration,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
+    _showCustomNotification(
+      context: context,
+      title: 'Info',
+      message: message,
+      icon: icon,
+      primaryColor: AppColors.primary, // Brand purple
+      iconBgColor: AppColors.primary.withOpacity(0.1),
+      duration: duration,
     );
   }
 
@@ -97,29 +61,31 @@ class SnackbarUtils {
     bool isBookmarked, {
     Duration duration = const Duration(seconds: 2),
   }) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              isBookmarked ? 'Added to bookmarks' : 'Removed from bookmarks',
-            ),
-          ],
-        ),
-        duration: duration,
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: isBookmarked ? AppColors.primary : Colors.grey[700],
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
+    _showCustomNotification(
+      context: context,
+      title: isBookmarked ? 'Bookmarked' : 'Unbookmarked',
+      message: isBookmarked ? 'Item added to your bookmarks.' : 'Item removed from your bookmarks.',
+      icon: isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+      primaryColor: AppColors.primary,
+      iconBgColor: AppColors.primary.withOpacity(0.1),
+      duration: duration,
+    );
+  }
+
+  /// Show a warning snackbar with an orange/amber background
+  static void showWarning(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 2),
+  }) {
+    _showCustomNotification(
+      context: context,
+      title: 'Warning',
+      message: message,
+      icon: Icons.warning_amber_rounded,
+      primaryColor: const Color(0xFFF59E0B), // Amber orange
+      iconBgColor: const Color(0xFFF59E0B).withOpacity(0.1),
+      duration: duration,
     );
   }
 
@@ -130,12 +96,14 @@ class SnackbarUtils {
     Duration duration = const Duration(seconds: 2),
     Color? backgroundColor,
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: duration,
-        backgroundColor: backgroundColor,
-      ),
+    _showCustomNotification(
+      context: context,
+      title: 'Notification',
+      message: message,
+      icon: Icons.notifications_rounded,
+      primaryColor: backgroundColor ?? const Color(0xFF64748B), // Slate gray
+      iconBgColor: (backgroundColor ?? const Color(0xFF64748B)).withOpacity(0.1),
+      duration: duration,
     );
   }
 
@@ -148,6 +116,7 @@ class SnackbarUtils {
     SnackBarBehavior behavior = SnackBarBehavior.floating,
     ShapeBorder? shape,
   }) {
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: content,
@@ -156,37 +125,8 @@ class SnackbarUtils {
         behavior: behavior,
         shape: shape ??
             RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(16),
             ),
-      ),
-    );
-  }
-
-  /// Show a warning snackbar with an orange/amber background
-  static void showWarning(
-    BuildContext context,
-    String message, {
-    Duration duration = const Duration(seconds: 2),
-  }) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(
-              Icons.warning_amber_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: Colors.orange,
-        duration: duration,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
       ),
     );
   }
@@ -194,5 +134,129 @@ class SnackbarUtils {
   /// Clear all current snackbars
   static void clearAll(BuildContext context) {
     ScaffoldMessenger.of(context).clearSnackBars();
+  }
+
+  /// Internal helper to present the custom notification container
+  static void _showCustomNotification({
+    required BuildContext context,
+    required String title,
+    required String message,
+    required IconData icon,
+    required Color primaryColor,
+    required Color iconBgColor,
+    required Duration duration,
+  }) {
+    ScaffoldMessenger.of(context).clearSnackBars();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.only(
+          left: 16,
+          right: 16,
+          bottom: 24,
+        ),
+        padding: EdgeInsets.zero,
+        duration: duration,
+        content: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: primaryColor.withOpacity(0.15),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 16,
+                spreadRadius: 0,
+                offset: const Offset(0, 6),
+              ),
+              BoxShadow(
+                color: primaryColor.withOpacity(0.04),
+                blurRadius: 8,
+                spreadRadius: 0,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  // Vertical accent indicator
+                  Container(
+                    width: 6,
+                    color: primaryColor,
+                  ),
+                  const SizedBox(width: 14),
+                  // Styled Icon badge
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: iconBgColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      icon,
+                      color: primaryColor,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  // Text details
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1E293B),
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            message,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF64748B),
+                              height: 1.3,
+                              fontFamily: 'SF Pro Display',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Dismiss button
+                  IconButton(
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Color(0xFF94A3B8),
+                      size: 18,
+                    ),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

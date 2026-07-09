@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/features/profile/pages/profile_setup_page.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thryfto/features/auth/widgets/auth_widgets.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key});
@@ -55,24 +56,60 @@ class _OnboardingPageState extends State<OnboardingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundWhite,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: PageView.builder(
-                controller: _pageController,
-                onPageChanged: (index) {
-                  setState(() => _currentPage = index);
-                },
-                itemCount: _pages.length,
-                itemBuilder: (context, index) {
-                  return _buildPageContent(_pages[index]);
-                },
+      backgroundColor: Colors.white,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.white,
+              AppColors.primary.withOpacity(0.06),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Skip Button
+              Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16.0, top: 8.0),
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const ProfileSetupPage()),
+                      );
+                    },
+                    child: Text(
+                      'Skip',
+                      style: GoogleFonts.poppins(
+                        color: AppColors.primary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            _buildBottomControls(),
-          ],
+              Expanded(
+                child: PageView.builder(
+                  controller: _pageController,
+                  onPageChanged: (index) {
+                    setState(() => _currentPage = index);
+                  },
+                  itemCount: _pages.length,
+                  itemBuilder: (context, index) {
+                    return _buildPageContent(_pages[index]);
+                  },
+                ),
+              ),
+              _buildBottomControls(),
+            ],
+          ),
         ),
       ),
     );
@@ -94,44 +131,77 @@ class _OnboardingPageState extends State<OnboardingPage> {
         iconData = Icons.star_rounded;
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(40.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(30),
-            decoration: BoxDecoration(
-              color: AppColors.primaryBackground,
-              shape: BoxShape.circle,
+    // Using ValueKey to trigger FadeInSlide animation on page index changes
+    return KeyedSubtree(
+      key: ValueKey(page['title']),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            FadeInSlide(
+              delay: const Duration(milliseconds: 100),
+              child: Container(
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.12),
+                      blurRadius: 24,
+                      spreadRadius: 4,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: Icon(
+                    iconData,
+                    size: 56,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
             ),
-            child: Icon(
-              iconData,
-              size: 80,
-              color: AppColors.primary,
+            const SizedBox(height: 50),
+            FadeInSlide(
+              delay: const Duration(milliseconds: 250),
+              child: Text(
+                page['title']!,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 40),
-          Text(
-            page['title']!,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+            const SizedBox(height: 20),
+            FadeInSlide(
+              delay: const Duration(milliseconds: 400),
+              child: Text(
+                page['description']!,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  color: AppColors.textSecondary,
+                  height: 1.6,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            page['description']!,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              color: AppColors.textSecondary,
-              height: 1.5,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -150,32 +220,58 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 duration: const Duration(milliseconds: 300),
                 margin: const EdgeInsets.only(right: 8),
                 height: 8,
-                width: _currentPage == index ? 24 : 8,
+                width: _currentPage == index ? 28 : 8,
                 decoration: BoxDecoration(
-                  color: _currentPage == index
-                      ? AppColors.primary
-                      : AppColors.borderLight,
+                  gradient: _currentPage == index
+                      ? const LinearGradient(
+                          colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
+                        )
+                      : null,
+                  color: _currentPage == index ? null : AppColors.borderLight,
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
             ),
           ),
           // Next/Get Started Button
-          ElevatedButton(
-            onPressed: _nextPage,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.textWhite,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              shape: RoundedRectangleBorder(
+          GestureDetector(
+            onTap: _nextPage,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
                 borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ),
-            child: Text(
-              _currentPage == _pages.length - 1 ? 'Get Started' : 'Next',
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _currentPage == _pages.length - 1 ? 'Get Started' : 'Next',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ],
               ),
             ),
           ),
