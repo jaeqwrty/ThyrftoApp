@@ -6,6 +6,7 @@ import 'package:thryfto/features/auth/pages/signup_page.dart';
 import 'package:thryfto/features/auth/pages/forgot_password_page.dart';
 import 'package:thryfto/shared/widgets/app_logo.dart';
 import 'package:thryfto/features/auth/widgets/auth_widgets.dart';
+import 'package:thryfto/core/utils/snackbar_utils.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -42,12 +43,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (result['success']) {
       // The AuthWrapper will automatically redirect to HomeScreen
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message']),
-          backgroundColor: Colors.red,
-        ),
-      );
+      SnackbarUtils.showError(context, result['message']);
     }
   }
 
@@ -213,14 +209,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ),
                                 ),
                                 label: 'Google',
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Google Login is coming soon!'),
-                                      duration: Duration(seconds: 1),
-                                    ),
-                                  );
-                                },
+                                onTap: () => SnackbarUtils.showInfo(context, 'Google Login is coming soon!'),
                               ),
                               const SizedBox(width: 16),
                               buildSocialButton(
@@ -230,14 +219,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   color: Colors.black,
                                 ),
                                 label: 'Apple',
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Apple Login is coming soon!'),
-                                      duration: Duration(seconds: 1),
-                                    ),
-                                  );
-                                },
+                                onTap: () => SnackbarUtils.showInfo(context, 'Apple Login is coming soon!'),
                               ),
                             ],
                           ),

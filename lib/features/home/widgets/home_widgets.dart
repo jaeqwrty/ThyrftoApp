@@ -1,4 +1,6 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/shared/widgets/image_placeholder.dart';
 import 'package:thryfto/shared/widgets/tag.dart';
 import 'package:thryfto/shared/widgets/user_avatar.dart';
@@ -9,6 +11,10 @@ import 'package:thryfto/core/services/location_service.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/features/profile/pages/user_profile_page.dart';
 import 'package:thryfto/features/listings/pages/listing_detail_page.dart';
+import 'package:thryfto/features/listings/pages/edit_listing_page.dart';
+import 'package:thryfto/features/chat/pages/conversation_page.dart';
+import 'package:thryfto/core/services/chat_service.dart';
+import 'package:thryfto/core/utils/snackbar_utils.dart';
 import 'package:thryfto/shared/widgets/share_modal.dart';
 
 /// Format count helper function
@@ -29,7 +35,7 @@ class PostCard extends StatefulWidget {
   final DatabaseService db;
   final VoidCallback onBlockedUser;
 
-  PostCard({
+  const PostCard({
     super.key,
     required this.listing,
     required this.user,
@@ -83,96 +89,125 @@ class _PostCardState extends State<PostCard>
             }
 
             return Container(
-              decoration: const BoxDecoration(color: Colors.white),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // User info header
-                  PostUserHeader(
-                    username: username,
-                    profileImageUrl: profileImageUrl,
-                    distanceText: distanceText,
-                    locationDisplay: locationDisplay,
-                    onTap: () async {
-                      final sellerId = widget.listing['seller_id'];
-                      if (sellerId != null &&
-                          sellerId != widget.db.currentUserId) {
-                        final result = await Navigator.push(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: const Color(0xFFF1F5F9), // Slate 100 border
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.02),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // User info header
+                    PostUserHeader(
+                      username: username,
+                      profileImageUrl: profileImageUrl,
+                      distanceText: distanceText,
+                      locationDisplay: locationDisplay,
+                      listing: widget.listing,
+                      onTap: () async {
+                        final sellerId = widget.listing['seller_id'];
+                        if (sellerId != null &&
+                            sellerId != widget.db.currentUserId) {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UserProfilePage(
+                                userId: sellerId,
+                                currentUser: widget.user,
+                              ),
+                            ),
+                          );
+
+                          if (result == 'blocked' && mounted) {
+                            widget.onBlockedUser();
+                          }
+                        }
+                      },
+                    ),
+
+                    // Item image (with double-tap to like and glassmorphic badges)
+                    PostImage(
+                      listing: widget.listing,
+                      imageUrls: imageUrls,
+                      imageCount: imageCount,
+                      distanceText: distanceText,
+                      onTap: () {
+                        Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => UserProfilePage(
-                              userId: sellerId,
-                              currentUser: widget.user,
+                            builder: (context) => ListingDetailPage(
+                              listing: widget.listing,
+                              user: widget.user,
                             ),
                           ),
                         );
+                      },
+                      onDoubleTapLike: () {
+                        widget.db.toggleLikeWithNotification(widget.listing['id']);
+                      },
+                    ),
 
-                        if (result == 'blocked' && mounted) {
-                          widget.onBlockedUser();
-                        }
-                      }
-                    },
-                  ),
+                    // Action buttons
+                    PostActions(
+                      listingId: widget.listing['id'],
+                      listing: widget.listing,
+                      user: widget.user,
+                      db: widget.db,
+                    ),
 
-                  // Item image
-                  PostImage(
-                    listing: widget.listing,
-                    imageUrls: imageUrls,
-                    imageCount: imageCount,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ListingDetailPage(
-                            listing: widget.listing,
-                            user: widget.user,
+                    // Price and title
+                    PostPriceTitle(
+                      listing: widget.listing,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ListingDetailPage(
+                              listing: widget.listing,
+                              user: widget.user,
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
 
-                  // Action buttons
-                  PostActions(
-                    listingId: widget.listing['id'],
-                    listing: widget.listing,
-                    user: widget.user,
-                    db: widget.db,
-                  ),
+                    // Description
+                    PostDescription(
+                      listing: widget.listing,
+                      user: widget.user,
+                    ),
 
-                  // Price and title
-                  PostPriceTitle(
-                    listing: widget.listing,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ListingDetailPage(
-                            listing: widget.listing,
-                            user: widget.user,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                    const SizedBox(height: 6),
 
-                  // Size and condition
-                  PostTags(listing: widget.listing),
+                    // Divider line before CTA row
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: Divider(
+                        color: Color(0xFFF1F5F9),
+                        height: 1,
+                      ),
+                    ),
 
-                  // Description
-                  PostDescription(
-                    listing: widget.listing,
-                    user: widget.user,
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Divider
-                  Container(
-                    height: 6,
-                    color: AppColors.background,
-                  ),
-                ],
+                    // Instant Chat CTA Row
+                    PostCtaRow(
+                      listing: widget.listing,
+                      user: widget.user,
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -188,6 +223,7 @@ class PostUserHeader extends StatelessWidget {
   final String? profileImageUrl;
   final String? distanceText;
   final String locationDisplay;
+  final Map<String, dynamic> listing;
   final VoidCallback? onTap;
 
   const PostUserHeader({
@@ -196,21 +232,23 @@ class PostUserHeader extends StatelessWidget {
     this.profileImageUrl,
     this.distanceText,
     required this.locationDisplay,
+    required this.listing,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
             onTap: onTap,
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 16,
+                  radius: 18,
                   backgroundColor: AppColors.primary,
                   backgroundImage:
                       (profileImageUrl != null && profileImageUrl!.isNotEmpty)
@@ -222,62 +260,100 @@ class PostUserHeader extends StatelessWidget {
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontSize: 13,
                           ),
                         )
                       : null,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       username,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 15),
-                    ),
-                    if (distanceText != null &&
-                        distanceText != 'Location unavailable')
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.location_on,
-                            size: 11,
-                            color: AppColors.primary,
-                          ),
-                          const SizedBox(width: 2),
-                          Text(
-                            distanceText!,
-                            style: const TextStyle(
-                              color: AppColors.primary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      )
-                    else
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.location_on_outlined,
-                            size: 11,
-                            color: Colors.grey,
-                          ),
-                          const SizedBox(width: 2),
-                          Text(
-                            locationDisplay,
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: const Color(0xFF1E293B),
                       ),
+                    ),
+                    const SizedBox(height: 1),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 11,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          locationDisplay,
+                          style: GoogleFonts.poppins(
+                            color: Colors.grey[500],
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ],
             ),
+          ),
+          
+          // Triple dot action options button
+          IconButton(
+            icon: const Icon(
+              Icons.more_horiz_rounded,
+              color: Color(0xFF64748B),
+              size: 20,
+            ),
+            onPressed: () {
+              // Custom bottom sheet for options
+              showModalBottomSheet(
+                context: context,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                builder: (context) => Container(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ListTile(
+                        leading: const Icon(Icons.share_outlined, color: Colors.black87),
+                        title: const Text('Share Listing'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          showModalBottomSheet(
+                            context: context,
+                            backgroundColor: Colors.transparent,
+                            builder: (context) => ShareModal(listing: listing),
+                          );
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.flag_outlined, color: Colors.red),
+                        title: const Text('Report Listing', style: TextStyle(color: Colors.red)),
+                        onTap: () {
+                          Navigator.pop(context);
+                          SnackbarUtils.showSuccess(context, 'Thank you! Listing reported.');
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -285,12 +361,14 @@ class PostUserHeader extends StatelessWidget {
   }
 }
 
-/// Post Image Widget
-class PostImage extends StatelessWidget {
+/// Post Image Widget (Stateful for double-tap animation & overlays)
+class PostImage extends StatefulWidget {
   final Map<String, dynamic> listing;
   final List? imageUrls;
   final int imageCount;
   final VoidCallback onTap;
+  final VoidCallback onDoubleTapLike;
+  final String? distanceText;
 
   const PostImage({
     super.key,
@@ -298,21 +376,118 @@ class PostImage extends StatelessWidget {
     required this.imageUrls,
     required this.imageCount,
     required this.onTap,
+    required this.onDoubleTapLike,
+    this.distanceText,
   });
 
   @override
+  State<PostImage> createState() => _PostImageState();
+}
+
+class _PostImageState extends State<PostImage> with SingleTickerProviderStateMixin {
+  late AnimationController _heartAnimController;
+  late Animation<double> _heartScale;
+  late Animation<double> _heartFade;
+  bool _isAnimatingHeart = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _heartAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
+
+    _heartScale = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 0.0, end: 1.3), weight: 30),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.3, end: 1.0), weight: 30),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.0), weight: 40),
+    ]).animate(
+      CurvedAnimation(parent: _heartAnimController, curve: Curves.easeOutBack),
+    );
+
+    _heartFade = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.0), weight: 50),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 0.0), weight: 30),
+    ]).animate(
+      CurvedAnimation(parent: _heartAnimController, curve: Curves.easeIn),
+    );
+  }
+
+  @override
+  void dispose() {
+    _heartAnimController.dispose();
+    super.dispose();
+  }
+
+  void _triggerDoubleTap() {
+    widget.onDoubleTapLike();
+    setState(() {
+      _isAnimatingHeart = true;
+    });
+    _heartAnimController.forward(from: 0.0).then((_) {
+      if (mounted) {
+        setState(() {
+          _isAnimatingHeart = false;
+        });
+      }
+    });
+  }
+
+  Widget _buildGlassBadge(String text, IconData icon) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.4),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.15),
+              width: 0.5,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.white, size: 11),
+              const SizedBox(width: 4),
+              Text(
+                text,
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final hasImages = widget.imageUrls != null && widget.imageUrls!.isNotEmpty;
+    
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
+      onDoubleTap: _triggerDoubleTap,
       child: Stack(
+        alignment: Alignment.center,
         children: [
+          // Image render
           Container(
-            height: 400,
+            height: 380,
             width: double.infinity,
-            color: Colors.grey[200],
-            child: imageUrls != null && imageUrls!.isNotEmpty
+            color: const Color(0xFFF8FAFC), // Slate 50 background placeholder
+            child: hasImages
                 ? Image.network(
-                    imageUrls![0],
+                    widget.imageUrls![0],
                     fit: BoxFit.cover,
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
@@ -322,68 +497,106 @@ class PostImage extends StatelessWidget {
                               ? loadingProgress.cumulativeBytesLoaded /
                                   loadingProgress.expectedTotalBytes!
                               : null,
+                          strokeWidth: 2.5,
+                          color: AppColors.primary,
                         ),
                       );
                     },
                     errorBuilder: (context, error, stackTrace) =>
-                        const ImagePlaceholder(size: 50),
+                        const ImagePlaceholder(size: 45),
                   )
-                : const ImagePlaceholder(size: 50),
+                : const ImagePlaceholder(size: 45),
           ),
-          if (listing['status'] == 'sold')
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'SOLD',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12),
-                ),
-              ),
-            ),
-          if (imageCount > 1)
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.photo_library,
-                      color: Colors.white,
-                      size: 14,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$imageCount',
-                      style: const TextStyle(
+
+          // Double tap heartbeat pulse heart overlay
+          if (_isAnimatingHeart)
+            AnimatedBuilder(
+              animation: _heartAnimController,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _heartScale.value,
+                  child: Opacity(
+                    opacity: _heartFade.value,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.favorite,
                         color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        size: 80,
                       ),
                     ),
+                  ),
+                );
+              },
+            ),
+
+          // Top Floating Badges (Sold / Image Count / Distance)
+          Positioned(
+            top: 12,
+            left: 12,
+            right: 12,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Top-Left Distance Tag
+                if (widget.distanceText != null &&
+                    widget.distanceText != 'Location unavailable')
+                  _buildGlassBadge(widget.distanceText!, Icons.location_on_rounded)
+                else
+                  const SizedBox.shrink(),
+
+                // Top-Right Badges (Sold & Image Count)
+                Row(
+                  children: [
+                    if (widget.listing['status'] == 'sold')
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444), // Crimson Red
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          'SOLD',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10.5,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    if (widget.listing['status'] == 'sold' && widget.imageCount > 1)
+                      const SizedBox(width: 6),
+                    if (widget.imageCount > 1)
+                      _buildGlassBadge('${widget.imageCount}', Icons.photo_library_rounded),
                   ],
                 ),
-              ),
+              ],
             ),
+          ),
+
+          // Bottom Floating Glassmorphic Tags (Size & Condition)
+          Positioned(
+            bottom: 12,
+            left: 12,
+            child: Row(
+              children: [
+                _buildGlassBadge(widget.listing['size'] ?? 'N/A', Icons.straighten_rounded),
+                const SizedBox(width: 6),
+                _buildGlassBadge(widget.listing['condition'] ?? 'N/A', Icons.stars_rounded),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -408,7 +621,7 @@ class PostActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         children: [
           LikeButtonOptimized(
@@ -416,15 +629,14 @@ class PostActions extends StatelessWidget {
             initialLikes: listing['likes'] ?? 0,
             db: db,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
 
-          // Updated: Uses Optimized Comment Button
           CommentButtonOptimized(
             listingId: listingId,
             user: user,
           ),
+          const SizedBox(width: 6),
 
-          const SizedBox(width: 4),
           InkWell(
             onTap: () {
               showModalBottomSheet(
@@ -435,8 +647,12 @@ class PostActions extends StatelessWidget {
             },
             borderRadius: BorderRadius.circular(8),
             child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              child: Icon(Icons.share, size: 26),
+              padding: EdgeInsets.all(6),
+              child: Icon(
+                Icons.ios_share_rounded, // Sleek iOS share icon
+                size: 22,
+                color: Color(0xFF475569),
+              ),
             ),
           ),
           const Spacer(),
@@ -468,13 +684,37 @@ class LikeButtonOptimized extends StatefulWidget {
 }
 
 class _LikeButtonOptimizedState extends State<LikeButtonOptimized>
-    with AutomaticKeepAliveClientMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
-  // Local state for optimistic updates
   bool? _optimisticLiked;
   int? _optimisticCount;
+
+  late AnimationController _bounceController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _bounceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.3), weight: 50),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.3, end: 1.0), weight: 50),
+    ]).animate(
+      CurvedAnimation(parent: _bounceController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _bounceController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -488,7 +728,6 @@ class _LikeButtonOptimizedState extends State<LikeButtonOptimized>
         return StreamBuilder<Map<String, dynamic>?>(
           stream: widget.db.getListingStream(widget.listingId),
           builder: (context, listingSnapshot) {
-            // Reset optimistic state once stream updates
             if (listingSnapshot.hasData && _optimisticCount != null) {
               _optimisticCount = null;
             }
@@ -502,35 +741,39 @@ class _LikeButtonOptimizedState extends State<LikeButtonOptimized>
 
             return InkWell(
               onTap: () {
-                // Optimistic update - instant UI feedback
+                _bounceController.forward(from: 0.0);
                 setState(() {
                   _optimisticLiked = !isLiked;
                   _optimisticCount = isLiked ? likeCount - 1 : likeCount + 1;
                 });
-
-                // Actual database update
                 widget.db.toggleLikeWithNotification(widget.listingId);
               },
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(10),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 child: Row(
                   children: [
-                    Icon(
-                      isLiked ? Icons.favorite : Icons.favorite_border,
-                      color: isLiked ? Colors.red : Colors.black,
-                      size: 26,
+                    AnimatedBuilder(
+                      animation: _scaleAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _scaleAnimation.value,
+                          child: Icon(
+                            isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                            color: isLiked ? const Color(0xFFEF4444) : const Color(0xFF475569),
+                            size: 23,
+                          ),
+                        );
+                      },
                     ),
                     if (likeCount > 0) ...[
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
                       Text(
                         formatCount(likeCount),
-                        style: const TextStyle(
-                          fontSize: 13,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w600,
+                          color: const Color(0xFF475569),
                         ),
                       ),
                     ],
@@ -562,7 +805,6 @@ class CommentButtonOptimized extends StatefulWidget {
 
 class _CommentButtonOptimizedState extends State<CommentButtonOptimized>
     with AutomaticKeepAliveClientMixin {
-  // Instantiate the service locally
   final CommentService _commentService = CommentService();
 
   @override
@@ -573,7 +815,6 @@ class _CommentButtonOptimizedState extends State<CommentButtonOptimized>
     super.build(context);
 
     return StreamBuilder<int>(
-      // FIXED: Now calling getCommentCountStream from CommentService
       stream: _commentService.getCommentCountStream(widget.listingId),
       builder: (context, snapshot) {
         final hasData = snapshot.hasData;
@@ -591,7 +832,7 @@ class _CommentButtonOptimizedState extends State<CommentButtonOptimized>
               ),
             );
           },
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             child: Row(
@@ -599,15 +840,17 @@ class _CommentButtonOptimizedState extends State<CommentButtonOptimized>
               children: [
                 const Icon(
                   Icons.mode_comment_outlined,
-                  size: 26,
+                  size: 21,
+                  color: Color(0xFF475569),
                 ),
                 if (hasData && commentCount > 0) ...[
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 6),
                   Text(
                     formatCount(commentCount),
-                    style: const TextStyle(
-                      fontSize: 13,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12.5,
                       fontWeight: FontWeight.w600,
+                      color: const Color(0xFF475569),
                     ),
                   ),
                 ],
@@ -654,47 +897,23 @@ class _BookmarkButtonOptimizedState extends State<BookmarkButtonOptimized>
             try {
               await widget.db.toggleBookmark(widget.listingId);
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        Icon(
-                          isBookmarked ? Icons.bookmark_border : Icons.bookmark,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        Text(
-                          isBookmarked
-                              ? ' Removed from bookmarks'
-                              : ' Added to bookmarks',
-                        ),
-                      ],
-                    ),
-                    duration: const Duration(seconds: 1),
-                    behavior: SnackBarBehavior.floating,
-                    backgroundColor:
-                        isBookmarked ? Colors.grey[700] : AppColors.primary,
-                    margin: const EdgeInsets.all(16),
-                  ),
+                SnackbarUtils.showSuccess(
+                  context,
+                  isBookmarked ? 'Removed from bookmarks' : 'Added to bookmarks',
                 );
               }
             } catch (e) {
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e')),
-                );
+                SnackbarUtils.showError(context, 'Error: $e');
               }
             }
           },
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 6,
-              vertical: 4,
-            ),
+            padding: const EdgeInsets.all(6),
             child: Icon(
-              isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-              color: isBookmarked ? AppColors.primary : Colors.black,
+              isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+              color: isBookmarked ? AppColors.primary : const Color(0xFF475569),
               size: 22,
             ),
           ),
@@ -720,36 +939,28 @@ class PostPriceTitle extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(15, 1, 12, 4),
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '₱ ${listing['price']?.toStringAsFixed(2) ?? '0.00'}',
-              style: const TextStyle(
-                fontSize: 16,
+              '₱${listing['price']?.toStringAsFixed(2) ?? '0.00'}',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.primary,
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(height: 2),
             Text(
-              '•',
-              style: TextStyle(
+              listing['title'] ?? 'No title',
+              style: GoogleFonts.poppins(
                 fontSize: 15,
-                color: Colors.grey[400],
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1E293B),
               ),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                listing['title'] ?? 'No title',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -758,7 +969,7 @@ class PostPriceTitle extends StatelessWidget {
   }
 }
 
-/// Post Tags Widget (Size and Condition)
+/// Post Tags Widget (Dummy to preserve legacy signature)
 class PostTags extends StatelessWidget {
   final Map<String, dynamic> listing;
 
@@ -769,44 +980,7 @@ class PostTags extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(15, 0, 12, 6),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-            decoration: BoxDecoration(
-              color: Colors.purple.shade50,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              listing['size'] ?? 'N/A',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-            decoration: BoxDecoration(
-              color: Colors.green.shade50,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              listing['condition'] ?? 'N/A',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.green.shade700,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }
 
@@ -824,7 +998,7 @@ class PostDescription extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final description = listing['description'] ?? '';
-    const maxLength = 30;
+    const maxLength = 60;
 
     if (description.isEmpty) {
       return const SizedBox.shrink();
@@ -832,60 +1006,225 @@ class PostDescription extends StatelessWidget {
 
     final isOverflowing = description.length > maxLength;
 
-    if (isOverflowing) {
-      final truncatedText = description.substring(0, maxLength);
-
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 15),
-        child: GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ListingDetailPage(
-                  listing: listing,
-                  user: user,
-                ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ListingDetailPage(
+                listing: listing,
+                user: user,
               ),
-            );
-          },
-          child: RichText(
-            text: TextSpan(
-              style: const TextStyle(
-                fontSize: 13,
-                height: 1.3,
-                color: Colors.black87,
-                fontFamily: 'SF Pro Display',
+            ),
+          );
+        },
+        child: Text.rich(
+          TextSpan(
+            style: GoogleFonts.poppins(
+              fontSize: 12.5,
+              height: 1.45,
+              color: const Color(0xFF475569), // Slate 600
+            ),
+            children: [
+              TextSpan(
+                text: isOverflowing ? '${description.substring(0, maxLength)}...' : description,
               ),
-              children: [
-                TextSpan(text: truncatedText),
-                const TextSpan(
-                  text: '... ',
-                  style: TextStyle(color: Colors.grey),
-                ),
-                const TextSpan(
-                  text: 'see more',
-                  style: TextStyle(
+              if (isOverflowing)
+                TextSpan(
+                  text: ' see more',
+                  style: const TextStyle(
                     color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
         ),
-      );
+      ),
+    );
+  }
+}
+
+/// Instant CTA Row (Chat / Edit) Widget
+class PostCtaRow extends StatefulWidget {
+  final Map<String, dynamic> listing;
+  final Map<String, dynamic> user;
+
+  const PostCtaRow({
+    super.key,
+    required this.listing,
+    required this.user,
+  });
+
+  @override
+  State<PostCtaRow> createState() => _PostCtaRowState();
+}
+
+class _PostCtaRowState extends State<PostCtaRow> {
+  bool _isOpeningChat = false;
+
+  Widget _buildChatButton() {
+    return _isOpeningChat
+        ? const SizedBox(
+            height: 32,
+            width: 32,
+            child: Padding(
+              padding: EdgeInsets.all(6.0),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.primary,
+              ),
+            ),
+          )
+        : InkWell(
+            onTap: _openChat,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, Color(0xFFD946EF)],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.chat_bubble_outline_rounded,
+                    color: Colors.white,
+                    size: 13,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Chat',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+  }
+
+  Future<void> _openChat() async {
+    setState(() => _isOpeningChat = true);
+    try {
+      final chatService = ChatService();
+      final chatId = await chatService.getOrCreateChat(widget.listing['seller_id']);
+
+      if (!mounted) return;
+      setState(() => _isOpeningChat = false);
+
+      if (chatId != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ConversationPage(
+              chatId: chatId,
+              otherUserId: widget.listing['seller_id'],
+              otherUserName: widget.listing['seller_name'] ?? 'Seller',
+              currentUser: widget.user,
+            ),
+          ),
+        );
+      } else {
+        SnackbarUtils.showError(context, 'Failed to open chat. Please try again.');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isOpeningChat = false);
+        SnackbarUtils.showError(context, 'Error opening chat: $e');
+      }
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sellerId = widget.listing['seller_id'];
+    final currentUserId = widget.user['uid'];
+    final isSeller = sellerId == currentUserId;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      child: Text(
-        description,
-        style: const TextStyle(
-          fontSize: 13,
-          height: 1.3,
-          fontFamily: 'SF Pro Display',
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Left label
+          Text(
+            isSeller ? 'Your active listing' : 'Interested in this item?',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              color: const Color(0xFF64748B), // Slate 500
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          
+          // Right CTA button
+          if (isSeller)
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EditListingPage(
+                      listing: widget.listing,
+                      user: widget.user,
+                    ),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9), // Slate 100
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFFE2E8F0), // Slate 200
+                    width: 0.5,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.edit_outlined,
+                      color: Color(0xFF475569),
+                      size: 13,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Edit',
+                      style: GoogleFonts.poppins(
+                        color: const Color(0xFF475569),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            _buildChatButton(),
+        ],
       ),
     );
   }

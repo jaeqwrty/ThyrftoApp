@@ -1,63 +1,28 @@
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:path/path.dart' as path;
 import 'package:image_picker/image_picker.dart';
+import 'package:thryfto/core/services/cloudinary_service.dart';
 
 class DatabaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final CloudinaryService _cloudinary = CloudinaryService();
 
   String? get currentUserId => _auth.currentUser?.uid;
 
-  // Upload images to Firebase Storage (for listings only)
+  // Upload listing images to Cloudinary
   Future<List<String>> uploadImages(
     List<XFile> imageFiles,
     String listingId,
   ) async {
-    List<String> imageUrls = [];
-
     try {
-      for (int i = 0; i < imageFiles.length; i++) {
-        final file = imageFiles[i];
-        final fileName = '${listingId}_$i${path.extension(file.path)}';
-        final storageRef =
-            _storage.ref().child('listings/$listingId/$fileName');
-
-        // Upload file
-        final bytes = await file.readAsBytes();
-        final uploadTask = await storageRef.putData(
-          bytes,
-          SettableMetadata(
-            contentType: _getContentType(file.name),
-          ),
-        );
-
-        // Get download URL
-        final downloadUrl = await uploadTask.ref.getDownloadURL();
-        imageUrls.add(downloadUrl);
-      }
-
-      return imageUrls;
+      final urls = await _cloudinary.uploadImages(
+        imageFiles,
+        folder: 'listings/$listingId',
+      );
+      return urls;
     } catch (e) {
       throw Exception('Failed to upload images: $e');
-    }
-  }
-
-  // Get content type based on file extension
-  String _getContentType(String filePath) {
-    final ext = path.extension(filePath).toLowerCase();
-    switch (ext) {
-      case '.jpg':
-      case '.jpeg':
-        return 'image/jpeg';
-      case '.png':
-        return 'image/png';
-      case '.gif':
-        return 'image/gif';
-      default:
-        return 'image/jpeg';
     }
   }
 
@@ -123,6 +88,7 @@ class DatabaseService {
         'success': true,
         'message': 'Listing created successfully',
         'listingId': listingId,
+        'imageUrls': imageUrls,
       };
     } catch (e) {
       return {
@@ -324,15 +290,9 @@ class DatabaseService {
     }
   }
 
-  // Delete listing images
+  // No-op: Cloudinary asset deletion is handled server-side / via dashboard.
   Future<void> deleteListingImages(String listingId) async {
-    try {
-      final listingFolder = _storage.ref().child('listings/$listingId');
-      final listResult = await listingFolder.listAll();
-      for (var item in listResult.items) {
-        await item.delete();
-      }
-    } catch (e) {}
+    return;
   }
 
   // Delete listing

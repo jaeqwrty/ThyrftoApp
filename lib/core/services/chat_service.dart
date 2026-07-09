@@ -1,77 +1,35 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path/path.dart' as path;
+import 'package:thryfto/core/services/cloudinary_service.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final CloudinaryService _cloudinary = CloudinaryService();
 
   String? get currentUserId => _auth.currentUser?.uid;
 
-  // Upload chat image to Firebase Storage
+  // Upload chat image to Cloudinary
   Future<String?> uploadChatImage({
     required XFile imageFile,
     required String chatId,
   }) async {
     try {
       if (currentUserId == null) return null;
-
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final ext = path.extension(imageFile.name).isEmpty
-          ? '.jpg'
-          : path.extension(imageFile.name);
-      final fileName = 'chat_${chatId}_${timestamp}$ext';
-
-      final storageRef = _storage.ref().child('chats/$chatId/$fileName');
-      final bytes = await imageFile.readAsBytes();
-
-      final uploadTask = await storageRef.putData(
-        bytes,
-        SettableMetadata(
-          contentType: _getContentType(imageFile.name),
-          customMetadata: {
-            'uploadedBy': currentUserId!,
-            'uploadedAt': DateTime.now().toIso8601String(),
-          },
-        ),
+      final url = await _cloudinary.uploadImage(
+        imageFile,
+        folder: 'chats/$chatId',
       );
-
-      return await uploadTask.ref.getDownloadURL();
+      return url;
     } catch (e) {
-      print('Error uploading chat image: $e');
       return null;
     }
   }
 
-  String _getContentType(String filePath) {
-    final ext = path.extension(filePath).toLowerCase();
-    switch (ext) {
-      case '.jpg':
-      case '.jpeg':
-        return 'image/jpeg';
-      case '.png':
-        return 'image/png';
-      case '.gif':
-        return 'image/gif';
-      case '.webp':
-        return 'image/webp';
-      default:
-        return 'image/jpeg';
-    }
-  }
-
+  // No-op: Cloudinary asset deletion is handled server-side / via dashboard.
   Future<bool> deleteChatImage(String imageUrl) async {
-    try {
-      final ref = _storage.refFromURL(imageUrl);
-      await ref.delete();
-      return true;
-    } catch (e) {
-      print('Error deleting chat image: $e');
-      return false;
-    }
+    return true;
   }
 
   /// Get existing chat ID or create new one - ALWAYS returns a chat ID
@@ -96,9 +54,9 @@ class ChatService {
 
           // If user deleted this chat, check if we should restore or create new
           if (deletedFor.contains(currentUserId)) {
-            final deletedForTimestamps = 
+            final deletedForTimestamps =
                 chatData['deletedForTimestamps'] as Map<String, dynamic>?;
-            final deletionTimestamp = 
+            final deletionTimestamp =
                 deletedForTimestamps?[currentUserId] as Timestamp?;
 
             if (deletionTimestamp != null) {
@@ -113,7 +71,8 @@ class ChatService {
 
               // If no messages after deletion, don't restore - create new chat instead
               if (messagesAfterDeletion.docs.isEmpty) {
-                print('Old chat was deleted with no new messages - creating fresh chat');
+                print(
+                    'Old chat was deleted with no new messages - creating fresh chat');
                 // Don't restore this old chat, create a new one below
                 continue;
               }
@@ -176,12 +135,12 @@ class ChatService {
       final chatData = chatDoc.data()!;
       final participants = List<String>.from(chatData['participants']);
       final deletedFor = List<String>.from(chatData['deletedFor'] ?? []);
-      
+
       // Check if current user already deleted it
       if (deletedFor.contains(currentUserId)) {
         return true; // Already deleted for this user
       }
-      
+
       // Mark as deleted for current user with timestamp
       await _firestore.collection('chats').doc(chatId).update({
         'deletedFor': FieldValue.arrayUnion([currentUserId]),
@@ -190,7 +149,7 @@ class ChatService {
 
       // Check if both users have now deleted it
       deletedFor.add(currentUserId!);
-      
+
       if (deletedFor.length >= participants.length) {
         // Both users deleted it - permanently delete the chat and all messages
         final messagesSnapshot = await _firestore
@@ -201,12 +160,13 @@ class ChatService {
 
         for (var messageDoc in messagesSnapshot.docs) {
           final messageData = messageDoc.data();
-          
+
           // Delete image if it exists
-          if (messageData['type'] == 'image' && messageData['imageUrl'] != null) {
+          if (messageData['type'] == 'image' &&
+              messageData['imageUrl'] != null) {
             await deleteChatImage(messageData['imageUrl']);
           }
-          
+
           await messageDoc.reference.delete();
         }
 

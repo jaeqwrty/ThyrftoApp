@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/providers/auth_providers.dart';
 import 'package:thryfto/features/auth/widgets/auth_widgets.dart';
+import 'package:thryfto/core/utils/snackbar_utils.dart';
 
 class ForgotPasswordPage extends ConsumerStatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -41,21 +42,18 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
           _emailSent = true;
           _isLoading = false;
         });
+        SnackbarUtils.showSuccess(context, result['message']);
       } else {
         setState(() => _isLoading = false);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result['message'])),
-          );
+          SnackbarUtils.showError(context, result['message']);
         }
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('An unexpected error occurred.')),
-        );
+        SnackbarUtils.showError(context, 'An unexpected error occurred: $e');
       }
     }
   }

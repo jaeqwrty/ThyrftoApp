@@ -30,7 +30,10 @@ dependencies:
   googleapis_auth: ^1.4.0
   flutter_riverpod: ^2.4.0
   riverpod_annotation: ^2.3.0
-
+  cloudinary_flutter: ^1.2.0   # official Cloudinary SDK with widgets
+  cloudinary_url_gen: ^1.2.0   # for building transformation URLs
+  cloudinary_public: ^0.23.1
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter

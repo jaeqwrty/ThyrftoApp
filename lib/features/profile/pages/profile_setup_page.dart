@@ -10,9 +10,9 @@ import 'package:thryfto/core/utils/common_modals.dart';
 import 'package:thryfto/core/utils/snackbar_utils.dart';
 import 'package:thryfto/core/providers/auth_providers.dart';
 import 'package:thryfto/core/services/location_service.dart';
-import 'package:thryfto/shared/widgets/main_navigation.dart';
 import 'package:thryfto/core/services/map_location.dart';
 import 'package:thryfto/core/services/profile_picture_service.dart';
+import 'package:thryfto/features/auth/pages/happy_thrifting_page.dart';
 
 class ProfileSetupPage extends ConsumerStatefulWidget {
   const ProfileSetupPage({super.key});
@@ -305,11 +305,11 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
           print('✅ User profile fetched');
           print('   Profile image URL: ${userProfile['profileImageUrl']}');
 
-          // Navigate to main app
+          // Navigate to Happy Thrifting confirmation page
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
-                builder: (context) => MainNavigation(user: userProfile)),
+                builder: (context) => HappyThriftingPage(userProfile: userProfile)),
             (route) => false,
           );
         } else {

@@ -14,6 +14,8 @@ Widget buildCustomTextField({
   TextInputType? keyboardType,
   String? Function(String?)? validator,
   int maxLines = 1,
+  EdgeInsetsGeometry? contentPadding,
+  double? fontSize,
 }) {
   return TextFormField(
     controller: controller,
@@ -22,16 +24,16 @@ Widget buildCustomTextField({
     validator: validator,
     maxLines: isPassword ? 1 : maxLines,
     minLines: isPassword ? 1 : (maxLines == 1 ? 1 : 3),
-    style: const TextStyle(
+    style: TextStyle(
       fontFamily: 'SF Pro Display',
-      fontSize: 14,
+      fontSize: fontSize ?? 14,
       color: AppColors.textPrimary,
     ),
     decoration: InputDecoration(
       hintText: hintText,
       hintStyle: TextStyle(
         color: AppColors.textSecondary,
-        fontSize: 14,
+        fontSize: fontSize ?? 14,
         fontFamily: 'SF Pro Display',
       ),
       errorStyle: const TextStyle(
@@ -57,7 +59,7 @@ Widget buildCustomTextField({
           : suffixIcon,
       filled: true,
       fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(
+      contentPadding: contentPadding ?? const EdgeInsets.symmetric(
         horizontal: 20,
         vertical: 16,
       ),

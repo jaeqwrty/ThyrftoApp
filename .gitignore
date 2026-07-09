@@ -48,3 +48,5 @@ app.*.map.json
 lib/core/services/api_keys.dart
 lib/firebase_options.dart
 DEFENSE_PREPARATION.md
+
+jdk17
