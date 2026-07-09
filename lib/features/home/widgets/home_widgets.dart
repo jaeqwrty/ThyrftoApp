@@ -89,24 +89,15 @@ class _PostCardState extends State<PostCard>
             }
 
             return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: const Color(0xFFF1F5F9), // Slate 100 border
-                  width: 1,
+                border: Border(
+                  top: BorderSide(color: Color(0xFFE5E7EB), width: 0.7),
+                  bottom: BorderSide(color: Color(0xFFE5E7EB), width: 0.7),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -156,7 +147,8 @@ class _PostCardState extends State<PostCard>
                         );
                       },
                       onDoubleTapLike: () {
-                        widget.db.toggleLikeWithNotification(widget.listing['id']);
+                        widget.db
+                            .toggleLikeWithNotification(widget.listing['id']);
                       },
                     ),
 
@@ -300,7 +292,7 @@ class PostUserHeader extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // Triple dot action options button
           IconButton(
             icon: const Icon(
@@ -330,7 +322,8 @@ class PostUserHeader extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
                       ListTile(
-                        leading: const Icon(Icons.share_outlined, color: Colors.black87),
+                        leading: const Icon(Icons.share_outlined,
+                            color: Colors.black87),
                         title: const Text('Share Listing'),
                         onTap: () {
                           Navigator.pop(context);
@@ -342,11 +335,14 @@ class PostUserHeader extends StatelessWidget {
                         },
                       ),
                       ListTile(
-                        leading: const Icon(Icons.flag_outlined, color: Colors.red),
-                        title: const Text('Report Listing', style: TextStyle(color: Colors.red)),
+                        leading:
+                            const Icon(Icons.flag_outlined, color: Colors.red),
+                        title: const Text('Report Listing',
+                            style: TextStyle(color: Colors.red)),
                         onTap: () {
                           Navigator.pop(context);
-                          SnackbarUtils.showSuccess(context, 'Thank you! Listing reported.');
+                          SnackbarUtils.showSuccess(
+                              context, 'Thank you! Listing reported.');
                         },
                       ),
                     ],
@@ -384,7 +380,8 @@ class PostImage extends StatefulWidget {
   State<PostImage> createState() => _PostImageState();
 }
 
-class _PostImageState extends State<PostImage> with SingleTickerProviderStateMixin {
+class _PostImageState extends State<PostImage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _heartAnimController;
   late Animation<double> _heartScale;
   late Animation<double> _heartFade;
@@ -473,7 +470,7 @@ class _PostImageState extends State<PostImage> with SingleTickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     final hasImages = widget.imageUrls != null && widget.imageUrls!.isNotEmpty;
-    
+
     return GestureDetector(
       onTap: widget.onTap,
       onDoubleTap: _triggerDoubleTap,
@@ -481,31 +478,32 @@ class _PostImageState extends State<PostImage> with SingleTickerProviderStateMix
         alignment: Alignment.center,
         children: [
           // Image render
-          Container(
-            height: 380,
-            width: double.infinity,
-            color: const Color(0xFFF8FAFC), // Slate 50 background placeholder
-            child: hasImages
-                ? Image.network(
-                    widget.imageUrls![0],
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                              : null,
-                          strokeWidth: 2.5,
-                          color: AppColors.primary,
-                        ),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) =>
-                        const ImagePlaceholder(size: 45),
-                  )
-                : const ImagePlaceholder(size: 45),
+          AspectRatio(
+            aspectRatio: 4 / 3,
+            child: ColoredBox(
+              color: const Color(0xFFF8FAFC),
+              child: hasImages
+                  ? Image.network(
+                      widget.imageUrls![0],
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                            strokeWidth: 2.5,
+                            color: AppColors.primary,
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) =>
+                          const ImagePlaceholder(size: 45),
+                    )
+                  : const ImagePlaceholder(size: 45),
+            ),
           ),
 
           // Double tap heartbeat pulse heart overlay
@@ -545,7 +543,8 @@ class _PostImageState extends State<PostImage> with SingleTickerProviderStateMix
                 // Top-Left Distance Tag
                 if (widget.distanceText != null &&
                     widget.distanceText != 'Location unavailable')
-                  _buildGlassBadge(widget.distanceText!, Icons.location_on_rounded)
+                  _buildGlassBadge(
+                      widget.distanceText!, Icons.location_on_rounded)
                 else
                   const SizedBox.shrink(),
 
@@ -554,7 +553,8 @@ class _PostImageState extends State<PostImage> with SingleTickerProviderStateMix
                   children: [
                     if (widget.listing['status'] == 'sold')
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: const Color(0xFFEF4444), // Crimson Red
                           borderRadius: BorderRadius.circular(8),
@@ -575,10 +575,12 @@ class _PostImageState extends State<PostImage> with SingleTickerProviderStateMix
                           ),
                         ),
                       ),
-                    if (widget.listing['status'] == 'sold' && widget.imageCount > 1)
+                    if (widget.listing['status'] == 'sold' &&
+                        widget.imageCount > 1)
                       const SizedBox(width: 6),
                     if (widget.imageCount > 1)
-                      _buildGlassBadge('${widget.imageCount}', Icons.photo_library_rounded),
+                      _buildGlassBadge(
+                          '${widget.imageCount}', Icons.photo_library_rounded),
                   ],
                 ),
               ],
@@ -591,9 +593,11 @@ class _PostImageState extends State<PostImage> with SingleTickerProviderStateMix
             left: 12,
             child: Row(
               children: [
-                _buildGlassBadge(widget.listing['size'] ?? 'N/A', Icons.straighten_rounded),
+                _buildGlassBadge(
+                    widget.listing['size'] ?? 'N/A', Icons.straighten_rounded),
                 const SizedBox(width: 6),
-                _buildGlassBadge(widget.listing['condition'] ?? 'N/A', Icons.stars_rounded),
+                _buildGlassBadge(
+                    widget.listing['condition'] ?? 'N/A', Icons.stars_rounded),
               ],
             ),
           ),
@@ -630,13 +634,11 @@ class PostActions extends StatelessWidget {
             db: db,
           ),
           const SizedBox(width: 6),
-
           CommentButtonOptimized(
             listingId: listingId,
             user: user,
           ),
           const SizedBox(width: 6),
-
           InkWell(
             onTap: () {
               showModalBottomSheet(
@@ -759,8 +761,12 @@ class _LikeButtonOptimizedState extends State<LikeButtonOptimized>
                         return Transform.scale(
                           scale: _scaleAnimation.value,
                           child: Icon(
-                            isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                            color: isLiked ? const Color(0xFFEF4444) : const Color(0xFF475569),
+                            isLiked
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            color: isLiked
+                                ? const Color(0xFFEF4444)
+                                : const Color(0xFF475569),
                             size: 23,
                           ),
                         );
@@ -899,7 +905,9 @@ class _BookmarkButtonOptimizedState extends State<BookmarkButtonOptimized>
               if (mounted) {
                 SnackbarUtils.showSuccess(
                   context,
-                  isBookmarked ? 'Removed from bookmarks' : 'Added to bookmarks',
+                  isBookmarked
+                      ? 'Removed from bookmarks'
+                      : 'Added to bookmarks',
                 );
               }
             } catch (e) {
@@ -912,7 +920,9 @@ class _BookmarkButtonOptimizedState extends State<BookmarkButtonOptimized>
           child: Padding(
             padding: const EdgeInsets.all(6),
             child: Icon(
-              isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+              isBookmarked
+                  ? Icons.bookmark_rounded
+                  : Icons.bookmark_border_rounded,
               color: isBookmarked ? AppColors.primary : const Color(0xFF475569),
               size: 22,
             ),
@@ -1029,7 +1039,9 @@ class PostDescription extends StatelessWidget {
             ),
             children: [
               TextSpan(
-                text: isOverflowing ? '${description.substring(0, maxLength)}...' : description,
+                text: isOverflowing
+                    ? '${description.substring(0, maxLength)}...'
+                    : description,
               ),
               if (isOverflowing)
                 TextSpan(
@@ -1126,7 +1138,8 @@ class _PostCtaRowState extends State<PostCtaRow> {
     setState(() => _isOpeningChat = true);
     try {
       final chatService = ChatService();
-      final chatId = await chatService.getOrCreateChat(widget.listing['seller_id']);
+      final chatId =
+          await chatService.getOrCreateChat(widget.listing['seller_id']);
 
       if (!mounted) return;
       setState(() => _isOpeningChat = false);
@@ -1144,7 +1157,8 @@ class _PostCtaRowState extends State<PostCtaRow> {
           ),
         );
       } else {
-        SnackbarUtils.showError(context, 'Failed to open chat. Please try again.');
+        SnackbarUtils.showError(
+            context, 'Failed to open chat. Please try again.');
       }
     } catch (e) {
       if (mounted) {
@@ -1174,7 +1188,7 @@ class _PostCtaRowState extends State<PostCtaRow> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          
+
           // Right CTA button
           if (isSeller)
             InkWell(
@@ -1191,7 +1205,8 @@ class _PostCtaRowState extends State<PostCtaRow> {
               },
               borderRadius: BorderRadius.circular(20),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F5F9), // Slate 100
                   borderRadius: BorderRadius.circular(20),
