@@ -11,7 +11,6 @@ import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/utils/common_modals.dart';
 import 'package:thryfto/core/services/database_service.dart';
 import 'package:thryfto/core/services/favorite_service.dart';
-import 'package:thryfto/core/services/image_validation_service.dart';
 import 'package:thryfto/core/utils/snackbar_utils.dart';
 
 class SellPage extends StatefulWidget {
@@ -32,7 +31,6 @@ class _SellPageState extends State<SellPage> {
   final _descriptionController = TextEditingController();
   final _sizeController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
-  final ImageValidationService _imageValidation = ImageValidationService();
 
   List<XFile> _selectedImages = [];
   String _selectedCondition = 'New';
@@ -41,7 +39,12 @@ class _SellPageState extends State<SellPage> {
   static const int _maxImages = 5;
 
   final List<String> _conditions = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
-  final List<String> _categories = ['Clothing', 'Shoewear', 'Accessories', 'Bags'];
+  final List<String> _categories = [
+    'Clothing',
+    'Shoewear',
+    'Accessories',
+    'Bags'
+  ];
 
   @override
   void dispose() {
@@ -156,16 +159,6 @@ class _SellPageState extends State<SellPage> {
     setState(() => _isLoading = true);
 
     try {
-      // Validate images first
-      final validationResult =
-          await _imageValidation.validateImages(_selectedImages);
-
-      if (!validationResult['isValid']) {
-        setState(() => _isLoading = false);
-        SnackbarUtils.showError(context, validationResult['message']);
-        return;
-      }
-
       final userId = widget.user['id'] ?? widget.user['uid'];
       final listingTitle = _titleController.text.trim();
       final listingPrice = double.parse(_priceController.text.trim());

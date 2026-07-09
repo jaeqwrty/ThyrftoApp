@@ -9,7 +9,6 @@ import 'package:thryfto/features/listings/widgets/listing_form_fields.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/utils/snackbar_utils.dart';
 import 'package:thryfto/core/services/database_service.dart';
-import 'package:thryfto/core/services/image_validation_service.dart';
 
 class EditListingPage extends StatefulWidget {
   final Map<String, dynamic> listing;
@@ -27,7 +26,6 @@ class EditListingPage extends StatefulWidget {
 
 class _EditListingPageState extends State<EditListingPage> {
   final DatabaseService _db = DatabaseService();
-  final ImageValidationService _imageValidation = ImageValidationService();
   final _formKey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
 
@@ -138,18 +136,6 @@ class _EditListingPageState extends State<EditListingPage> {
     setState(() => _isLoading = true);
 
     try {
-      if (_newImageFiles.isNotEmpty) {
-        final validationResult =
-            await _imageValidation.validateImages(_newImageFiles);
-
-        if (!validationResult['isValid']) {
-          setState(() => _isLoading = false);
-          if (!mounted) return;
-          SnackbarUtils.showError(context, validationResult['message']);
-          return;
-        }
-      }
-
       final result = await _db.updateListing(
         listingId: widget.listing['id'],
         title: _titleController.text.trim(),
