@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
-import 'package:thryfto/core/utils/common_dialogs.dart';
-import 'package:thryfto/features/chat/pages/conversation_page.dart';
-import 'package:thryfto/features/profile/pages/profile_page.dart';
-import 'package:thryfto/features/profile/pages/user_profile_page.dart';
 import 'package:thryfto/core/services/chat_service.dart';
 import 'package:thryfto/core/services/database_service.dart';
-import 'package:thryfto/features/listings/pages/edit_listing_page.dart';
-import 'package:thryfto/shared/widgets/share_modal.dart';
-import 'package:thryfto/core/services/location_service.dart';
 import 'package:thryfto/core/services/listing_status_service.dart';
+import 'package:thryfto/core/services/location_service.dart';
+import 'package:thryfto/core/utils/common_dialogs.dart';
 import 'package:thryfto/core/utils/snackbar_utils.dart';
+import 'package:thryfto/features/chat/pages/conversation_page.dart';
+import 'package:thryfto/features/listings/pages/edit_listing_page.dart';
+import 'package:thryfto/features/profile/pages/profile_page.dart';
+import 'package:thryfto/features/profile/pages/user_profile_page.dart';
+import 'package:thryfto/shared/widgets/share_modal.dart';
 
 class ListingDetailPage extends StatefulWidget {
   final Map<String, dynamic> listing;
@@ -27,19 +27,46 @@ class ListingDetailPage extends StatefulWidget {
 }
 
 class _ListingDetailPageState extends State<ListingDetailPage> {
+  static const Color _ink = Color(0xFF17131F);
+  static const Color _mutedInk = Color(0xFF625A70);
+  static const Color _pageTint = Color(0xFFF6F3F8);
+  static const Color _line = Color(0xFFE5DFEC);
+  static const Color _wine = Color(0xFF5B2A6F);
+  static const Color _gilt = Color(0xFFA8752A);
+
   final DatabaseService _db = DatabaseService();
   final ChatService _chatService = ChatService();
+  final ListingStatusService _statusService = ListingStatusService();
+
   int _currentImageIndex = 0;
   bool _isLiked = false;
   bool _isBookmarked = false;
   int _likeCount = 0;
-  final ListingStatusService _statusService = ListingStatusService();
   bool _isSoldProcessing = false;
 
   @override
   void initState() {
     super.initState();
     _loadInteractionStatus();
+  }
+
+  Future<void> _loadInteractionStatus() async {
+    final listingId = widget.listing['id'];
+    if (listingId == null) return;
+
+    try {
+      final liked = await _db.isListingLiked(listingId);
+      final bookmarked = await _db.isListingBookmarked(listingId);
+      if (!mounted) return;
+
+      setState(() {
+        _isLiked = liked;
+        _isBookmarked = bookmarked;
+        _likeCount = widget.listing['likes'] ?? 0;
+      });
+    } catch (_) {
+      // The live streams still keep the page usable if this eager load fails.
+    }
   }
 
   Future<void> _handleMarkAsSold() async {
@@ -51,37 +78,18 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
       confirmText: 'Confirm',
     );
 
-    if (confirmed == true) {
-      setState(() => _isSoldProcessing = true);
-      final success = await _statusService.markAsSold(widget.listing['id']);
-      if (mounted) {
-        setState(() => _isSoldProcessing = false);
-        if (success) {
-          SnackbarUtils.showSuccess(context, 'Listing marked as sold!');
-        } else {
-          SnackbarUtils.showError(context, 'Failed to update status');
-        }
-      }
-    }
-  }
+    if (confirmed != true) return;
 
-  Future<void> _loadInteractionStatus() async {
-    final listingId = widget.listing['id'];
-    if (listingId != null) {
-      try {
-        final liked = await _db.isListingLiked(listingId);
-        final bookmarked = await _db.isListingBookmarked(listingId);
-        if (mounted) {
-          setState(() {
-            _isLiked = liked;
-            _isBookmarked = bookmarked;
-          });
-        }
-        print(
-            'Loaded interaction status - Liked: $liked, Bookmarked: $bookmarked');
-      } catch (e) {
-        print('Error loading interaction status: $e');
-      }
+    setState(() => _isSoldProcessing = true);
+    final success = await _statusService.markAsSold(widget.listing['id']);
+
+    if (!mounted) return;
+    setState(() => _isSoldProcessing = false);
+
+    if (success) {
+      SnackbarUtils.showSuccess(context, 'Listing marked as sold!');
+    } else {
+      SnackbarUtils.showError(context, 'Failed to update status');
     }
   }
 
@@ -92,803 +100,855 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
     final isOwnListing = widget.listing['seller_id'] == _db.currentUserId;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _pageTint,
       body: CustomScrollView(
         slivers: [
-          // App Bar with Image
           SliverAppBar(
-            expandedHeight: 400,
+            expandedHeight: 360,
             pinned: true,
-            backgroundColor: Colors.white,
-            leading: IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.arrow_back, color: Colors.black87),
-              ),
+            elevation: 0,
+            backgroundColor: _ink,
+            surfaceTintColor: _ink,
+            leading: _buildRoundIconButton(
+              icon: Icons.arrow_back,
               onPressed: () => Navigator.pop(context),
             ),
             actions: [
-              IconButton(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.share, color: Colors.black87),
-                ),
-                onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    backgroundColor: Colors.transparent,
-                    builder: (context) => ShareModal(listing: widget.listing),
-                  );
-                },
+              _buildRoundIconButton(
+                icon: Icons.share_outlined,
+                onPressed: _openShareSheet,
               ),
-              // ---- Bookmark ---
               StreamBuilder<bool>(
                 stream:
                     _db.isListingBookmarkedStream(widget.listing['id'] ?? ''),
                 initialData: _isBookmarked,
                 builder: (context, snapshot) {
-                  return IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                        color:
-                            _isBookmarked ? AppColors.primary : Colors.black87,
-                      ),
-                    ),
-                    onPressed: () async {
-                      final listingId = widget.listing['id'];
-                      print('Bookmark button tapped! Listing ID: $listingId');
-                      print('Current bookmark state: $_isBookmarked');
-
-                      if (listingId != null) {
-                        try {
-                          await _db.toggleBookmark(listingId);
-
-                          // Update local state
-                          setState(() {
-                            _isBookmarked = !_isBookmarked;
-                          });
-
-                          print(
-                              'Bookmark toggled successfully! New state: $_isBookmarked');
-
-                          if (mounted) {
-                            SnackbarUtils.showBookmark(context, _isBookmarked);
-                          }
-                        } catch (e) {
-                          print('Error toggling bookmark: $e');
-                          if (mounted) {
-                            SnackbarUtils.showError(
-                                context, 'Failed to bookmark: $e');
-                          }
-                        }
-                      }
-                    },
+                  final isBookmarked = snapshot.data ?? _isBookmarked;
+                  return _buildRoundIconButton(
+                    icon: isBookmarked
+                        ? Icons.bookmark
+                        : Icons.bookmark_border_rounded,
+                    color: isBookmarked ? AppColors.primary : Colors.black87,
+                    onPressed: () => _toggleBookmark(isBookmarked),
                   );
                 },
               ),
+              const SizedBox(width: 8),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              background: hasImages
-                  ? Stack(
-                      children: [
-                        PageView.builder(
-                          itemCount: imageUrls.length,
-                          onPageChanged: (index) {
-                            setState(() => _currentImageIndex = index);
-                          },
-                          itemBuilder: (context, index) {
-                            return Image.network(
-                              imageUrls[index],
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  _buildImagePlaceholder(),
-                            );
-                          },
-                        ),
-                        if (imageUrls.length > 1)
-                          Positioned(
-                            bottom: 16,
-                            left: 0,
-                            right: 0,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: List.generate(
-                                imageUrls.length,
-                                (index) => Container(
-                                  margin:
-                                      const EdgeInsets.symmetric(horizontal: 4),
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: _currentImageIndex == index
-                                        ? AppColors.primary
-                                        : Colors.white.withOpacity(0.5),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    )
-                  : _buildImagePlaceholder(),
+              background: _buildImageGallery(imageUrls, hasImages),
             ),
           ),
-          // Content
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(15),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Price and Like
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '₱ ${widget.listing['price']?.toStringAsFixed(2) ?? '0.00'}',
-                        style: const TextStyle(
-                          fontSize: 23,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      StreamBuilder<bool>(
-                        stream: _db
-                            .isListingLikedStream(widget.listing['id'] ?? ''),
-                        initialData: _isLiked,
-                        builder: (context, likeSnapshot) {
-                          final isLiked = likeSnapshot.data ?? _isLiked;
-
-                          return StreamBuilder<Map<String, dynamic>?>(
-                            stream: _db
-                                .getListingStream(widget.listing['id'] ?? ''),
-                            builder: (context, listingSnapshot) {
-                              final currentLikes =
-                                  listingSnapshot.data?['likes'] ?? _likeCount;
-
-                              return Row(
-                                children: [
-                                  IconButton(
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    visualDensity: VisualDensity.compact,
-                                    icon: Icon(
-                                      isLiked
-                                          ? Icons.favorite
-                                          : Icons.favorite_border,
-                                      color: isLiked ? Colors.red : Colors.grey,
-                                      size: 28,
-                                    ),
-                                    onPressed: () async {
-                                      final listingId = widget.listing['id'];
-                                      if (listingId != null) {
-                                        await _db.toggleLikeWithNotification(
-                                            listingId);
-                                      }
-                                    },
-                                  ),
-                                  Text(
-                                    '$currentLikes',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 0),
-                  // Title
-                  Text(
-                    widget.listing['title'] ?? 'No title',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Tags
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _buildTag(widget.listing['size'] ?? 'N/A',
-                          Colors.purple.shade50, AppColors.primary),
-                      _buildTag(widget.listing['condition'] ?? 'N/A',
-                          Colors.green.shade50, Colors.green.shade700),
-                      _buildTag(widget.listing['category'] ?? 'Other',
-                          Colors.blue.shade50, Colors.blue.shade700),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  // Description
-                  const Text(
-                    'Description',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.listing['description'] ??
-                        'No description available.',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[700],
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-
-                  if (isOwnListing) ...[
-                    // OWNER VIEW: Show "Listing Status" instead of Seller Info
-                    const Text(
-                      'Listing Status',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 12),
-                    StreamBuilder<Map<String, dynamic>?>(
-                      stream: _db.getListingStream(widget.listing['id'] ?? ''),
-                      builder: (context, snapshot) {
-                        final listingData = snapshot.data ?? widget.listing;
-                        final isSold = listingData['status'] == 'sold';
-
-                        return Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: isSold
-                                ? Colors.grey[100]
-                                : Colors.orange.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSold
-                                  ? Colors.grey.shade300
-                                  : Colors.orange.shade200,
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              if (isSold)
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.check_circle,
-                                        color: Colors.grey[600]),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Item Sold',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              else
-                                Column(
-                                  children: [
-                                    const Text(
-                                      'Is this item sold?',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.w500),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton.icon(
-                                        onPressed: _isSoldProcessing
-                                            ? null
-                                            : _handleMarkAsSold,
-                                        icon: _isSoldProcessing
-                                            ? const SizedBox(
-                                                width: 20,
-                                                height: 20,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                        strokeWidth: 2))
-                                            : const Icon(Icons.sell),
-                                        label: const Text('Mark as Sold'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppColors.primary,
-                                          foregroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12)),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ] else ...[
-                    // BUYER VIEW: Show standard Seller Section
-                    const Text(
-                      'Seller',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 12),
-                    const SizedBox(height: 12),
-                    StreamBuilder<Map<String, dynamic>?>(
-                      stream:
-                          _db.getUserProfileStream(widget.listing['seller_id']),
-                      builder: (context, sellerSnapshot) {
-                        if (sellerSnapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[50],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          );
-                        }
-
-                        final seller = sellerSnapshot.data;
-                        final sellerName = seller?['fullName'] ??
-                            seller?['full_name'] ??
-                            seller?['username'] ??
-                            widget.listing['seller_name'] ??
-                            'Unknown Seller';
-                        final profileImageUrl =
-                            seller?['profileImageUrl'] as String?;
-
-                        // REAL-TIME LOCATION: Get location directly from seller data stream
-                        String locationDisplay = 'Location not set';
-                        bool hasLocation = false;
-
-                        if (seller != null) {
-                          // Check for direct latitude/longitude fields (current structure)
-                          if (seller['latitude'] != null &&
-                              seller['longitude'] != null &&
-                              seller['address'] != null &&
-                              seller['address'].toString().isNotEmpty) {
-                            locationDisplay = seller['address'];
-                            hasLocation = true;
-                          }
-                          // Fall back to cityState field
-                          else if (seller['cityState'] != null &&
-                              seller['cityState'].toString().isNotEmpty) {
-                            locationDisplay = seller['cityState'];
-                            hasLocation = true;
-                          }
-                          // Fall back to nested location object (old structure)
-                          else if (seller['location'] != null) {
-                            final location =
-                                seller['location'] as Map<String, dynamic>;
-                            if (location['latitude'] != null &&
-                                location['longitude'] != null &&
-                                location['address'] != null &&
-                                location['address'].toString().isNotEmpty) {
-                              locationDisplay = location['address'];
-                              hasLocation = true;
-                            }
-                          }
-                        }
-
-                        return GestureDetector(
-                          onTap: () {
-                            final sellerId = widget.listing['seller_id'];
-                            if (sellerId != null) {
-                              // Check if the seller is the current user
-                              if (sellerId == _db.currentUserId) {
-                                // Navigate to ProfilePage (the current user's own profile)
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) =>
-                                          ProfilePage(user: widget.user)),
-                                );
-                              } else {
-                                // Navigate to UserProfilePage for other users
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => UserProfilePage(
-                                      userId: sellerId,
-                                      currentUser: widget.user,
-                                    ),
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[50],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    // Profile Avatar with Image
-                                    CircleAvatar(
-                                      radius: 25,
-                                      backgroundColor: AppColors.primary,
-                                      backgroundImage:
-                                          (profileImageUrl != null &&
-                                                  profileImageUrl.isNotEmpty)
-                                              ? NetworkImage(profileImageUrl)
-                                              : null,
-                                      child: (profileImageUrl == null ||
-                                              profileImageUrl.isEmpty)
-                                          ? Text(
-                                              sellerName[0].toUpperCase(),
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            )
-                                          : null,
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            sellerName,
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.location_on_outlined,
-                                                size: 14,
-                                                color: hasLocation
-                                                    ? AppColors.primary
-                                                    : Colors.grey[400],
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Expanded(
-                                                child: Text(
-                                                  locationDisplay,
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    color: hasLocation
-                                                        ? Colors.grey[600]
-                                                        : Colors.grey[400],
-                                                    fontStyle: hasLocation
-                                                        ? FontStyle.normal
-                                                        : FontStyle.italic,
-                                                  ),
-                                                  maxLines: 2,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Icon(Icons.chevron_right,
-                                        color: Colors.grey[400]),
-                                  ],
-                                ),
-
-                                // Show distance if available (this also updates in real-time)
-                                StreamBuilder<Map<String, dynamic>?>(
-                                  stream: _db.getUserProfileStream(
-                                      _db.currentUserId ?? ''),
-                                  builder: (context, currentUserSnapshot) {
-                                    // Get current user's location from stream
-                                    final currentUser =
-                                        currentUserSnapshot.data;
-                                    double? currentUserLat;
-                                    double? currentUserLon;
-
-                                    if (currentUser != null) {
-                                      if (currentUser['latitude'] != null &&
-                                          currentUser['longitude'] != null) {
-                                        currentUserLat =
-                                            currentUser['latitude'] as double?;
-                                        currentUserLon =
-                                            currentUser['longitude'] as double?;
-                                      } else if (currentUser['location'] !=
-                                          null) {
-                                        final loc = currentUser['location']
-                                            as Map<String, dynamic>;
-                                        currentUserLat =
-                                            loc['latitude'] as double?;
-                                        currentUserLon =
-                                            loc['longitude'] as double?;
-                                      }
-                                    }
-
-                                    // Get listing location
-                                    final listingLocation =
-                                        widget.listing['location']
-                                            as Map<String, dynamic>?;
-
-                                    if (currentUserLat != null &&
-                                        currentUserLon != null &&
-                                        listingLocation != null &&
-                                        listingLocation['latitude'] != null &&
-                                        listingLocation['longitude'] != null) {
-                                      final distance =
-                                          LocationService().calculateDistance(
-                                        currentUserLat,
-                                        currentUserLon,
-                                        listingLocation['latitude'],
-                                        listingLocation['longitude'],
-                                      );
-
-                                      final distanceText = LocationService()
-                                          .formatDistance(distance);
-
-                                      return Container(
-                                        margin: const EdgeInsets.only(top: 12),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary
-                                              .withOpacity(0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                          border: Border.all(
-                                            color: AppColors.primary
-                                                .withOpacity(0.3),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(
-                                              Icons.near_me,
-                                              size: 16,
-                                              color: AppColors.primary,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              distanceText,
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                                color: AppColors.primary,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }
-                                    return const SizedBox.shrink();
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 100), // Space for bottom button
-                  ],
-                ],
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildListingSummary(),
+                _buildDescriptionSection(),
+                if (isOwnListing)
+                  _buildOwnerStatusSection()
+                else
+                  _buildSellerSection(),
+                const SizedBox(height: 96),
+              ],
             ),
-          )
+          ),
         ],
       ),
-      // Bottom Action Button
-      bottomNavigationBar: !isOwnListing
-          ? Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    // Show loading indicator
-                    if (!mounted) return;
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Row(
-                          children: [
-                            SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            ),
-                            SizedBox(width: 12),
-                            Text('Opening chat...'),
-                          ],
-                        ),
-                        duration: Duration(seconds: 1),
-                      ),
-                    );
-
-                    // Get or create chat - this ensures only one chat per user pair
-                    final chatId = await _chatService
-                        .getOrCreateChat(widget.listing['seller_id']);
-
-                    if (!mounted) return;
-
-                    // Clear loading message
-                    ScaffoldMessenger.of(context).clearSnackBars();
-
-                    if (chatId != null) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ConversationPage(
-                            chatId: chatId, // Always provide chat ID
-                            otherUserId: widget.listing['seller_id'],
-                            otherUserName:
-                                widget.listing['seller_name'] ?? 'Seller',
-                            currentUser: widget.user,
-                          ),
-                        ),
-                      );
-                    } else {
-                      SnackbarUtils.showError(
-                          context, 'Failed to open chat. Please try again.');
-                    }
-                  },
-                  icon: const Icon(Icons.message, size: 15),
-                  label: const Text(
-                    'Message Seller',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-            )
-          : Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          final result = await Navigator.push<bool>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EditListingPage(
-                                listing: widget.listing,
-                                user: widget.user,
-                              ),
-                            ),
-                          );
-                          if (result == true && mounted) {
-                            Navigator.pop(
-                                context); // Go back to refresh listing
-                          }
-                        },
-                        icon: const Icon(Icons.edit),
-                        label: const Text('Edit'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primary,
-                          side: const BorderSide(color: AppColors.primary),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => _handleDelete(),
-                        icon: const Icon(Icons.delete),
-                        label: const Text('Delete'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          elevation: 0,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+      bottomNavigationBar:
+          isOwnListing ? _buildOwnerBottomBar() : _buildBuyerBottomBar(),
     );
   }
 
-  Widget _buildTag(String text, Color bgColor, Color textColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
+  Widget _buildImageGallery(List<dynamic> imageUrls, bool hasImages) {
+    if (!hasImages) return _buildImagePlaceholder();
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        PageView.builder(
+          itemCount: imageUrls.length,
+          onPageChanged: (index) => setState(() => _currentImageIndex = index),
+          itemBuilder: (context, index) {
+            return Image.network(
+              imageUrls[index],
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  _buildImagePlaceholder(),
+            );
+          },
+        ),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0x99000000),
+                Color(0x22000000),
+                Color(0xAA000000),
+              ],
+              stops: [0, 0.48, 1],
+            ),
+          ),
+        ),
+        Positioned(
+          left: 18,
+          bottom: 18,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.22),
+                  ),
+                ),
+                child: const Text(
+                  'CURATED THRIFT',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (widget.listing['status'] == 'sold')
+          Positioned(
+            left: 16,
+            bottom: 58,
+            child: _buildOverlayPill('SOLD', Icons.check_circle),
+          ),
+        if (imageUrls.length > 1)
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: _buildOverlayPill(
+              '${_currentImageIndex + 1}/${imageUrls.length}',
+              Icons.photo_library_outlined,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildListingSummary() {
+    return _buildFlatSection(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'THRYFTO FIND',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.5,
+              color: _gilt,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  _formatPrice(widget.listing['price']),
+                  style: const TextStyle(
+                    fontSize: 29,
+                    fontWeight: FontWeight.w800,
+                    color: _wine,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+              _buildLikeButton(),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            widget.listing['title'] ?? 'No title',
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: _ink,
+              height: 1.15,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildAccentRule(),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildDetailPill(
+                  Icons.straighten, widget.listing['size'] ?? 'N/A'),
+              _buildDetailPill(Icons.verified_outlined,
+                  widget.listing['condition'] ?? 'N/A'),
+              _buildDetailPill(Icons.category_outlined,
+                  widget.listing['category'] ?? 'Other'),
+            ],
+          ),
+        ],
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 14,
-          color: textColor,
-          fontWeight: FontWeight.w600,
+    );
+  }
+
+  Widget _buildDescriptionSection() {
+    return _buildFlatSection(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle('Description'),
+          const SizedBox(height: 14),
+          Text(
+            widget.listing['description'] ?? 'No description available.',
+            style: const TextStyle(
+              fontSize: 15.5,
+              color: _mutedInk,
+              height: 1.6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOwnerStatusSection() {
+    return _buildFlatSection(
+      child: StreamBuilder<Map<String, dynamic>?>(
+        stream: _db.getListingStream(widget.listing['id'] ?? ''),
+        builder: (context, snapshot) {
+          final listingData = snapshot.data ?? widget.listing;
+          final isSold = listingData['status'] == 'sold';
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle('Listing Status'),
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    isSold ? Icons.check_circle : Icons.sell_outlined,
+                    color: isSold ? _mutedInk : _wine,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      isSold
+                          ? 'This listing is marked as sold.'
+                          : 'This listing is active and visible to shoppers.',
+                      style: const TextStyle(
+                        color: _mutedInk,
+                        fontSize: 15,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (!isSold) ...[
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _isSoldProcessing ? null : _handleMarkAsSold,
+                    icon: _isSoldProcessing
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.check),
+                    label: const Text('Mark as Sold'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: _wine),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSellerSection() {
+    return _buildFlatSection(
+      child: StreamBuilder<Map<String, dynamic>?>(
+        stream: _db.getUserProfileStream(widget.listing['seller_id']),
+        builder: (context, sellerSnapshot) {
+          if (sellerSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final seller = sellerSnapshot.data;
+          final sellerName = seller?['fullName'] ??
+              seller?['full_name'] ??
+              seller?['username'] ??
+              widget.listing['seller_name'] ??
+              'Unknown Seller';
+          final profileImageUrl = seller?['profileImageUrl'] as String?;
+          final location = _sellerLocation(seller);
+          final hasLocation = location != 'Location not set';
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle('Seller'),
+              const SizedBox(height: 14),
+              InkWell(
+                onTap: _openSellerProfile,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundColor: _wine,
+                        backgroundImage: (profileImageUrl != null &&
+                                profileImageUrl.isNotEmpty)
+                            ? NetworkImage(profileImageUrl)
+                            : null,
+                        child:
+                            (profileImageUrl == null || profileImageUrl.isEmpty)
+                                ? Text(
+                                    sellerName[0].toUpperCase(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 21,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  )
+                                : null,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              sellerName,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: _ink,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.location_on_outlined,
+                                  size: 15,
+                                  color: hasLocation
+                                      ? AppColors.primary
+                                      : _mutedInk,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    location,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      color: hasLocation
+                                          ? _mutedInk
+                                          : const Color(0xFF9B92A8),
+                                      fontStyle: hasLocation
+                                          ? FontStyle.normal
+                                          : FontStyle.italic,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: _gilt),
+                    ],
+                  ),
+                ),
+              ),
+              _buildDistanceBadge(),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLikeButton() {
+    return StreamBuilder<bool>(
+      stream: _db.isListingLikedStream(widget.listing['id'] ?? ''),
+      initialData: _isLiked,
+      builder: (context, likeSnapshot) {
+        final isLiked = likeSnapshot.data ?? _isLiked;
+
+        return StreamBuilder<Map<String, dynamic>?>(
+          stream: _db.getListingStream(widget.listing['id'] ?? ''),
+          builder: (context, listingSnapshot) {
+            final currentLikes = listingSnapshot.data?['likes'] ?? _likeCount;
+            return OutlinedButton.icon(
+              onPressed: () async {
+                final listingId = widget.listing['id'];
+                if (listingId != null) {
+                  await _db.toggleLikeWithNotification(listingId);
+                }
+              },
+              icon: Icon(
+                isLiked ? Icons.favorite : Icons.favorite_border,
+                size: 18,
+                color: isLiked ? Colors.red : _mutedInk,
+              ),
+              label: Text('$currentLikes'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _ink,
+                backgroundColor: const Color(0xFFFBFAFC),
+                side: const BorderSide(color: _line),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildBuyerBottomBar() {
+    return _buildBottomShell(
+      child: ElevatedButton.icon(
+        onPressed: _openChat,
+        icon: const Icon(Icons.message_outlined, size: 18),
+        label: const Text(
+          'Message Seller',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _ink,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 0,
         ),
       ),
     );
   }
 
-  Widget _buildImagePlaceholder() {
-    return Container(
-      color: Colors.grey[200],
-      child: Center(
-        child: Icon(Icons.image, size: 80, color: Colors.grey[400]),
+  Widget _buildOwnerBottomBar() {
+    return _buildBottomShell(
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                final result = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EditListingPage(
+                      listing: widget.listing,
+                      user: widget.user,
+                    ),
+                  ),
+                );
+                if (result == true && mounted) {
+                  Navigator.pop(context);
+                }
+              },
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('Edit'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _wine,
+                side: const BorderSide(color: _wine),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: _handleDelete,
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Delete'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFDC2626),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  Widget _buildRoundIconButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    Color color = Colors.black87,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.9),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.62)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.16),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Icon(icon, color: color, size: 21),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverlayPill(String text, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: _ink.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 14),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomShell({required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: const Border(top: BorderSide(color: _line)),
+        boxShadow: [
+          BoxShadow(
+            color: _ink.withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, -6),
+          ),
+        ],
+      ),
+      child: SafeArea(top: false, child: child),
+    );
+  }
+
+  Widget _buildFlatSection({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Color(0xFFFCFAFD)],
+        ),
+        border: Border(
+          top: BorderSide(color: _line, width: 0.7),
+          bottom: BorderSide(color: _line, width: 0.7),
+        ),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildSectionTitle(String text) {
+    return Row(
+      children: [
+        Container(
+          width: 3,
+          height: 18,
+          decoration: BoxDecoration(
+            color: _gilt,
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
+        const SizedBox(width: 9),
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: _ink,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAccentRule() {
+    return Container(
+      height: 1,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0x00A8752A), _gilt, Color(0x005B2A6F)],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailPill(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBFAFC),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: _line),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: _gilt),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 13.5,
+              color: _ink,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDistanceBadge() {
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: _db.getUserProfileStream(_db.currentUserId ?? ''),
+      builder: (context, currentUserSnapshot) {
+        final currentUser = currentUserSnapshot.data;
+        double? currentUserLat;
+        double? currentUserLon;
+
+        if (currentUser != null) {
+          if (currentUser['latitude'] != null &&
+              currentUser['longitude'] != null) {
+            currentUserLat = (currentUser['latitude'] as num).toDouble();
+            currentUserLon = (currentUser['longitude'] as num).toDouble();
+          } else if (currentUser['location'] != null) {
+            final loc = currentUser['location'] as Map<String, dynamic>;
+            currentUserLat = (loc['latitude'] as num?)?.toDouble();
+            currentUserLon = (loc['longitude'] as num?)?.toDouble();
+          }
+        }
+
+        final listingLocation =
+            widget.listing['location'] as Map<String, dynamic>?;
+
+        if (currentUserLat == null ||
+            currentUserLon == null ||
+            listingLocation == null ||
+            listingLocation['latitude'] == null ||
+            listingLocation['longitude'] == null) {
+          return const SizedBox.shrink();
+        }
+
+        final distance = LocationService().calculateDistance(
+          currentUserLat,
+          currentUserLon,
+          (listingLocation['latitude'] as num).toDouble(),
+          (listingLocation['longitude'] as num).toDouble(),
+        );
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: _buildDetailPill(
+            Icons.near_me_outlined,
+            LocationService().formatDistance(distance),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Container(
+      color: const Color(0xFFE9E2ED),
+      child: const Center(
+        child: Icon(Icons.image_outlined, size: 76, color: _mutedInk),
+      ),
+    );
+  }
+
+  String _formatPrice(dynamic price) {
+    final numericPrice = price is num
+        ? price.toDouble()
+        : double.tryParse(price?.toString() ?? '') ?? 0.0;
+    return 'PHP ${numericPrice.toStringAsFixed(2)}';
+  }
+
+  String _sellerLocation(Map<String, dynamic>? seller) {
+    if (seller == null) return 'Location not set';
+
+    if (seller['address'] != null && seller['address'].toString().isNotEmpty) {
+      return seller['address'].toString();
+    }
+
+    if (seller['cityState'] != null &&
+        seller['cityState'].toString().isNotEmpty) {
+      return seller['cityState'].toString();
+    }
+
+    if (seller['location'] is Map<String, dynamic>) {
+      final location = seller['location'] as Map<String, dynamic>;
+      if (location['address'] != null &&
+          location['address'].toString().isNotEmpty) {
+        return location['address'].toString();
+      }
+    }
+
+    return 'Location not set';
+  }
+
+  void _openShareSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ShareModal(listing: widget.listing),
+    );
+  }
+
+  Future<void> _toggleBookmark(bool isBookmarked) async {
+    final listingId = widget.listing['id'];
+    if (listingId == null) return;
+
+    try {
+      await _db.toggleBookmark(listingId);
+      if (!mounted) return;
+
+      setState(() => _isBookmarked = !isBookmarked);
+      SnackbarUtils.showBookmark(context, _isBookmarked);
+    } catch (e) {
+      if (mounted) {
+        SnackbarUtils.showError(context, 'Failed to bookmark: $e');
+      }
+    }
+  }
+
+  void _openSellerProfile() {
+    final sellerId = widget.listing['seller_id'];
+    if (sellerId == null) return;
+
+    if (sellerId == _db.currentUserId) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ProfilePage(user: widget.user)),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UserProfilePage(
+          userId: sellerId,
+          currentUser: widget.user,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openChat() async {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            SizedBox(width: 12),
+            Text('Opening chat...'),
+          ],
+        ),
+        duration: Duration(seconds: 1),
+      ),
+    );
+
+    final chatId =
+        await _chatService.getOrCreateChat(widget.listing['seller_id']);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+
+    if (chatId != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ConversationPage(
+            chatId: chatId,
+            otherUserId: widget.listing['seller_id'],
+            otherUserName: widget.listing['seller_name'] ?? 'Seller',
+            currentUser: widget.user,
+          ),
+        ),
+      );
+    } else {
+      SnackbarUtils.showError(
+          context, 'Failed to open chat. Please try again.');
+    }
   }
 
   Future<void> _handleDelete() async {
@@ -900,19 +960,19 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
       icon: Icons.delete_outline,
     );
 
-    if (confirmed == true) {
-      final listingId = widget.listing['id'];
-      if (listingId != null) {
-        final success = await _db.deleteListing(listingId);
-        if (mounted) {
-          if (success) {
-            SnackbarUtils.showSuccess(context, 'Listing deleted successfully');
-            Navigator.pop(context);
-          } else {
-            SnackbarUtils.showError(context, 'Failed to delete listing');
-          }
-        }
-      }
+    if (confirmed != true) return;
+
+    final listingId = widget.listing['id'];
+    if (listingId == null) return;
+
+    final success = await _db.deleteListing(listingId);
+    if (!mounted) return;
+
+    if (success) {
+      SnackbarUtils.showSuccess(context, 'Listing deleted successfully');
+      Navigator.pop(context);
+    } else {
+      SnackbarUtils.showError(context, 'Failed to delete listing');
     }
   }
 }
