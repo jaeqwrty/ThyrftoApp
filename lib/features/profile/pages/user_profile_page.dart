@@ -40,6 +40,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
   final NotificationService _notificationService = NotificationService();
   final BlockService _blockService = BlockService();
 
+  static const Color _ink = Color(0xFF17131F);
+  static const Color _muted = Color(0xFF6B6475);
+  static const Color _page = Color(0xFFF6F3F8);
+  static const Color _surface = Color(0xFFFBFAFC);
+  static const Color _line = Color(0xFFE5DFEC);
+  static const Color _accent = Color(0xFFA8752A);
+
   bool get _isOwnProfile {
     final currentUserId = widget.currentUser['id'] ??
         widget.currentUser['uid'] ??
@@ -56,7 +63,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         if (snapshot.connectionState == ConnectionState.waiting &&
             !snapshot.hasData) {
           return const Scaffold(
-            backgroundColor: AppColors.backgroundWhite,
+            backgroundColor: _page,
             body: Center(child: CircularProgressIndicator()),
           );
         }
@@ -70,190 +77,76 @@ class _UserProfilePageState extends State<UserProfilePage> {
         final displayBio = (bio == null || bio.trim().isEmpty) ? 'No bio' : bio;
 
         return Scaffold(
-          backgroundColor: AppColors.backgroundWhite,
+          backgroundColor: _page,
           appBar: AppBar(
-            backgroundColor: AppColors.backgroundWhite,
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+              icon: const Icon(Icons.arrow_back_rounded, color: _ink),
               onPressed: () => Navigator.pop(context),
             ),
-            title: Text(username,
-                style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold)),
+            title: Text(
+              '@$username',
+              style: const TextStyle(
+                color: _ink,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             actions: [
               if (!_isOwnProfile)
-                IconButton(
-                  icon: const Icon(Icons.more_horiz,
-                      color: AppColors.textPrimary),
+                _buildRoundIconButton(
+                  icon: Icons.more_horiz_rounded,
                   onPressed: () =>
                       _showProfileMenu(widget.userId, username, fullName),
                 ),
+              const SizedBox(width: 12),
             ],
           ),
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- Header Section: Avatar & Stats ---
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 35,
-                      backgroundColor: AppColors.primary,
-                      backgroundImage: (profileImageUrl != null &&
-                              profileImageUrl.isNotEmpty)
-                          ? NetworkImage(profileImageUrl)
-                          : null,
-                      child:
-                          (profileImageUrl == null || profileImageUrl.isEmpty)
-                              ? Text(
-                                  fullName.isNotEmpty
-                                      ? fullName[0].toUpperCase()
-                                      : 'U',
-                                  style: const TextStyle(
-                                      color: AppColors.backgroundWhite,
-                                      fontSize: 24))
-                              : null,
-                    ),
-                    const SizedBox(width: 40),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(fullName,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 14)),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              StreamBuilder<List<Map<String, dynamic>>>(
-                                stream: _db.getUserListings(widget.userId),
-                                builder: (context, s) => ProfileStatColumn(
-                                    value: '${s.data?.length ?? 0}',
-                                    label: 'posts'),
-                              ),
-                              const SizedBox(width: 30),
-                              StreamBuilder<int>(
-                                stream: _favoritesService
-                                    .getFavoritesCountStream(widget.userId),
-                                builder: (context, s) => ProfileStatColumn(
-                                    value: '${s.data ?? 0}',
-                                    label: 'followers'),
-                              ),
-                              const SizedBox(width: 30),
-                              StreamBuilder<QuerySnapshot>(
-                                stream: FirebaseFirestore.instance
-                                    .collection('favorites')
-                                    .where('user_id', isEqualTo: widget.userId)
-                                    .snapshots(),
-                                builder: (context, s) => ProfileStatColumn(
-                                    value: '${s.data?.docs.length ?? 0}',
-                                    label: 'following'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                child: _buildProfileHeader(
+                  fullName: fullName,
+                  username: username,
+                  profileImageUrl: profileImageUrl,
+                  displayBio: displayBio,
                 ),
               ),
-
-              // --- Identity: Bio, Location & Rating ---
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(displayBio,
-                        style: const TextStyle(
-                            fontSize: 13, color: AppColors.textPrimary)),
-                    LocationWidget(
-                        userId: widget.userId,
-                        locationService: _locationService),
-                    const SizedBox(height: 4),
-                    _CompactRatingDisplay(
-                        userId: widget.userId, ratingService: _ratingService),
-                  ],
-                ),
-              ),
-
-              // --- Action Buttons (Visible only if not own profile) ---
               if (!_isOwnProfile)
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: StreamBuilder<bool>(
-                          stream: _favoritesService
-                              .getFavoriteStatusStream(widget.userId),
-                          builder: (context, favSnapshot) {
-                            final isFavorite = favSnapshot.data ?? false;
-                            return SizedBox(
-                              height: 32,
-                              child: ElevatedButton(
-                                onPressed: () =>
-                                    _toggleFavorite(isFavorite, fullName),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: isFavorite
-                                      ? AppColors.backgroundGreyDark
-                                      : AppColors.info,
-                                  foregroundColor: isFavorite
-                                      ? AppColors.textPrimary
-                                      : AppColors.backgroundWhite,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(6)),
-                                ),
-                                child: Text(isFavorite ? 'Following' : 'Follow',
-                                    style: const TextStyle(fontSize: 13)),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildSecondaryButton(
-                            'Message', () => _handleMessage(fullName)),
-                      ),
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        width: 40,
-                        child: _buildSecondaryButton(
-                            null, () => _handleRating(fullName),
-                            icon: Icons.star_border),
-                      ),
-                    ],
-                  ),
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+                  child: _buildPublicActions(fullName),
                 ),
-
-              const Divider(height: 1),
-
-              // --- Grid Label ---
-              const Padding(
-                padding: EdgeInsets.all(16),
+              Padding(
+                padding: EdgeInsets.fromLTRB(14, _isOwnProfile ? 0 : 2, 14, 8),
                 child: Row(
                   children: [
-                    Icon(Icons.grid_on, size: 18),
-                    SizedBox(width: 8),
-                    Text('Listings',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15)),
+                    const Icon(Icons.grid_view_rounded, size: 18, color: _ink),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Listings',
+                      style: TextStyle(
+                        color: _ink,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      _isOwnProfile ? 'Your items' : 'Seller items',
+                      style: const TextStyle(
+                        color: _muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
               ),
-
-              // --- Listings Grid ---
               Expanded(
                 child: StreamBuilder<List<Map<String, dynamic>>>(
                   stream: _db.getUserListings(widget.userId),
@@ -278,18 +171,19 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     }
 
                     return GridView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
-                        childAspectRatio: 0.75,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.68,
+                        crossAxisSpacing: 14,
+                        mainAxisSpacing: 16,
                       ),
                       itemCount: listings.length,
                       itemBuilder: (context, index) => ListingCard(
-                          listing: listings[index],
-                          currentUser: widget.currentUser),
+                        listing: listings[index],
+                        currentUser: widget.currentUser,
+                      ),
                     );
                   },
                 ),
@@ -301,14 +195,277 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
+  Widget _buildProfileHeader({
+    required String fullName,
+    required String username,
+    required String? profileImageUrl,
+    required String displayBio,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _line),
+        boxShadow: [
+          BoxShadow(
+            color: _ink.withValues(alpha: 0.04),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildAvatar(fullName, profileImageUrl),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: _accent,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      fullName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '@$username',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _muted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            displayBio,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 13,
+              height: 1.28,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _ProfileInfoPill(
+                child: LocationWidget(
+                  userId: widget.userId,
+                  locationService: _locationService,
+                ),
+              ),
+              _CompactRatingDisplay(
+                userId: widget.userId,
+                ratingService: _ratingService,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: _db.getUserListings(widget.userId),
+                  builder: (context, s) => ProfileStatColumn(
+                    value: '${s.data?.length ?? 0}',
+                    label: 'posts',
+                    modern: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: StreamBuilder<int>(
+                  stream:
+                      _favoritesService.getFavoritesCountStream(widget.userId),
+                  builder: (context, s) => ProfileStatColumn(
+                    value: '${s.data ?? 0}',
+                    label: 'followers',
+                    modern: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('favorites')
+                      .where('user_id', isEqualTo: widget.userId)
+                      .snapshots(),
+                  builder: (context, s) => ProfileStatColumn(
+                    value: '${s.data?.docs.length ?? 0}',
+                    label: 'following',
+                    modern: true,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvatar(String fullName, String? profileImageUrl) {
+    final initial = fullName.isNotEmpty ? fullName[0].toUpperCase() : 'U';
+
+    return Container(
+      width: 68,
+      height: 68,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: _accent.withValues(alpha: 0.55)),
+      ),
+      child: CircleAvatar(
+        backgroundColor: _surface,
+        backgroundImage: (profileImageUrl != null && profileImageUrl.isNotEmpty)
+            ? NetworkImage(profileImageUrl)
+            : null,
+        child: (profileImageUrl == null || profileImageUrl.isEmpty)
+            ? Text(
+                initial,
+                style: const TextStyle(
+                  color: _ink,
+                  fontSize: 25,
+                  fontWeight: FontWeight.w900,
+                ),
+              )
+            : null,
+      ),
+    );
+  }
+
+  Widget _buildPublicActions(String fullName) {
+    return Row(
+      children: [
+        Expanded(
+          child: StreamBuilder<bool>(
+            stream: _favoritesService.getFavoriteStatusStream(widget.userId),
+            builder: (context, favSnapshot) {
+              final isFavorite = favSnapshot.data ?? false;
+              return _buildProfileButton(
+                text: isFavorite ? 'Following' : 'Follow',
+                icon: isFavorite
+                    ? Icons.notifications_active_outlined
+                    : Icons.person_add_alt_1_outlined,
+                isPrimary: !isFavorite,
+                onTap: () => _toggleFavorite(isFavorite, fullName),
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _buildProfileButton(
+            text: 'Message',
+            icon: Icons.chat_bubble_outline_rounded,
+            onTap: () => _handleMessage(fullName),
+          ),
+        ),
+        const SizedBox(width: 10),
+        SizedBox(
+          width: 50,
+          child: _buildProfileButton(
+            icon: Icons.star_border_rounded,
+            onTap: () => _handleRating(fullName),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileButton({
+    String? text,
+    required IconData icon,
+    required VoidCallback onTap,
+    bool isPrimary = false,
+  }) {
+    return SizedBox(
+      height: 40,
+      child: ElevatedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 18),
+        label: text == null
+            ? const SizedBox.shrink()
+            : Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isPrimary ? _ink : Colors.white,
+          foregroundColor: isPrimary ? Colors.white : _ink,
+          elevation: 0,
+          side: BorderSide(color: isPrimary ? _ink : _line),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          padding: text == null
+              ? EdgeInsets.zero
+              : const EdgeInsets.symmetric(horizontal: 12),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoundIconButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      onPressed: onPressed,
+      icon: Icon(icon, color: _ink, size: 22),
+      style: IconButton.styleFrom(
+        backgroundColor: _surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: _line),
+        ),
+      ),
+    );
+  }
+
   void _showProfileMenu(String userId, String username, String fullName) async {
     // Get current block status with error handling
     bool isBlocked = false;
     try {
       isBlocked = await _blockService.isUserBlockedStream(userId).first;
-    } catch (e) {
-      print('Error checking block status: $e');
-      // Default to false if there's an error
+    } catch (_) {
       isBlocked = false;
     }
 
@@ -504,26 +661,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
-  Widget _buildSecondaryButton(String? text, VoidCallback onTap,
-      {IconData? icon}) {
-    return SizedBox(
-      height: 32,
-      child: ElevatedButton(
-        onPressed: onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.backgroundGreyDark,
-          foregroundColor: AppColors.textPrimary,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-          padding: EdgeInsets.zero,
-        ),
-        child: icon != null
-            ? Icon(icon, size: 18)
-            : Text(text!, style: const TextStyle(fontSize: 13)),
-      ),
-    );
-  }
-
   Future<void> _toggleFavorite(bool isFavorite, String sellerName) async {
     if (isFavorite) {
       final success =
@@ -642,6 +779,26 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 }
 
+class _ProfileInfoPill extends StatelessWidget {
+  final Widget child;
+
+  const _ProfileInfoPill({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 260),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: _UserProfilePageState._surface,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: _UserProfilePageState._line),
+      ),
+      child: child,
+    );
+  }
+}
+
 class _CompactRatingDisplay extends StatelessWidget {
   final String userId;
   final RatingService ratingService;
@@ -655,22 +812,58 @@ class _CompactRatingDisplay extends StatelessWidget {
       builder: (context, snapshot) {
         final stats =
             snapshot.data ?? {'average_rating': 0.0, 'ratings_count': 0};
-        if (stats['ratings_count'] == 0) return const SizedBox.shrink();
+        if (stats['ratings_count'] == 0) {
+          return const _ProfileInfoPill(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.star_border_rounded,
+                  size: 15,
+                  color: _UserProfilePageState._muted,
+                ),
+                SizedBox(width: 5),
+                Text(
+                  'No ratings',
+                  style: TextStyle(
+                    color: _UserProfilePageState._muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
 
         return InkWell(
           onTap: () => RatingsBottomSheet.show(
               context: context, userId: userId, ratingService: ratingService),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.star, size: 14, color: Colors.amber),
-              const SizedBox(width: 4),
-              Text((stats['average_rating'] as double).toStringAsFixed(1),
+          borderRadius: BorderRadius.circular(999),
+          child: _ProfileInfoPill(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.star_rounded, size: 15, color: Colors.amber),
+                const SizedBox(width: 5),
+                Text(
+                  (stats['average_rating'] as double).toStringAsFixed(1),
                   style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.bold)),
-              Text(' (${stats['ratings_count']})',
-                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            ],
+                    color: _UserProfilePageState._ink,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  ' (${stats['ratings_count']})',
+                  style: const TextStyle(
+                    color: _UserProfilePageState._muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },

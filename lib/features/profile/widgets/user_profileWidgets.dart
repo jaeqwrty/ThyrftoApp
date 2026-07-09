@@ -16,15 +16,22 @@ class LocationWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const ink = Color(0xFF17131F);
+    const muted = Color(0xFF6B6475);
+
     return FutureBuilder<Map<String, dynamic>?>(
       future: locationService.getUserLocation(userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox(height: 20);
+          return const SizedBox(
+            height: 18,
+            width: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          );
         }
         String locationDisplay = 'Location not set';
         IconData locationIcon = Icons.location_off;
-        Color locationColor = Colors.grey[500]!;
+        Color locationColor = muted;
 
         if (snapshot.hasData && snapshot.data != null) {
           final address = snapshot.data!['address'] as String?;
@@ -33,22 +40,21 @@ class LocationWidget extends StatelessWidget {
               !address.startsWith('Lat:')) {
             locationDisplay = address;
             locationIcon = Icons.location_on;
-            locationColor = const Color(0xFF8B5CF6);
+            locationColor = ink;
           }
         }
         return Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(locationIcon, size: 16, color: locationColor),
+            Icon(locationIcon, size: 14, color: locationColor),
             const SizedBox(width: 4),
             Flexible(
               child: Text(
                 locationDisplay,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 11,
                   color: locationColor,
-                  fontWeight: locationIcon == Icons.location_on
-                      ? FontWeight.w600
-                      : FontWeight.normal,
+                  fontWeight: FontWeight.w700,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -245,17 +251,18 @@ class ProfileActionButtons extends StatelessWidget {
 class ListingCard extends StatelessWidget {
   final Map<String, dynamic> listing;
   final Map<String, dynamic> currentUser;
+  final bool showBookmarkBadge;
 
   const ListingCard({
     super.key,
     required this.listing,
     required this.currentUser,
+    this.showBookmarkBadge = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final imageUrls = listing['image_urls'] as List<dynamic>? ?? [];
-    // Check if the item is marked as sold
     final bool isSold = listing['status'] == 'sold';
 
     return GestureDetector(
@@ -269,120 +276,150 @@ class ListingCard extends StatelessWidget {
         ),
       ),
       child: Container(
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5DFEC)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            )
+              color: const Color(0xFF17131F).withValues(alpha: 0.045),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
+              flex: 6,
               child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  // The Listing Image
-                  ClipRRect(
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(12)),
-                    child: imageUrls.isNotEmpty
-                        ? Image.network(
-                            imageUrls[0],
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (c, e, s) => _buildImagePlaceholder(),
-                          )
-                        : _buildImagePlaceholder(),
+                  imageUrls.isNotEmpty
+                      ? Image.network(
+                          imageUrls[0],
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (c, e, s) => _buildImagePlaceholder(),
+                        )
+                      : _buildImagePlaceholder(),
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.02),
+                            Colors.black.withValues(alpha: 0.18),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-
-                  // THE SOLD BADGE (Top Right)
                   if (isSold)
                     Positioned(
                       top: 8,
-                      right: 8,
+                      left: 8,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                          horizontal: 8,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(4),
+                          color: Colors.black.withValues(alpha: 0.72),
+                          borderRadius: BorderRadius.circular(999),
                         ),
                         child: const Text(
                           'SOLD',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0,
                           ),
                         ),
                       ),
                     ),
-
-                  // Optional: Slight dark overlay if sold to make the badge pop
                   if (isSold)
                     Positioned.fill(
+                      child: ColoredBox(
+                        color: Colors.white.withValues(alpha: 0.22),
+                      ),
+                    ),
+                  if (showBookmarkBadge)
+                    Positioned(
+                      top: 8,
+                      right: 8,
                       child: Container(
+                        width: 30,
+                        height: 30,
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.05),
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(12)),
+                          color: Colors.white.withValues(alpha: 0.92),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(0xFFE5DFEC),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.bookmark_rounded,
+                          color: Color(0xFF17131F),
+                          size: 17,
                         ),
                       ),
                     ),
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '₱${listing['price']?.toStringAsFixed(2) ?? '0.00'}',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      // Grey out the price if sold
-                      color: isSold ? Colors.grey : const Color(0xFF8B5CF6),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    listing['title'] ?? 'No title',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      // Strike-through text if sold
-                      decoration: isSold ? TextDecoration.lineThrough : null,
-                      color: isSold ? Colors.grey : Colors.black87,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      _buildBadge(
-                        listing['size'] ?? 'N/A',
-                        Colors.purple.shade50,
-                        const Color(0xFF8B5CF6),
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(11, 10, 11, 11),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _formatPrice(listing['price']),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: isSold
+                            ? const Color(0xFF8E8797)
+                            : const Color(0xFF17131F),
                       ),
-                      const SizedBox(width: 6),
-                      _buildBadge(
-                        listing['condition'] ?? 'N/A',
-                        Colors.green.shade50,
-                        Colors.green.shade700,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      listing['title'] ?? 'No title',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        height: 1.15,
+                        decoration: isSold ? TextDecoration.lineThrough : null,
+                        color: isSold
+                            ? const Color(0xFF8E8797)
+                            : const Color(0xFF2B2633),
                       ),
-                    ],
-                  ),
-                ],
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        _buildBadge(listing['size'] ?? 'N/A'),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: _buildBadge(listing['condition'] ?? 'N/A'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -391,19 +428,28 @@ class ListingCard extends StatelessWidget {
     );
   }
 
-  Widget _buildBadge(String text, Color bgColor, Color textColor) {
+  String _formatPrice(dynamic price) {
+    if (price is num) return 'PHP ${price.toStringAsFixed(2)}';
+    final parsed = double.tryParse(price?.toString() ?? '');
+    return 'PHP ${(parsed ?? 0).toStringAsFixed(2)}';
+  }
+
+  Widget _buildBadge(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(4),
+        color: const Color(0xFFF4F1F7),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFE5DFEC)),
       ),
       child: Text(
         text,
-        style: TextStyle(
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
           fontSize: 10,
-          color: textColor,
-          fontWeight: FontWeight.w600,
+          color: Color(0xFF6B6475),
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
@@ -411,9 +457,13 @@ class ListingCard extends StatelessWidget {
 
   Widget _buildImagePlaceholder() {
     return Container(
-      color: Colors.grey[200],
-      child: Center(
-        child: Icon(Icons.image, size: 40, color: Colors.grey[400]),
+      color: const Color(0xFFF4F1F7),
+      child: const Center(
+        child: Icon(
+          Icons.image_outlined,
+          size: 34,
+          color: Color(0xFFAAA3B5),
+        ),
       ),
     );
   }
