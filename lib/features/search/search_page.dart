@@ -601,35 +601,35 @@ class _SearchPageState extends State<SearchPage> {
             Expanded(
               flex: 4,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(11, 10, 11, 11),
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       _formatPrice(listing['price']),
                       style: const TextStyle(
-                        fontSize: 16.5,
+                        fontSize: 15.5,
                         fontWeight: FontWeight.w800,
                         color: AppColors.primary,
                         letterSpacing: 0,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 3),
                     Text(
                       listing['title'] ?? 'No title',
                       style: const TextStyle(
-                        fontSize: 14,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w700,
                         color: _ink,
-                        height: 1.2,
+                        height: 1.12,
                       ),
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const Spacer(),
                     Wrap(
                       spacing: 6,
-                      runSpacing: 6,
+                      runSpacing: 4,
                       children: [
                         _buildMiniPill(listing['size'] ?? 'N/A'),
                         _buildMiniPill(listing['condition'] ?? 'N/A'),
@@ -673,7 +673,7 @@ class _SearchPageState extends State<SearchPage> {
 
   Widget _buildMiniPill(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: _chip,
         borderRadius: BorderRadius.circular(999),
@@ -685,7 +685,7 @@ class _SearchPageState extends State<SearchPage> {
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
           color: _muted,
-          fontSize: 10.5,
+          fontSize: 9.5,
           fontWeight: FontWeight.w700,
         ),
       ),
