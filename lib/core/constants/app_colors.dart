@@ -8,8 +8,11 @@ class AppColors {
   // PRIMARY COLORS
   // ============================================
 
-  /// Main brand color (Purple)
-  static const Color primary = Color.fromRGBO(139, 92, 246, 1);
+  /// Main brand color (Ink)
+  static const Color primary = Color(0xFF17131F);
+
+  /// Refined accent color used for small highlights.
+  static const Color accent = Color(0xFFA8752A);
 
   /// Very light primary for backgrounds
   static Color primaryBackground = primary.withOpacity(0.1);
@@ -22,7 +25,7 @@ class AppColors {
   // ============================================
 
   /// Main background color
-  static const Color background = Color(0xFFF5F5F7);
+  static const Color background = Color(0xFFF6F3F8);
 
   /// White background
   static const Color backgroundWhite = Colors.white;
@@ -38,13 +41,13 @@ class AppColors {
   // ============================================
 
   /// Primary text color (black)
-  static const Color textPrimary = Colors.black87;
+  static const Color textPrimary = Color(0xFF17131F);
 
   /// Secondary text color (grey)
-  static Color textSecondary = Colors.grey[600]!;
+  static const Color textSecondary = Color(0xFF6B6475);
 
   /// Tertiary text color (light grey)
-  static Color textTertiary = Colors.grey[500]!;
+  static const Color textTertiary = Color(0xFF8E8797);
 
   /// White text
   static const Color textWhite = Colors.white;
@@ -71,13 +74,13 @@ class AppColors {
   // ============================================
 
   /// Border color
-  static Color border = Colors.grey[300]!;
+  static const Color border = Color(0xFFE5DFEC);
 
   /// Border color light
-  static Color borderLight = Colors.grey[200]!;
+  static const Color borderLight = Color(0xFFF4F1F7);
 
   /// Divider color
-  static Color divider = Colors.grey[100]!;
+  static const Color divider = Color(0xFFE5DFEC);
 
   // ============================================
   // STATUS COLORS

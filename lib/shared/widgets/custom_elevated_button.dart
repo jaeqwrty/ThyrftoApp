@@ -23,16 +23,25 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const ink = Color(0xFF17131F);
+    const line = Color(0xFFE5DFEC);
+
     return SizedBox(
       width: double.infinity,
       height: height,
-      child: ElevatedButton(
+      child: AnimatedScale(
+        scale: isLoading ? 0.99 : 1,
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+        child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor ?? const Color(0xFF8B5CF6),
+          backgroundColor: backgroundColor ?? ink,
+          disabledBackgroundColor: ink.withValues(alpha: 0.42),
           foregroundColor: foregroundColor ?? Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(25),
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(color: backgroundColor ?? line),
           ),
           elevation: 0,
         ),
@@ -54,8 +63,8 @@ class PrimaryButton extends StatelessWidget {
                       Text(
                         text,
                         style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ],
@@ -63,10 +72,11 @@ class PrimaryButton extends StatelessWidget {
                 : Text(
                     text,
                     style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
+        ),
       ),
     );
   }

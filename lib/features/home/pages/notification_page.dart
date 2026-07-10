@@ -19,6 +19,12 @@ class NotificationsPage extends ConsumerStatefulWidget {
 
 class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   final DatabaseService _db = DatabaseService();
+  static const Color _ink = Color(0xFF17131F);
+  static const Color _muted = Color(0xFF6B6475);
+  static const Color _page = Color(0xFFF6F3F8);
+  static const Color _surface = Color(0xFFFBFAFC);
+  static const Color _line = Color(0xFFE5DFEC);
+  static const Color _accent = Color(0xFFA8752A);
 
   @override
   Widget build(BuildContext context) {
@@ -26,17 +32,18 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     final notificationService = ref.watch(notificationServiceProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundWhite,
+      backgroundColor: _page,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundWhite,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
         centerTitle: false,
         title: const Text(
           'Notifications',
           style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+            color: _ink,
           ),
         ),
         actions: [
@@ -46,17 +53,17 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
             },
             child: Text(
               'Mark all read',
-              style: TextStyle(
-                color: AppColors.primary,
+              style: const TextStyle(
+                color: _ink,
                 fontSize: 13,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Divider(height: 1, color: AppColors.divider),
+          child: Divider(height: 1, color: _line),
         ),
       ),
       body: notificationsAsync.when(
@@ -68,13 +75,9 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
           final groupedNotifications = _groupNotifications(notifications);
 
           return ListView.separated(
-            padding: EdgeInsets.zero,
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
             itemCount: groupedNotifications.length,
-            separatorBuilder: (context, index) => Divider(
-              height: 1,
-              indent: 72,
-              color: AppColors.backgroundGrey,
-            ),
+            separatorBuilder: (context, index) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
               final group = groupedNotifications[index];
               final isGrouped = group['unique_count'] > 1;
@@ -106,10 +109,21 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     _handleNotificationTap(group);
                   },
                   child: Container(
-                    color: hasUnread 
-                        ? AppColors.primaryBackgroundLight
-                        : Colors.transparent,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: hasUnread ? _accent.withValues(alpha: 0.45) : _line,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _ink.withValues(alpha: 0.035),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     child: isGrouped 
                         ? _buildGroupedNotification(group, hasUnread)
                         : _buildSingleNotification(group, hasUnread),
@@ -231,7 +245,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     child: Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.backgroundWhite, width: 2),
+                        border: Border.all(color: Colors.white, width: 2),
                       ),
                       child: _buildAvatar(displayUserIds[1].toString(), 24, false, type),
                     ),
@@ -250,7 +264,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 text: TextSpan(
-                  style: TextStyle(fontSize: 14, color: AppColors.textPrimary, height: 1.3),
+                  style: const TextStyle(fontSize: 14, color: _ink, height: 1.3),
                   children: [
                     TextSpan(
                       text: _getGroupedTitle(type, uniqueCount, group),
@@ -267,7 +281,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                   timeago.format(createdAt),
                   style: TextStyle(
                     fontSize: 11,
-                    color: AppColors.textTertiary,
+                    color: _muted,
                   ),
                 ),
               ],
@@ -302,9 +316,9 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                   width: 10,
                   height: 10,
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    color: _accent,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.backgroundWhite, width: 2),
+                    border: Border.all(color: Colors.white, width: 2),
                   ),
                 ),
               ),
@@ -319,7 +333,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 text: TextSpan(
-                  style: TextStyle(fontSize: 14, color: AppColors.textPrimary, height: 1.3),
+                  style: const TextStyle(fontSize: 14, color: _ink, height: 1.3),
                   children: [
                     TextSpan(
                       text: "${notification['title'] ?? ''} ",
@@ -330,7 +344,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     TextSpan(
                       text: notification['body'] ?? '',
                       style: TextStyle(
-                        color: AppColors.textSecondary,
+                        color: _muted,
                         fontWeight: FontWeight.normal,
                       ),
                     ),
@@ -343,7 +357,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                   timeago.format(createdAt),
                   style: TextStyle(
                     fontSize: 11,
-                    color: AppColors.textTertiary,
+                    color: _muted,
                   ),
                 ),
               ],
@@ -364,7 +378,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
 
         return CircleAvatar(
           radius: size / 2,
-          backgroundColor: _getNotificationColor(type).withOpacity(0.1),
+          backgroundColor: _getNotificationColor(type).withValues(alpha: 0.1),
           backgroundImage: (profileImageUrl != null && profileImageUrl.isNotEmpty)
               ? NetworkImage(profileImageUrl)
               : null,
@@ -386,7 +400,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   Widget _buildStaticAvatar(String? profileImage, String type, bool hasUnread) {
     return CircleAvatar(
       radius: 20,
-      backgroundColor: _getNotificationColor(type).withOpacity(0.1),
+      backgroundColor: _getNotificationColor(type).withValues(alpha: 0.1),
       backgroundImage: (profileImage != null && profileImage.isNotEmpty)
           ? NetworkImage(profileImage)
           : null,
@@ -403,7 +417,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   Widget _buildDefaultAvatar(String type, bool hasUnread) {
     return CircleAvatar(
       radius: 20,
-      backgroundColor: _getNotificationColor(type).withOpacity(0.1),
+      backgroundColor: _getNotificationColor(type).withValues(alpha: 0.1),
       child: Icon(
         _getNotificationIcon(type),
         color: _getNotificationColor(type),
@@ -499,11 +513,28 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.notifications_none, size: 48, color: AppColors.borderLight),
+          Container(
+            width: 70,
+            height: 70,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: _line),
+            ),
+            child: const Icon(
+              Icons.notifications_none_rounded,
+              size: 32,
+              color: _muted,
+            ),
+          ),
           const SizedBox(height: 12),
           Text(
             'No notifications yet',
-            style: TextStyle(fontSize: 15, color: AppColors.textTertiary),
+            style: const TextStyle(
+              fontSize: 15,
+              color: _muted,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -545,8 +576,8 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       case 'reply': return Colors.teal;
       case 'share': return AppColors.success;
       case 'message': return AppColors.warning;
-      case 'follow': return AppColors.primary;
-      case 'favorite': return AppColors.primary;
+      case 'follow': return _ink;
+      case 'favorite': return _ink;
       case 'new_listing': return AppColors.success;
       case 'rating': return AppColors.rating;
       default: return AppColors.textSecondary;

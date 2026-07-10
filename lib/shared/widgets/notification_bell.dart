@@ -13,6 +13,9 @@ class NotificationBell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unreadCountAsync = ref.watch(unreadNotificationCountProvider);
+    const ink = Color(0xFF17131F);
+    const line = Color(0xFFE5DFEC);
+    const surface = Color(0xFFFBFAFC);
 
     return unreadCountAsync.when(
       data: (unreadCount) {
@@ -20,9 +23,20 @@ class NotificationBell extends ConsumerWidget {
           children: [
             // Bell icon button
             IconButton(
-              icon: const Icon(Icons.notifications_none, size: 24),
+              icon: const Icon(
+                Icons.notifications_none_rounded,
+                size: 22,
+                color: ink,
+              ),
               onPressed: onPressed,
               padding: EdgeInsets.zero,
+              style: IconButton.styleFrom(
+                backgroundColor: surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: line),
+                ),
+              ),
               constraints: const BoxConstraints(
                 minWidth: 40,
                 minHeight: 40,
@@ -35,7 +49,7 @@ class NotificationBell extends ConsumerWidget {
                 top: 0,
                 child: Container(
                   decoration: const BoxDecoration(
-                    color: Colors.red,
+                    color: Color(0xFFD94A4A),
                     shape: BoxShape.circle,
                   ),
                   constraints: const BoxConstraints(
@@ -48,7 +62,7 @@ class NotificationBell extends ConsumerWidget {
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w900,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -59,7 +73,8 @@ class NotificationBell extends ConsumerWidget {
         );
       },
       loading: () => IconButton(
-        icon: const Icon(Icons.notifications_none, size: 24),
+        icon: const Icon(Icons.notifications_none_rounded,
+            size: 22, color: ink),
         onPressed: onPressed,
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints(
@@ -68,7 +83,8 @@ class NotificationBell extends ConsumerWidget {
         ),
       ),
       error: (_, __) => IconButton(
-        icon: const Icon(Icons.notifications_none, size: 24),
+        icon: const Icon(Icons.notifications_none_rounded,
+            size: 22, color: ink),
         onPressed: onPressed,
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints(

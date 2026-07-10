@@ -18,6 +18,9 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
   final GlobalKey<HomePageState> _homePageKey = GlobalKey<HomePageState>();
+  static const Color _ink = Color(0xFF17131F);
+  static const Color _muted = Color(0xFF6B6475);
+  static const Color _line = Color(0xFFE5DFEC);
 
   // List of all 5 main pages
   late final List<Widget> _pages;
@@ -59,44 +62,82 @@ class _MainNavigationState extends State<MainNavigation> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
+        border: const Border(top: BorderSide(color: _line)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
+            color: _ink.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, -8),
           ),
         ],
       ),
-      child: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: Colors.grey,
-        elevation: 0,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
+          child: Row(
+            children: [
+              _buildNavItem(0, Icons.home_outlined, Icons.home_rounded, 'Home'),
+              _buildNavItem(
+                  1, Icons.search_outlined, Icons.search_rounded, 'Search'),
+              _buildNavItem(
+                  2, Icons.add_box_outlined, Icons.add_box_rounded, 'Sell'),
+              _buildNavItem(3, Icons.chat_bubble_outline_rounded,
+                  Icons.chat_bubble_rounded, 'Chats'),
+              _buildNavItem(
+                  4, Icons.person_outline_rounded, Icons.person_rounded, 'Me'),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Search',
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(
+    int index,
+    IconData icon,
+    IconData activeIcon,
+    String label,
+  ) {
+    final selected = _selectedIndex == index;
+
+    return Expanded(
+      child: InkWell(
+        onTap: () => _onItemTapped(index),
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          height: 48,
+          decoration: BoxDecoration(
+            color: selected ? _ink : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_box_outlined),
-            label: 'Sell',
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedScale(
+                scale: selected ? 1.06 : 1,
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                child: Icon(
+                  selected ? activeIcon : icon,
+                  color: selected ? Colors.white : _muted,
+                  size: 21,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? Colors.white : _muted,
+                  fontSize: 10.5,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+                ),
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            label: 'Chats',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
-          ),
-        ],
+        ),
       ),
     );
   }

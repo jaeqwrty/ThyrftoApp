@@ -13,7 +13,7 @@ class CommonModals {
       width: AppConstants.modalDragHandleWidth,
       height: AppConstants.modalDragHandleHeight,
       decoration: BoxDecoration(
-        color: Colors.grey[300],
+        color: AppColors.border,
         borderRadius: BorderRadius.circular(AppConstants.radiusS / 2),
       ),
     );
@@ -28,11 +28,16 @@ class CommonModals {
   }) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: AppConstants.borderRadiusModal,
       ),
       builder: (context) => Container(
         padding: AppConstants.paddingAllXL,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: AppConstants.borderRadiusModal,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -86,12 +91,12 @@ class CommonModals {
                     title,
                     style: const TextStyle(
                       fontSize: AppConstants.fontSizeL,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                 ),
-                const Divider(height: 1),
+                const Divider(height: 1, color: AppColors.divider),
                 ...items.map((item) => _buildOptionListTile(context, item)),
                 const SizedBox(height: AppConstants.spaceS),
               ],
@@ -110,8 +115,8 @@ class CommonModals {
       leading: Container(
         padding: AppConstants.paddingAllS,
         decoration: BoxDecoration(
-          color: item.iconBackgroundColor.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(AppConstants.radiusM),
+          color: item.iconBackgroundColor.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(
           item.icon,
@@ -122,8 +127,8 @@ class CommonModals {
       title: Text(
         item.title,
         style: TextStyle(
-          color: item.titleColor ?? Colors.black87,
-          fontWeight: FontWeight.w500,
+          color: item.titleColor ?? AppColors.textPrimary,
+          fontWeight: FontWeight.w700,
           fontSize: AppConstants.fontSizeML,
         ),
       ),
@@ -132,7 +137,7 @@ class CommonModals {
               item.subtitle!,
               style: TextStyle(
                 fontSize: AppConstants.fontSizeS,
-                color: Colors.grey[600],
+                color: AppColors.textSecondary,
               ),
             )
           : null,

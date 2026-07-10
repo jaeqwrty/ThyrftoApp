@@ -23,8 +23,8 @@ class CommonDecorations {
           [
             BoxShadow(
               color: AppColors.shadowLight,
-              blurRadius: 10,
-              offset: const Offset(0, 2),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
             ),
           ],
     );
@@ -41,9 +41,9 @@ class CommonDecorations {
       borderRadius: BorderRadius.circular(borderRadius ?? AppConstants.radiusL),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(shadowOpacity ?? 0.05),
-          blurRadius: 10,
-          offset: const Offset(0, 2),
+          color: AppColors.primary.withValues(alpha: shadowOpacity ?? 0.05),
+          blurRadius: 18,
+          offset: const Offset(0, 8),
         ),
       ],
     );
@@ -165,9 +165,9 @@ class CommonDecorations {
   static List<BoxShadow> floatingShadow() {
     return [
       BoxShadow(
-        color: Colors.black.withOpacity(0.08),
-        blurRadius: 8,
-        offset: const Offset(0, 2),
+          color: AppColors.primary.withValues(alpha: 0.08),
+        blurRadius: 18,
+        offset: const Offset(0, 8),
       ),
     ];
   }
@@ -186,21 +186,21 @@ class CommonDecorations {
   }) {
     return InputDecoration(
       hintText: hintText,
-      hintStyle: TextStyle(
+      hintStyle: const TextStyle(
         fontSize: AppConstants.fontSizeM,
-        color: Colors.grey[400],
+        color: Color(0xFFAAA3B5),
       ),
       prefixIcon: prefixIcon != null
           ? Icon(prefixIcon,
-              size: AppConstants.iconSizeM, color: Colors.grey[400])
+              size: AppConstants.iconSizeM, color: AppColors.textSecondary)
           : null,
       prefixText: prefixText,
       border: OutlineInputBorder(
         borderRadius: AppConstants.borderRadiusL,
-        borderSide: BorderSide.none,
+        borderSide: const BorderSide(color: AppColors.border),
       ),
       filled: true,
-      fillColor: fillColor ?? Colors.white,
+      fillColor: fillColor ?? const Color(0xFFFBFAFC),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 12,
         vertical: 12,
@@ -221,7 +221,7 @@ class CommonDecorations {
       backgroundColor: backgroundColor ?? AppColors.primary,
       foregroundColor: foregroundColor ?? Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: AppConstants.borderRadiusButton,
+        borderRadius: BorderRadius.circular(14),
       ),
       elevation: AppConstants.elevationNone,
     );
@@ -232,7 +232,7 @@ class CommonDecorations {
     return OutlinedButton.styleFrom(
       foregroundColor: foregroundColor ?? AppColors.primary,
       shape: RoundedRectangleBorder(
-        borderRadius: AppConstants.borderRadiusButton,
+        borderRadius: BorderRadius.circular(14),
       ),
     );
   }
@@ -250,7 +250,7 @@ class CommonDecorations {
       backgroundColor: Colors.red,
       foregroundColor: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: AppConstants.borderRadiusL,
+        borderRadius: BorderRadius.circular(14),
       ),
       elevation: AppConstants.elevationNone,
     );

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppLogo extends StatelessWidget {
   final double fontSize;
@@ -8,7 +7,8 @@ class AppLogo extends StatelessWidget {
   const AppLogo({
     super.key,
     this.fontSize = 32,
-    this.subtitle, required String fontFamily,
+    this.subtitle,
+    required String fontFamily,
   });
 
   @override
@@ -16,20 +16,13 @@ class AppLogo extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ).createShader(bounds),
-          child: Text(
-            'Thryfto',
-            style: GoogleFonts.righteous(
-              fontSize: fontSize,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: 1.2,
-            ),
+        Text(
+          'Thryfto',
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w900,
+            color: const Color(0xFF17131F),
+            letterSpacing: 0,
           ),
         ),
         if (subtitle != null) ...[
@@ -38,7 +31,8 @@ class AppLogo extends StatelessWidget {
             subtitle!,
             style: const TextStyle(
               fontSize: 14,
-              color: Colors.grey,
+              color: Color(0xFF6B6475),
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

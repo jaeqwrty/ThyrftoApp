@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 /// Custom choice chips for category/condition selection
 
 class CustomChoiceChips extends StatelessWidget {
@@ -25,7 +26,7 @@ class CustomChoiceChips extends StatelessWidget {
             option,
             style: TextStyle(
               color: isSelected ? Colors.white : Colors.black87,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
               fontSize: 13,
             ),
           ),
@@ -33,16 +34,16 @@ class CustomChoiceChips extends StatelessWidget {
           onSelected: (selected) {
             if (selected) onSelected(option);
           },
-          selectedColor: const Color(0xFF8B5CF6),
-          backgroundColor: Colors.white,
+          selectedColor: const Color(0xFF17131F),
+          backgroundColor: const Color(0xFFFBFAFC),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(999),
             side: isSelected
                 ? BorderSide.none
-                : BorderSide(color: Colors.grey[300]!),
+                : const BorderSide(color: Color(0xFFE5DFEC)),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          elevation: isSelected ? 2 : 0,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          elevation: 0,
         );
       }).toList(),
     );

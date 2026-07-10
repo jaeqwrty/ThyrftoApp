@@ -18,8 +18,9 @@ class CommonDialogs {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: AppConstants.borderRadiusXL,
+            border: Border.all(color: AppColors.border),
           ),
-          child: const CircularProgressIndicator(),
+          child: const CircularProgressIndicator(color: AppColors.primary),
         ),
       ),
     );
@@ -86,7 +87,7 @@ class CommonDialogs {
               Container(
                 padding: AppConstants.paddingAllXL,
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
+                  color: Colors.red.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon,
@@ -97,8 +98,8 @@ class CommonDialogs {
                 title,
                 style: const TextStyle(
                   fontSize: AppConstants.fontSizeXXL,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: AppConstants.spaceL),
@@ -107,7 +108,7 @@ class CommonDialogs {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: AppConstants.fontSizeM,
-                  color: Colors.grey[600],
+                  color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: AppConstants.spaceXXL),
@@ -119,14 +120,14 @@ class CommonDialogs {
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
-                          borderRadius: AppConstants.borderRadiusL,
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                       child: Text(
                         cancelText,
                         style: const TextStyle(
                           fontSize: AppConstants.fontSizeL,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
@@ -140,7 +141,7 @@ class CommonDialogs {
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
-                          borderRadius: AppConstants.borderRadiusL,
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         elevation: AppConstants.elevationNone,
                       ),
@@ -148,7 +149,7 @@ class CommonDialogs {
                         confirmText,
                         style: const TextStyle(
                           fontSize: AppConstants.fontSizeL,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
@@ -186,8 +187,8 @@ class CommonDialogs {
                 padding: AppConstants.paddingAllXL,
                 decoration: BoxDecoration(
                   color: success
-                      ? Colors.green.withOpacity(0.1)
-                      : Colors.red.withOpacity(0.1),
+                      ? Colors.green.withValues(alpha: 0.1)
+                      : Colors.red.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -201,7 +202,8 @@ class CommonDialogs {
                 success ? successTitle : failTitle,
                 style: const TextStyle(
                   fontSize: AppConstants.fontSizeXXL,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: AppConstants.spaceM),
@@ -210,7 +212,7 @@ class CommonDialogs {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: AppConstants.fontSizeM,
-                  color: Colors.grey[600],
+                  color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: AppConstants.spaceXXL),
@@ -219,11 +221,11 @@ class CommonDialogs {
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: success ? Colors.green : Colors.red,
+                    backgroundColor: success ? AppColors.primary : Colors.red,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: AppConstants.borderRadiusL,
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     elevation: AppConstants.elevationNone,
                   ),
@@ -231,7 +233,7 @@ class CommonDialogs {
                     'OK',
                     style: TextStyle(
                       fontSize: AppConstants.fontSizeL,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
@@ -282,7 +284,7 @@ class CommonDialogs {
                 icon: Container(
                   padding: AppConstants.paddingAllM,
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
+                    color: Colors.black.withValues(alpha: 0.5),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
