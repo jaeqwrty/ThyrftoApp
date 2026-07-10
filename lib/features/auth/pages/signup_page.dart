@@ -204,14 +204,13 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
             padding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.05),
+              color: const Color(0xFFFBFAFC),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                  color: AppColors.primary.withOpacity(0.15)),
+              border: Border.all(color: AppColors.border),
             ),
             child: Row(children: [
               const Icon(Icons.info_outline_rounded,
-                  color: AppColors.primary, size: 18),
+                  color: AppColors.accent, size: 18),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -251,7 +250,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: Stack(
         children: [
           buildBackgroundBlobs(context),
@@ -275,8 +274,14 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                           vertical: 8.0,
                         ),
                         child: Center(
-                          child: SizedBox(
-                            width: isWideScreen ? 520 : double.infinity,
+                          child: Container(
+                            width: isWideScreen ? 560 : double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(color: AppColors.border),
+                            ),
                             child: Form(
                               key: _formKey,
                               // spaceEvenly: distributes ALL remaining height
@@ -354,8 +359,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                           Row(children: [
                                             Expanded(
                                                 child: Divider(
-                                                    color:
-                                                        AppColors.borderLight,
+                                                     color:
+                                                         AppColors.border,
                                                     thickness: 1)),
                                             Padding(
                                               padding:
@@ -373,8 +378,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                             ),
                                             Expanded(
                                                 child: Divider(
-                                                    color:
-                                                        AppColors.borderLight,
+                                                     color:
+                                                         AppColors.border,
                                                     thickness: 1)),
                                           ]),
                                           const SizedBox(height: 10),
@@ -387,29 +392,23 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                                           FontWeight.bold,
                                                       color: Colors.blue)),
                                               label: 'Google',
-                                              onTap: () => ScaffoldMessenger
-                                                      .of(context)
-                                                  .showSnackBar(const SnackBar(
-                                                content: Text(
-                                                    'Google Sign Up is coming soon!'),
-                                                duration:
-                                                    Duration(seconds: 1),
-                                              )),
+                                              onTap: () =>
+                                                  SnackbarUtils.showInfo(
+                                                context,
+                                                'Google Sign Up is coming soon!',
+                                              ),
                                             ),
                                             const SizedBox(width: 12),
                                             buildSocialButton(
                                               icon: const Icon(Icons.apple,
                                                   size: 20,
-                                                  color: Colors.black),
+                                                  color: AppColors.textPrimary),
                                               label: 'Apple',
-                                              onTap: () => ScaffoldMessenger
-                                                      .of(context)
-                                                  .showSnackBar(const SnackBar(
-                                                content: Text(
-                                                    'Apple Sign Up is coming soon!'),
-                                                duration:
-                                                    Duration(seconds: 1),
-                                              )),
+                                              onTap: () =>
+                                                  SnackbarUtils.showInfo(
+                                                context,
+                                                'Apple Sign Up is coming soon!',
+                                              ),
                                             ),
                                           ]),
                                         ],

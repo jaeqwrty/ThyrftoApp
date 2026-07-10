@@ -130,13 +130,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Location detected: $address'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        SnackbarUtils.showSuccess(context, 'Location detected: $address');
       }
     } catch (e) {
       setState(() {
@@ -169,13 +163,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
         _locationError = null;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Location set: ${result['address']}'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      SnackbarUtils.showSuccess(context, 'Location set: ${result['address']}');
     }
   }
 
@@ -232,25 +220,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
 
         // Show uploading message
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Row(
-                children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Text('Uploading image...'),
-                ],
-              ),
-              duration: Duration(seconds: 30),
-            ),
-          );
+          SnackbarUtils.showInfo(context, 'Uploading image...');
         }
 
         imageUrl = await _profileImageService.uploadProfileImage(
@@ -326,13 +296,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
 
       setState(() => _isLoading = false);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 5),
-        ),
-      );
+      SnackbarUtils.showError(context, 'Error: ${e.toString()}');
     }
   }
 
@@ -387,15 +351,15 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundWhite,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundWhite,
+        backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
           'Setup Profile',
           style: GoogleFonts.poppins(
-            color: Colors.black87,
-            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w800,
           ),
         ),
         centerTitle: true,
@@ -455,19 +419,19 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                 hintText: 'Tell us a bit about yourself...',
                 alignLabelWithHint: true,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppColors.border),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppColors.border),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   borderSide: const BorderSide(color: AppColors.primary),
                 ),
                 filled: true,
-                fillColor: Colors.grey[50],
+                fillColor: const Color(0xFFFBFAFC),
               ),
             ),
 
@@ -522,7 +486,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: Colors.green.shade200),
                 ),
                 child: Row(
@@ -560,7 +524,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: Colors.orange.shade200),
                 ),
                 child: Row(
@@ -611,7 +575,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: AppColors.primary),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
               ),
@@ -636,7 +600,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: AppColors.primary),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   elevation: 0,
                 ),
@@ -683,7 +647,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.backgroundWhite,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   elevation: 0,
                 ),
@@ -700,7 +664,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                         'Complete Setup',
                         style: GoogleFonts.poppins(
                           fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
               ),

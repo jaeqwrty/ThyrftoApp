@@ -61,12 +61,15 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: AppColors.textPrimary,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -77,8 +80,20 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
           SafeArea(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-              child: _emailSent ? _buildSuccessView() : _buildFormView(),
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+              child: Center(
+                child: Container(
+                  width: double.infinity,
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: _emailSent ? _buildSuccessView() : _buildFormView(),
+                ),
+              ),
             ),
           ),
         ],
@@ -92,23 +107,23 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 20),
+          const SizedBox(height: 4),
           // Icon
           Center(
             child: FadeInSlide(
               delay: const Duration(milliseconds: 100),
               child: Container(
-                width: 100,
-                height: 100,
+                width: 82,
+                height: 82,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: const Color(0xFFFBFAFC),
                   shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.border),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.1),
-                      blurRadius: 20,
-                      spreadRadius: 2,
-                      offset: const Offset(0, 6),
+                      color: AppColors.primary.withValues(alpha: 0.06),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
                     ),
                   ],
                 ),
@@ -116,22 +131,18 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                   margin: const EdgeInsets.all(10),
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: AppColors.primary,
                   ),
                   child: const Icon(
                     Icons.lock_reset_rounded,
-                    size: 44,
+                    size: 34,
                     color: Colors.white,
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           // Title
           const Center(
             child: FadeInSlide(
@@ -139,9 +150,9 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
               child: Text(
                 'Forgot Password?',
                 style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
                   fontFamily: 'SF Pro Display',
                 ),
               ),
@@ -157,14 +168,14 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 15,
-                  color: Colors.grey[600],
+                  color: AppColors.textSecondary,
                   height: 1.5,
                   fontFamily: 'SF Pro Display',
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 30),
           // Email field label
           const FadeInSlide(
             delay: Duration(milliseconds: 300),
@@ -172,8 +183,8 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
               'Email Address',
               style: TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
                 fontFamily: 'SF Pro Display',
               ),
             ),
@@ -235,22 +246,22 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   Widget _buildSuccessView() {
     return Column(
       children: [
-        const SizedBox(height: 40),
+        const SizedBox(height: 8),
         // Success Icon
         FadeInSlide(
           delay: const Duration(milliseconds: 100),
           child: Container(
-            width: 100,
-            height: 100,
+            width: 82,
+            height: 82,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: const Color(0xFFFBFAFC),
               shape: BoxShape.circle,
+              border: Border.all(color: AppColors.border),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.green.withOpacity(0.1),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                  offset: const Offset(0, 6),
+                  color: AppColors.success.withValues(alpha: 0.1),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
@@ -258,30 +269,26 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
               margin: const EdgeInsets.all(10),
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Colors.green, Colors.teal],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: AppColors.success,
               ),
               child: const Icon(
                 Icons.mark_email_read_rounded,
-                size: 44,
+                size: 34,
                 color: Colors.white,
               ),
             ),
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 24),
         // Title
         const FadeInSlide(
           delay: Duration(milliseconds: 200),
           child: Text(
             'Check Your Email',
             style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textPrimary,
               fontFamily: 'SF Pro Display',
             ),
           ),
@@ -295,7 +302,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey[600],
+              color: AppColors.textSecondary,
               height: 1.5,
               fontFamily: 'SF Pro Display',
             ),
@@ -308,9 +315,9 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.borderLight, width: 1),
+              color: const Color(0xFFFBFAFC),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
             ),
             child: Column(
               children: [
@@ -370,15 +377,15 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
           width: 28,
           height: 28,
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.accent.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           child: Center(
             child: Text(
               number,
               style: const TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.bold,
+                color: AppColors.accent,
+                fontWeight: FontWeight.w900,
               ),
             ),
           ),
@@ -389,7 +396,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
             text,
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[700],
+              color: AppColors.textSecondary,
               fontFamily: 'SF Pro Display',
             ),
           ),

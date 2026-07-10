@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/services/location_service.dart';
 import 'package:thryfto/core/services/rating_service.dart';
 import 'package:thryfto/features/listings/pages/listing_detail_page.dart';
@@ -183,17 +184,17 @@ class ProfileActionButtons extends StatelessWidget {
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor:
-                  isFavorite ? const Color(0xFF8B5CF6) : Colors.white,
+                  isFavorite ? AppColors.primary : Colors.white,
               foregroundColor:
-                  isFavorite ? Colors.white : const Color(0xFF8B5CF6),
+                  isFavorite ? Colors.white : AppColors.primary,
               side: BorderSide(
-                color: const Color(0xFF8B5CF6),
-                width: isFavorite ? 0 : 2,
+                color: AppColors.border,
+                width: 1,
               ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(19),
+                borderRadius: BorderRadius.circular(14),
               ),
-              elevation: isFavorite ? 2 : 0,
+              elevation: 0,
             ),
           ),
         ),

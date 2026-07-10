@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 
+const Color _authInk = Color(0xFF17131F);
+const Color _authMuted = Color(0xFF6B6475);
+const Color _authSurface = Color(0xFFFBFAFC);
+const Color _authLine = Color(0xFFE5DFEC);
+
 /// Custom text field widget for authentication pages with focused/error borders
 Widget buildCustomTextField({
   required TextEditingController controller,
@@ -27,12 +32,13 @@ Widget buildCustomTextField({
     style: TextStyle(
       fontFamily: 'SF Pro Display',
       fontSize: fontSize ?? 14,
-      color: AppColors.textPrimary,
+      color: _authInk,
+      fontWeight: FontWeight.w600,
     ),
     decoration: InputDecoration(
       hintText: hintText,
       hintStyle: TextStyle(
-        color: AppColors.textSecondary,
+        color: const Color(0xFFAAA3B5),
         fontSize: fontSize ?? 14,
         fontFamily: 'SF Pro Display',
       ),
@@ -43,7 +49,7 @@ Widget buildCustomTextField({
         padding: EdgeInsets.only(
           top: maxLines > 1 ? 12 : 0,
         ),
-        child: Icon(icon, color: AppColors.textSecondary, size: 20),
+        child: Icon(icon, color: _authMuted, size: 20),
       ),
       suffixIcon: isPassword
           ? IconButton(
@@ -51,43 +57,44 @@ Widget buildCustomTextField({
                 isPasswordVisible
                     ? Icons.visibility_outlined
                     : Icons.visibility_off_outlined,
-                color: AppColors.textSecondary,
+                color: _authMuted,
                 size: 20,
               ),
               onPressed: onTogglePasswordVisibility,
             )
           : suffixIcon,
       filled: true,
-      fillColor: Colors.white,
-      contentPadding: contentPadding ?? const EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: 16,
-      ),
+      fillColor: _authSurface,
+      contentPadding: contentPadding ??
+          const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 15,
+          ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide(color: AppColors.borderLight, width: 1),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: _authLine),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide(color: AppColors.borderLight, width: 1),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: _authLine),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: _authInk, width: 1.3),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: AppColors.error, width: 1),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: AppColors.error, width: 1.5),
       ),
     ),
   );
 }
 
-/// Primary button widget for authentication pages with gradient and glow shadow
+/// Primary button widget for authentication pages
 Widget buildPrimaryButton({
   required String text,
   VoidCallback? onPressed,
@@ -96,117 +103,71 @@ Widget buildPrimaryButton({
 }) {
   final bool isButtonEnabled = onPressed != null && !isLoading;
 
-  return Container(
-    height: 50,
-    width: double.infinity,
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(25),
-      gradient: isButtonEnabled
-          ? const LinearGradient(
-              colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            )
-          : null,
-      color: !isButtonEnabled ? Colors.grey[300] : null,
-      boxShadow: isButtonEnabled
-          ? [
-              BoxShadow(
-                color: const Color(0xFF8B5CF6).withOpacity(0.35),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ]
-          : null,
-    ),
-    child: ElevatedButton(
-      onPressed: isLoading ? null : onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        shadowColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(25),
-        ),
-        elevation: 0,
+  return AnimatedScale(
+    scale: isLoading ? 0.99 : 1,
+    duration: const Duration(milliseconds: 180),
+    curve: Curves.easeOutCubic,
+    child: Container(
+      height: 50,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        color: isButtonEnabled ? _authInk : _authInk.withValues(alpha: 0.42),
       ),
-      child: isLoading
-          ? const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
-              ),
-            )
-          : icon != null
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, size: 18),
-                    const SizedBox(width: 8),
-                    Text(
-                      text,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'SF Pro Display',
-                      ),
-                    ),
-                  ],
-                )
-              : Text(
-                  text,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'SF Pro Display',
-                  ),
+      child: ElevatedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          elevation: 0,
+        ),
+        child: isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
                 ),
+              )
+            : icon != null
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(icon, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        text,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+      ),
     ),
   );
 }
 
-/// Dynamic gradient blurred circles in the background of authentication pages
+/// Soft structured background for authentication pages
 Widget buildBackgroundBlobs(BuildContext context) {
-  final size = MediaQuery.of(context).size;
-  return Stack(
-    children: [
-      Positioned(
-        top: -size.width * 0.2,
-        right: -size.width * 0.1,
-        width: size.width * 0.8,
-        height: size.width * 0.8,
-        child: Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                const Color(0xFFD946EF).withOpacity(0.12),
-                const Color(0xFFD946EF).withOpacity(0),
-              ],
-            ),
-          ),
-        ),
-      ),
-      Positioned(
-        bottom: -size.width * 0.2,
-        left: -size.width * 0.2,
-        width: size.width * 0.9,
-        height: size.width * 0.9,
-        child: Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                const Color(0xFF8B5CF6).withOpacity(0.12),
-                const Color(0xFF8B5CF6).withOpacity(0),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ],
+  return const ColoredBox(
+    color: AppColors.background,
+    child: SizedBox.expand(),
   );
 }
 
@@ -219,17 +180,19 @@ Widget buildSocialButton({
   return Expanded(
     child: GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.borderLight),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _authLine),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: _authInk.withValues(alpha: 0.035),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -242,8 +205,8 @@ Widget buildSocialButton({
               label,
               style: const TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
+                color: _authInk,
                 fontFamily: 'SF Pro Display',
               ),
             ),

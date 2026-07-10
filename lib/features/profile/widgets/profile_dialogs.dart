@@ -561,7 +561,7 @@ class _RatingCardWithRealtimeProfile extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundColor: const Color(0xFF8B5CF6),
+                backgroundColor: AppColors.primary,
                 backgroundImage: (profileImageUrl != null && profileImageUrl.isNotEmpty)
                     ? NetworkImage(profileImageUrl)
                     : null,

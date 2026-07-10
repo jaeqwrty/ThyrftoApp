@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:thryfto/core/constants/app_colors.dart';
 
 /// Shared image picker widget for both create and edit listing pages
 class ListingImagePicker extends StatelessWidget {
@@ -32,15 +33,19 @@ class ListingImagePicker extends StatelessWidget {
         child: Container(
           height: 100,
           decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[300]!, width: 2),
+            color: const Color(0xFFFBFAFC),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
           ),
           child: Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.add_photo_alternate, size: 30, color: Colors.grey[400]),
+                const Icon(
+                  Icons.add_photo_alternate,
+                  size: 30,
+                  color: AppColors.accent,
+                ),
                 const SizedBox(width: 8),
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -50,13 +55,16 @@ class ListingImagePicker extends StatelessWidget {
                       'Add Photos',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                     Text(
                       'Max $maxImages images',
-                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -251,9 +259,9 @@ class _AddImageButton extends StatelessWidget {
         height: 100,
         margin: const EdgeInsets.only(right: 8),
         decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey[300]!, width: 2),
+          color: const Color(0xFFFBFAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
         ),
         child: Center(
           child: Icon(Icons.add, size: 30, color: Colors.grey[400]),
@@ -280,7 +288,7 @@ void showImageSourceDialog({
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
-            leading: const Icon(Icons.photo_library, color: Color(0xFF8B5CF6)),
+            leading: const Icon(Icons.photo_library, color: AppColors.accent),
             title: const Text('Choose from Gallery'),
             onTap: () {
               Navigator.pop(context);
@@ -288,7 +296,7 @@ void showImageSourceDialog({
             },
           ),
           ListTile(
-            leading: const Icon(Icons.camera_alt, color: Color(0xFF8B5CF6)),
+            leading: const Icon(Icons.camera_alt, color: AppColors.accent),
             title: const Text('Take a Photo'),
             onTap: () {
               Navigator.pop(context);

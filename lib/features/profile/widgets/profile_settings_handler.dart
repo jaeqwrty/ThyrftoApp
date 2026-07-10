@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/providers/auth_providers.dart';
 import 'package:thryfto/core/services/block_service.dart';
+import 'package:thryfto/core/utils/snackbar_utils.dart';
 import 'package:thryfto/features/profile/widgets/profile_widgets.dart';
 import 'package:thryfto/features/profile/pages/blocked_users_page.dart';
 import 'package:thryfto/shared/widgets/auth_wrapper.dart';
@@ -123,18 +124,16 @@ class ProfileSettingsHandler {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
             ListTile(
-              leading: const Icon(Icons.link, color: Color(0xFF8B5CF6)),
+              leading: const Icon(Icons.link, color: AppColors.accent),
               title: const Text("Copy Profile Link"),
               onTap: () {
                 Clipboard.setData(ClipboardData(text: profileLink));
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Link copied to clipboard!")),
-                );
+                SnackbarUtils.showSuccess(context, "Link copied to clipboard!");
               },
             ),
             ListTile(
-              leading: const Icon(Icons.qr_code_2, color: Color(0xFF8B5CF6)),
+              leading: const Icon(Icons.qr_code_2, color: AppColors.accent),
               title: const Text("Show QR Code"),
               onTap: () {
                 Navigator.pop(context);
@@ -166,9 +165,9 @@ class ProfileSettingsHandler {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    spreadRadius: 2,
+                    color: AppColors.primary.withValues(alpha: 0.06),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
                   )
                 ],
               ),
@@ -179,7 +178,7 @@ class ProfileSettingsHandler {
                 gapless: false,
                 eyeStyle: const QrEyeStyle(
                   eyeShape: QrEyeShape.square,
-                  color: Color(0xFF8B5CF6),
+                  color: AppColors.primary,
                 ),
                 dataModuleStyle: const QrDataModuleStyle(
                   dataModuleShape: QrDataModuleShape.square,
@@ -199,7 +198,7 @@ class ProfileSettingsHandler {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child:
-                const Text("Close", style: TextStyle(color: Color(0xFF8B5CF6))),
+                const Text("Close", style: TextStyle(color: AppColors.primary)),
           ),
         ],
       ),

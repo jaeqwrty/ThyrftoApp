@@ -19,7 +19,7 @@ class TagBadge extends StatelessWidget {
   factory TagBadge.size(String text) {
     return TagBadge(
       text: text,
-      backgroundColor: Colors.purple.shade50,
+      backgroundColor: AppColors.accent.withValues(alpha: 0.12),
       textColor: AppColors.primary,
     );
   }
@@ -38,7 +38,8 @@ class TagBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border),
       ),
       child: Text(
         text,

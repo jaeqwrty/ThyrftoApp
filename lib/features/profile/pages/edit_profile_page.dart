@@ -180,13 +180,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Location detected: $address'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        SnackbarUtils.showSuccess(context, 'Location detected: $address');
       }
     } catch (e) {
       setState(() {
@@ -219,13 +213,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         _locationError = null;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Location set: ${result['address']}'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      SnackbarUtils.showSuccess(context, 'Location set: ${result['address']}');
     }
   }
 
@@ -256,22 +244,12 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
   Future<void> _saveProfile() async {
     if (_fullNameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Full name is required'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      SnackbarUtils.showWarning(context, 'Full name is required');
       return;
     }
 
     if (_usernameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Username is required'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      SnackbarUtils.showWarning(context, 'Username is required');
       return;
     }
 
@@ -336,19 +314,19 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.black87),
+          icon: const Icon(Icons.close, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Edit Profile',
           style: GoogleFonts.poppins(
-            color: Colors.black87,
-            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w800,
           ),
         ),
         centerTitle: true,
@@ -467,19 +445,19 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                     decoration: InputDecoration(
                       hintText: 'Enter your full name',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: AppColors.border),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: AppColors.border),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: const BorderSide(color: AppColors.primary),
                       ),
                       filled: true,
-                      fillColor: Colors.grey[50],
+                      fillColor: const Color(0xFFFBFAFC),
                     ),
                   ),
 
@@ -501,19 +479,19 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                       hintText: 'Enter your username',
                       prefixText: '@',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: AppColors.border),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: AppColors.border),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: const BorderSide(color: AppColors.primary),
                       ),
                       filled: true,
-                      fillColor: Colors.grey[50],
+                      fillColor: const Color(0xFFFBFAFC),
                     ),
                   ),
 
@@ -536,19 +514,19 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                     decoration: InputDecoration(
                       hintText: 'Tell us a bit about yourself...',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: AppColors.border),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: AppColors.border),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: const BorderSide(color: AppColors.primary),
                       ),
                       filled: true,
-                      fillColor: Colors.grey[50],
+                      fillColor: const Color(0xFFFBFAFC),
                     ),
                   ),
 
@@ -586,7 +564,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: Colors.green.shade200),
                       ),
                       child: Row(
@@ -625,7 +603,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.orange.shade50,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: Colors.orange.shade200),
                       ),
                       child: Row(
@@ -678,7 +656,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                         foregroundColor: AppColors.primary,
                         side: const BorderSide(color: AppColors.primary),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                     ),
@@ -704,7 +682,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                         foregroundColor: AppColors.primary,
                         side: const BorderSide(color: AppColors.primary),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                     ),

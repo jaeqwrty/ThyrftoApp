@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/shared/widgets/main_navigation.dart';
 
 class HappyThriftingPage extends StatefulWidget {
@@ -61,18 +61,11 @@ class _HappyThriftingPageState extends State<HappyThriftingPage>
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          // Background blobs
           buildBackgroundBlobs(context),
-          
-          // Lively floating particles
-          ..._buildFloatingParticles(size),
-
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 28.0),
@@ -81,83 +74,85 @@ class _HappyThriftingPageState extends State<HappyThriftingPage>
                 children: [
                   const Spacer(),
 
-                  // Animated Check/Success Icon with custom glowing background
-                  ScaleTransition(
-                    scale: _scaleAnimation,
-                    child: Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFD946EF).withOpacity(0.3),
-                            blurRadius: 30,
-                            spreadRadius: 5,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.shopping_bag_rounded,
-                          size: 70,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-
-                  // Congratulations Title with ShaderMask text gradient
                   FadeTransition(
                     opacity: _fadeAnimation,
                     child: SlideTransition(
                       position: _slideAnimation,
-                      child: Column(
-                        children: [
-                          ShaderMask(
-                            shaderCallback: (bounds) => const LinearGradient(
-                              colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ).createShader(bounds),
-                            child: Text(
-                              'Setup Complete!',
-                              style: GoogleFonts.righteous(
-                                fontSize: 34,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                letterSpacing: 1.2,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: AppColors.border),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.06),
+                              blurRadius: 24,
+                              offset: const Offset(0, 14),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            ScaleTransition(
+                              scale: _scaleAnimation,
+                              child: Container(
+                                width: 92,
+                                height: 92,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFBFAFC),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Container(
+                                  margin: const EdgeInsets.all(10),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.shopping_bag_rounded,
+                                    size: 42,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Happy Thrifting!',
-                            style: GoogleFonts.poppins(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF1E293B),
+                            const SizedBox(height: 24),
+                            const Text(
+                              'Setup Complete',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textPrimary,
+                                fontFamily: 'SF Pro Display',
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Your profile is ready. Get ready to discover, buy, and sell unique pre-loved treasures in your local community!',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.poppins(
-                              fontSize: 15,
-                              color: const Color(0xFF64748B),
-                              height: 1.5,
-                              fontWeight: FontWeight.w400,
+                            const SizedBox(height: 10),
+                            const Text(
+                              'Happy Thrifting!',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.accent,
+                                fontFamily: 'SF Pro Display',
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 14),
+                            const Text(
+                              'Your profile is ready. Discover, buy, and sell unique pre-loved finds in your local community.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: AppColors.textSecondary,
+                                height: 1.5,
+                                fontWeight: FontWeight.w500,
+                                fontFamily: 'SF Pro Display',
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -195,169 +190,13 @@ class _HappyThriftingPageState extends State<HappyThriftingPage>
     );
   }
 
-  // Helper background blobs
   Widget buildBackgroundBlobs(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    return Stack(
-      children: [
-        Positioned(
-          top: -size.width * 0.4,
-          right: -size.width * 0.2,
-          width: size.width * 1.2,
-          height: size.width * 1.2,
-          child: Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  const Color(0xFFD946EF).withOpacity(0.08),
-                  const Color(0xFFD946EF).withOpacity(0),
-                ],
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: -size.width * 0.4,
-          left: -size.width * 0.3,
-          width: size.width * 1.2,
-          height: size.width * 1.2,
-          child: Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  const Color(0xFF8B5CF6).withOpacity(0.08),
-                  const Color(0xFF8B5CF6).withOpacity(0),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
+    return const ColoredBox(
+      color: AppColors.background,
+      child: SizedBox.expand(),
     );
   }
 
-  // Floating particles around the screen
-  List<Widget> _buildFloatingParticles(Size size) {
-    return [
-      _FloatingParticle(
-        top: size.height * 0.15,
-        left: size.width * 0.2,
-        color: const Color(0xFF8B5CF6).withOpacity(0.2),
-        size: 16,
-        delay: const Duration(milliseconds: 300),
-      ),
-      _FloatingParticle(
-        top: size.height * 0.25,
-        right: size.width * 0.15,
-        color: const Color(0xFFD946EF).withOpacity(0.25),
-        size: 24,
-        delay: const Duration(milliseconds: 600),
-      ),
-      _FloatingParticle(
-        bottom: size.height * 0.3,
-        left: size.width * 0.15,
-        color: const Color(0xFFD946EF).withOpacity(0.15),
-        size: 20,
-        delay: const Duration(milliseconds: 900),
-      ),
-      _FloatingParticle(
-        bottom: size.height * 0.2,
-        right: size.width * 0.25,
-        color: const Color(0xFF8B5CF6).withOpacity(0.2),
-        size: 14,
-        delay: const Duration(milliseconds: 100),
-      ),
-    ];
-  }
-}
-
-// Particle widget with smooth fade & scale loops
-class _FloatingParticle extends StatefulWidget {
-  final double? top;
-  final double? bottom;
-  final double? left;
-  final double? right;
-  final Color color;
-  final double size;
-  final Duration delay;
-
-  const _FloatingParticle({
-    this.top,
-    this.bottom,
-    this.left,
-    this.right,
-    required this.color,
-    required this.size,
-    required this.delay,
-  });
-
-  @override
-  State<_FloatingParticle> createState() => _FloatingParticleState();
-}
-
-class _FloatingParticleState extends State<_FloatingParticle>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animController;
-  late Animation<double> _animScale;
-
-  @override
-  void initState() {
-    super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 4),
-    );
-
-    _animScale = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween<double>(begin: 0.8, end: 1.2), weight: 50),
-      TweenSequenceItem(tween: Tween<double>(begin: 1.2, end: 0.8), weight: 50),
-    ]).animate(
-      CurvedAnimation(
-        parent: _animController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    Future.delayed(widget.delay, () {
-      if (mounted) {
-        _animController.repeat(reverse: true);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _animController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      top: widget.top,
-      bottom: widget.bottom,
-      left: widget.left,
-      right: widget.right,
-      child: AnimatedBuilder(
-        animation: _animScale,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _animScale.value,
-            child: Container(
-              width: widget.size,
-              height: widget.size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: widget.color,
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
 }
 
 // Cool bouncing action button
@@ -411,17 +250,13 @@ class _CoolBounceButtonState extends State<_CoolBounceButton>
           height: 56,
           width: double.infinity,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            gradient: const LinearGradient(
-              colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
+            borderRadius: BorderRadius.circular(14),
+            color: AppColors.primary,
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF8B5CF6).withOpacity(0.35),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+                color: AppColors.primary.withValues(alpha: 0.14),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
@@ -431,9 +266,8 @@ class _CoolBounceButtonState extends State<_CoolBounceButton>
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w800,
                 fontFamily: 'SF Pro Display',
-                letterSpacing: 0.5,
               ),
             ),
           ),

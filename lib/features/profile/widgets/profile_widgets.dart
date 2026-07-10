@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/services/location_service.dart';
 import 'package:thryfto/shared/widgets/image_placeholder.dart';
 import 'package:thryfto/shared/widgets/tag.dart';
@@ -38,7 +39,7 @@ class ProfileHeader extends StatelessWidget {
               // Profile Avatar - Now shows image if available
               CircleAvatar(
                 radius: 40,
-                backgroundColor: const Color(0xFF8B5CF6),
+                backgroundColor: AppColors.primary,
                 backgroundImage:
                     (profileImageUrl != null && profileImageUrl.isNotEmpty)
                         ? NetworkImage(profileImageUrl)
@@ -125,7 +126,7 @@ class ProfileHeader extends StatelessWidget {
                             displayText =
                                 'Lat: ${lat.toStringAsFixed(4)}, Lon: ${lon.toStringAsFixed(4)}';
                           }
-                          textColor = const Color(0xFF8B5CF6);
+                          textColor = AppColors.primary;
                           iconData = Icons.location_on;
                         } else {
                           displayText = 'Location not set';
@@ -291,7 +292,7 @@ class ListingGridCard extends StatelessWidget {
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           // Grey out the price if sold
-                          color: isSold ? Colors.grey : const Color(0xFF8B5CF6),
+                          color: isSold ? Colors.grey : AppColors.primary,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -333,7 +334,7 @@ class ListingGridCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF8B5CF6),
+                    color: AppColors.primary,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
@@ -358,7 +359,7 @@ class ListingGridCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF8B5CF6),
+                    color: AppColors.primary,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
@@ -437,7 +438,7 @@ class SettingsMenuItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: iconColor ?? const Color(0xFF8B5CF6)),
+      leading: Icon(icon, color: iconColor ?? AppColors.accent),
       title: Text(
         title,
         style: TextStyle(color: textColor),

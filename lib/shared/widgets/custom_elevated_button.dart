@@ -34,48 +34,48 @@ class PrimaryButton extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         curve: Curves.easeOutCubic,
         child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor ?? ink,
-          disabledBackgroundColor: ink.withValues(alpha: 0.42),
-          foregroundColor: foregroundColor ?? Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-            side: BorderSide(color: backgroundColor ?? line),
+          onPressed: isLoading ? null : onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: backgroundColor ?? ink,
+            disabledBackgroundColor: ink.withValues(alpha: 0.42),
+            foregroundColor: foregroundColor ?? Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+              side: BorderSide(color: backgroundColor ?? line),
+            ),
+            elevation: 0,
           ),
-          elevation: 0,
-        ),
-        child: isLoading
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
-            : icon != null
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(icon, size: 18),
-                      const SizedBox(width: 8),
-                      Text(
-                        text,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  )
-                : Text(
-                    text,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                    ),
+          child: isLoading
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
                   ),
+                )
+              : icon != null
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(icon, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          text,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      text,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
         ),
       ),
     );

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/services/location_service.dart';
+import 'package:thryfto/core/utils/snackbar_utils.dart';
 
 class SetLocationPage extends StatefulWidget {
   final String userId;
@@ -90,12 +90,7 @@ class _SetLocationPageState extends State<SetLocationPage> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Location detected: $address'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        SnackbarUtils.showSuccess(context, 'Location detected: $address');
       }
     } catch (e) {
       setState(() {
@@ -136,12 +131,7 @@ class _SetLocationPageState extends State<SetLocationPage> {
 
   Future<void> _saveLocation() async {
     if (_selectedLatitude == null || _selectedLongitude == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a location first'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      SnackbarUtils.showWarning(context, 'Please select a location first');
       return;
     }
 
@@ -162,30 +152,18 @@ class _SetLocationPageState extends State<SetLocationPage> {
 
       if (mounted) {
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Location saved successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          SnackbarUtils.showSuccess(context, 'Location saved successfully!');
           Navigator.pop(context, true);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to save location. Please try again.'),
-              backgroundColor: Colors.red,
-            ),
+          SnackbarUtils.showError(
+            context,
+            'Failed to save location. Please try again.',
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        SnackbarUtils.showError(context, 'Error: $e');
       }
     } finally {
       if (mounted) {
@@ -210,19 +188,20 @@ class _SetLocationPageState extends State<SetLocationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Set Your Location',
-          style: GoogleFonts.poppins(
-            color: Colors.black87,
-            fontWeight: FontWeight.w600,
+          style: const TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w800,
+            fontFamily: 'SF Pro Display',
           ),
         ),
         centerTitle: true,
@@ -238,17 +217,17 @@ class _SetLocationPageState extends State<SetLocationPage> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: AppColors.primary.withOpacity(0.3),
+                        color: AppColors.border,
                       ),
                     ),
                     child: Row(
                       children: [
                         const Icon(
                           Icons.info_outline,
-                          color: AppColors.primary,
+                          color: AppColors.accent,
                           size: 24,
                         ),
                         const SizedBox(width: 12),
@@ -256,7 +235,7 @@ class _SetLocationPageState extends State<SetLocationPage> {
                           child: Text(
                             'Your location helps buyers find items near them and see how far items are from you.',
                             style: TextStyle(
-                              color: Colors.grey[700],
+                              color: AppColors.textSecondary,
                               fontSize: 14,
                             ),
                           ),
@@ -301,7 +280,7 @@ class _SetLocationPageState extends State<SetLocationPage> {
                           Text(
                             _getLocationDisplayText(),
                             style: TextStyle(
-                              color: Colors.grey[700],
+                              color: AppColors.textSecondary,
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
@@ -321,21 +300,24 @@ class _SetLocationPageState extends State<SetLocationPage> {
                       hintText: 'e.g., Matina, Davao City or Downtown Davao',
                       prefixIcon: const Icon(Icons.location_city),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: AppColors.border),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: const BorderSide(color: AppColors.primary),
                       ),
                       filled: true,
-                      fillColor: Colors.grey[50],
+                      fillColor: const Color(0xFFFBFAFC),
                       helperText: 'This will be shown to other users',
                       helperStyle:
-                          TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
 
@@ -385,9 +367,9 @@ class _SetLocationPageState extends State<SetLocationPage> {
                       ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.primary),
+                        side: const BorderSide(color: AppColors.border),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                     ),
@@ -408,16 +390,18 @@ class _SetLocationPageState extends State<SetLocationPage> {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         elevation: 0,
-                        disabledBackgroundColor: Colors.grey[300],
+                        disabledBackgroundColor:
+                            AppColors.primary.withValues(alpha: 0.32),
                       ),
                       child: Text(
                         'Save Location',
-                        style: GoogleFonts.poppins(
+                        style: const TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
+                          fontFamily: 'SF Pro Display',
                         ),
                       ),
                     ),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
+import 'package:thryfto/core/utils/snackbar_utils.dart';
 
 class ShareModal extends StatelessWidget {
   final Map<String, dynamic> listing;
@@ -37,15 +37,7 @@ ${listing['description'] ?? ''}''';
     final shareText = '${_getShareText()}\n\n${_getShareLink()}';
     Clipboard.setData(ClipboardData(text: shareText));
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Link copied to clipboard!'),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+    SnackbarUtils.showSuccess(context, 'Link copied to clipboard!');
   }
 
   void _shareViaSheet(BuildContext context) async {
@@ -70,12 +62,7 @@ ${listing['description'] ?? ''}''';
     } catch (e) {
       if (context.mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to share: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        SnackbarUtils.showError(context, 'Failed to share: $e');
       }
     }
   }
@@ -113,9 +100,11 @@ ${listing['description'] ?? ''}''';
                 children: [
                   Text(
                     'Share Listing',
-                    style: GoogleFonts.poppins(
+                    style: const TextStyle(
                       fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary,
+                      fontFamily: 'SF Pro Display',
                     ),
                   ),
                   IconButton(
@@ -133,8 +122,9 @@ ${listing['description'] ?? ''}''';
               margin: const EdgeInsets.symmetric(horizontal: 16),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
+                color: const Color(0xFFFBFAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.border),
               ),
               child: Row(
                 children: [
@@ -237,16 +227,16 @@ ${listing['description'] ?? ''}''';
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[300]!),
-          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: color, size: 24),
             ),
@@ -266,14 +256,18 @@ ${listing['description'] ?? ''}''';
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: Colors.grey[600],
+                      color: AppColors.textSecondary,
                       fontSize: 13,
                     ),
                   ),
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: AppColors.textSecondary,
+            ),
           ],
         ),
       ),

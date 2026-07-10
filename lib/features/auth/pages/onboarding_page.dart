@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/features/profile/pages/profile_setup_page.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/features/auth/widgets/auth_widgets.dart';
 
 class OnboardingPage extends StatefulWidget {
@@ -14,6 +13,11 @@ class OnboardingPage extends StatefulWidget {
 class _OnboardingPageState extends State<OnboardingPage> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  static const Color _ink = Color(0xFF17131F);
+  static const Color _muted = Color(0xFF6B6475);
+  static const Color _line = Color(0xFFE5DFEC);
+  static const Color _surface = Color(0xFFFBFAFC);
+  static const Color _accent = Color(0xFFA8752A);
 
   final List<Map<String, String>> _pages = [
     {
@@ -56,18 +60,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.white,
-              AppColors.primary.withOpacity(0.06),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+      backgroundColor: AppColors.background,
+      body: ColoredBox(
+        color: AppColors.background,
         child: SafeArea(
           child: Column(
             children: [
@@ -84,12 +79,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             builder: (context) => const ProfileSetupPage()),
                       );
                     },
-                    child: Text(
+                    child: const Text(
                       'Skip',
-                      style: GoogleFonts.poppins(
-                        color: AppColors.primary,
+                      style: TextStyle(
+                        color: _ink,
                         fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
@@ -142,33 +137,30 @@ class _OnboardingPageState extends State<OnboardingPage> {
             FadeInSlide(
               delay: const Duration(milliseconds: 100),
               child: Container(
-                padding: const EdgeInsets.all(28),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: _line),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.12),
-                      blurRadius: 24,
-                      spreadRadius: 4,
-                      offset: const Offset(0, 8),
+                      color: _ink.withValues(alpha: 0.04),
+                      blurRadius: 22,
+                      offset: const Offset(0, 10),
                     ),
                   ],
                 ),
                 child: Container(
                   padding: const EdgeInsets.all(18),
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                  decoration: BoxDecoration(
+                    color: _surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _line),
                   ),
                   child: Icon(
                     iconData,
                     size: 56,
-                    color: Colors.white,
+                    color: _ink,
                   ),
                 ),
               ),
@@ -179,11 +171,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
               child: Text(
                 page['title']!,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
+                style: const TextStyle(
                   fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.5,
+                  fontWeight: FontWeight.w900,
+                  color: _ink,
+                  letterSpacing: 0,
                 ),
               ),
             ),
@@ -193,10 +185,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
               child: Text(
                 page['description']!,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
+                style: const TextStyle(
                   fontSize: 16,
-                  color: AppColors.textSecondary,
+                  color: _muted,
                   height: 1.6,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -222,12 +215,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 height: 8,
                 width: _currentPage == index ? 28 : 8,
                 decoration: BoxDecoration(
-                  gradient: _currentPage == index
-                      ? const LinearGradient(
-                          colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
-                        )
-                      : null,
-                  color: _currentPage == index ? null : AppColors.borderLight,
+                  color: _currentPage == index ? _ink : _line,
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -240,28 +228,17 @@ class _OnboardingPageState extends State<OnboardingPage> {
               duration: const Duration(milliseconds: 300),
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF8B5CF6).withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                color: _ink,
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     _currentPage == _pages.length - 1 ? 'Get Started' : 'Next',
-                    style: GoogleFonts.poppins(
+                    style: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
                     ),
                   ),
