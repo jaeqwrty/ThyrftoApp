@@ -41,6 +41,13 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
   String? _activeChatId;
   bool _isInitialized = false;
 
+  static const Color _ink = Color(0xFF17131F);
+  static const Color _muted = Color(0xFF6B6475);
+  static const Color _page = Color(0xFFF6F3F8);
+  static const Color _surface = Color(0xFFFBFAFC);
+  static const Color _line = Color(0xFFE5DFEC);
+  static const Color _accent = Color(0xFFA8752A);
+
   // Use ValueNotifier to prevent full widget rebuilds
   final ValueNotifier<bool> _isUploadingImage = ValueNotifier<bool>(false);
 
@@ -83,8 +90,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
         });
       }
       return chatId;
-    } catch (e) {
-      print('Error ensuring chat exists: $e');
+    } catch (_) {
       return null;
     }
   }
@@ -105,8 +111,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
             text,
             widget.otherUserId,
           );
-    } catch (e) {
-      print('Error sending message: $e');
+    } catch (_) {
       // if (mounted) {
       //   ScaffoldMessenger.of(context).showSnackBar(
       //     const SnackBar(
@@ -130,8 +135,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
       if (!mounted) return;
 
       _showImagePreviewDialog(image);
-    } catch (e) {
-      print('Error picking image: $e');
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -157,7 +161,8 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: _line),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -165,27 +170,28 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: const BoxDecoration(
-                  color: AppColors.primary,
+                  color: Colors.white,
+                  border: Border(bottom: BorderSide(color: _line)),
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
+                    topLeft: Radius.circular(18),
+                    topRight: Radius.circular(18),
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.image, color: Colors.white),
+                    const Icon(Icons.image_outlined, color: _ink),
                     const SizedBox(width: 12),
                     const Text(
                       'Send Image',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: _ink,
                         fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
+                      icon: const Icon(Icons.close_rounded, color: _ink),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
@@ -211,7 +217,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
                         onPressed: () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: BorderSide(color: Colors.grey[300]!),
+                          side: const BorderSide(color: _line),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -221,7 +227,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Colors.grey[700],
+                            color: _ink,
                           ),
                         ),
                       ),
@@ -236,7 +242,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
                         icon: const Icon(Icons.send, size: 20),
                         label: const Text('Send'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
+                          backgroundColor: _ink,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
@@ -269,8 +275,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
             image,
             widget.otherUserId,
           );
-    } catch (e) {
-      print('Error sending image: $e');
+    } catch (_) {
       // if (mounted) {
       //   ScaffoldMessenger.of(context).showSnackBar(
       //     SnackBar(
@@ -290,15 +295,15 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
       items: [
         OptionsModalItem(
           icon: Icons.camera_alt,
-          iconColor: AppColors.primary,
-          iconBackgroundColor: AppColors.primary,
+          iconColor: _ink,
+          iconBackgroundColor: _ink,
           title: 'Take Photo',
           onTap: () => _pickImage(ImageSource.camera),
         ),
         OptionsModalItem(
           icon: Icons.photo_library,
-          iconColor: AppColors.primary,
-          iconBackgroundColor: AppColors.primary,
+          iconColor: _ink,
+          iconBackgroundColor: _ink,
           title: 'Choose from Gallery',
           onTap: () => _pickImage(ImageSource.gallery),
         ),
@@ -325,8 +330,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
       await batch.commit();
 
       _hasMarkedAsRead = true;
-    } catch (e) {
-      print('Error marking messages as read: $e');
+    } catch (_) {
     }
   }
 
@@ -374,7 +378,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Conversation deleted - no messages left'),
-              backgroundColor: Colors.green,
+              backgroundColor: _ink,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
@@ -396,7 +400,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Message deleted'),
-              backgroundColor: Colors.green,
+              backgroundColor: _ink,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
@@ -406,8 +410,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
           );
         }
       }
-    } catch (e) {
-      print('Error deleting message: $e');
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -458,8 +461,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
           );
         }
       }
-    } catch (e) {
-      print('Error deleting chat: $e');
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -485,17 +487,22 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
       context: context,
       barrierColor: Colors.black54,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        elevation: 8,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        elevation: 0,
         child: Container(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: _line),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
+                  color: Colors.red.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, size: 48, color: Colors.red),
@@ -504,9 +511,9 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 22,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: _ink,
                 ),
               ),
               const SizedBox(height: 12),
@@ -592,12 +599,14 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _page,
       appBar: AppBar(
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
+        shape: const Border(bottom: BorderSide(color: _line)),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          icon: const Icon(Icons.arrow_back_rounded, color: _ink),
           onPressed: () => Navigator.pop(context),
         ),
         title: StreamBuilder<Map<String, dynamic>?>(
@@ -637,25 +646,33 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
 
             return Row(
               children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.primary,
-                  backgroundImage:
-                      (profileImageUrl != null && profileImageUrl.isNotEmpty)
-                          ? NetworkImage(profileImageUrl)
-                          : null,
-                  child: (profileImageUrl == null || profileImageUrl.isEmpty)
-                      ? Text(
-                          displayName.isNotEmpty
-                              ? displayName[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        )
-                      : null,
+                Container(
+                  width: 40,
+                  height: 40,
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: _accent.withValues(alpha: 0.45)),
+                  ),
+                  child: CircleAvatar(
+                    backgroundColor: _surface,
+                    backgroundImage:
+                        (profileImageUrl != null && profileImageUrl.isNotEmpty)
+                            ? NetworkImage(profileImageUrl)
+                            : null,
+                    child: (profileImageUrl == null || profileImageUrl.isEmpty)
+                        ? Text(
+                            displayName.isNotEmpty
+                                ? displayName[0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                              color: _ink,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                            ),
+                          )
+                        : null,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -665,8 +682,8 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
                       Text(
                         displayName,
                         style: const TextStyle(
-                          color: Colors.black87,
-                          fontWeight: FontWeight.w600,
+                          color: _ink,
+                          fontWeight: FontWeight.w900,
                           fontSize: 16,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -677,19 +694,17 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
                           Icon(
                             Icons.location_on,
                             size: 12,
-                            color: hasLocation
-                                ? Colors.red[400]
-                                : Colors.grey[400],
+                            color: hasLocation ? _muted : Color(0xFFAAA3B5),
                           ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               locationText,
                               style: TextStyle(
-                                color: hasLocation
-                                    ? Colors.grey[600]
-                                    : Colors.grey[400],
-                                fontSize: 12,
+                                color:
+                                    hasLocation ? _muted : Color(0xFFAAA3B5),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
                                 fontStyle: hasLocation
                                     ? FontStyle.normal
                                     : FontStyle.italic,
@@ -709,9 +724,17 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
         actions: [
           if (_activeChatId != null)
             IconButton(
-              icon: const Icon(Icons.more_vert, color: Colors.black87),
+              icon: const Icon(Icons.more_vert_rounded, color: _ink),
               onPressed: _showChatOptions,
+              style: IconButton.styleFrom(
+                backgroundColor: _surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: _line),
+                ),
+              ),
             ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Column(
@@ -759,7 +782,7 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
 
               return Container(
                 padding: const EdgeInsets.all(12),
-                color: Colors.grey[100],
+                color: Colors.white,
                 child: Row(
                   children: [
                     const SizedBox(
@@ -770,7 +793,11 @@ class _ConversationPageState extends ConsumerState<ConversationPage> {
                     const SizedBox(width: 12),
                     Text(
                       'Uploading image...',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      style: const TextStyle(
+                        color: _muted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),

@@ -18,6 +18,10 @@ class MessageInput extends StatefulWidget {
 
 class _MessageInputState extends State<MessageInput> {
   bool _isTyping = false;
+  static const Color _ink = Color(0xFF17131F);
+  static const Color _muted = Color(0xFF6B6475);
+  static const Color _surface = Color(0xFFFBFAFC);
+  static const Color _line = Color(0xFFE5DFEC);
 
   void _onMessageChanged(String value) {
     final isNowTyping = value.trim().isNotEmpty;
@@ -29,34 +33,36 @@ class _MessageInputState extends State<MessageInput> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: const BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        border: Border(top: BorderSide(color: _line)),
       ),
       child: SafeArea(
         child: Row(
           children: [
             IconButton(
-              icon: Icon(
-                Icons.add_photo_alternate,
-                color: Colors.grey[600],
-                size: 26,
+              icon: const Icon(
+                Icons.add_photo_alternate_outlined,
+                color: _muted,
+                size: 23,
               ),
               onPressed: widget.onAttachImage,
+              style: IconButton.styleFrom(
+                backgroundColor: _surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: _line),
+                ),
+              ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 8),
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(25),
+                  color: _surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _line),
                 ),
                 child: TextField(
                   controller: widget.controller,
@@ -64,17 +70,27 @@ class _MessageInputState extends State<MessageInput> {
                   maxLines: null,
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => widget.onSendMessage(),
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'Type a message...',
-                    hintStyle: TextStyle(color: Colors.grey[500]),
+                    hintStyle: const TextStyle(
+                      color: Color(0xFFAAA3B5),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
+                      horizontal: 14,
+                      vertical: 11,
                     ),
                     suffixIcon: _isTyping
                         ? IconButton(
-                            icon: const Icon(Icons.clear, color: Colors.grey),
+                            icon:
+                                const Icon(Icons.close_rounded, color: _muted),
                             onPressed: () {
                               widget.controller.clear();
                               setState(() => _isTyping = false);
@@ -89,15 +105,17 @@ class _MessageInputState extends State<MessageInput> {
             GestureDetector(
               onTap: _isTyping ? widget.onSendMessage : null,
               child: Container(
-                padding: const EdgeInsets.all(12),
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: _isTyping ? const Color(0xFF8B5CF6) : Colors.grey[300],
-                  shape: BoxShape.circle,
+                  color: _isTyping ? _ink : _surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _isTyping ? _ink : _line),
                 ),
                 child: Icon(
-                  Icons.send,
-                  color: _isTyping ? Colors.white : Colors.grey[600],
-                  size: 20,
+                  Icons.send_rounded,
+                  color: _isTyping ? Colors.white : _muted,
+                  size: 19,
                 ),
               ),
             ),

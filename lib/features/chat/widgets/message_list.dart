@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:thryfto/core/providers/chat_providers.dart';
 
@@ -27,6 +26,11 @@ class MessagesList extends ConsumerStatefulWidget {
 }
 
 class _MessagesListState extends ConsumerState<MessagesList> {
+  static const Color _ink = Color(0xFF17131F);
+  static const Color _muted = Color(0xFF6B6475);
+  static const Color _line = Color(0xFFE5DFEC);
+  static const Color _surface = Color(0xFFFBFAFC);
+
   @override
   Widget build(BuildContext context) {
     // Use Riverpod provider instead of StreamBuilder
@@ -72,7 +76,7 @@ class _MessagesListState extends ConsumerState<MessagesList> {
         return ListView.builder(
           controller: widget.scrollController,
           reverse: true,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(14, 18, 14, 18),
           itemCount: filteredMessages.length,
           itemBuilder: (context, index) {
             final messageDoc = filteredMessages[index];
@@ -102,18 +106,38 @@ class _MessagesListState extends ConsumerState<MessagesList> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          Text(
+          Container(
+            width: 66,
+            height: 66,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: _line),
+            ),
+            child: const Icon(
+              Icons.chat_bubble_outline_rounded,
+              size: 30,
+              color: _muted,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
             'No messages yet',
             style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500),
+              fontSize: 18,
+              color: _ink,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const SizedBox(height: 8),
-          Text('Send a message to start the conversation',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500])),
+          const Text(
+            'Send a message to start the conversation',
+            style: TextStyle(
+              fontSize: 13,
+              color: _muted,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -133,9 +157,9 @@ class _MessagesListState extends ConsumerState<MessagesList> {
       child: Align(
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: const EdgeInsets.only(bottom: 10),
           constraints:
-              BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+              BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.74),
           child: messageType == 'image'
               ? _buildImageMessage(messageData, timeText, isMe)
               : _buildTextMessage(messageData, isMe, timeText),
@@ -147,15 +171,25 @@ class _MessagesListState extends ConsumerState<MessagesList> {
   Widget _buildTextMessage(
       Map<String, dynamic> messageData, bool isMe, String timeText) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
-        color: isMe ? AppColors.primary : Colors.grey[200],
+        color: isMe ? _ink : Colors.white,
+        border: isMe ? null : Border.all(color: _line),
         borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(20),
-          topRight: const Radius.circular(20),
-          bottomLeft: isMe ? const Radius.circular(20) : Radius.zero,
-          bottomRight: isMe ? Radius.zero : const Radius.circular(20),
+          topLeft: const Radius.circular(18),
+          topRight: const Radius.circular(18),
+          bottomLeft: Radius.circular(isMe ? 18 : 5),
+          bottomRight: Radius.circular(isMe ? 5 : 18),
         ),
+        boxShadow: isMe
+            ? null
+            : [
+                BoxShadow(
+                  color: _ink.withValues(alpha: 0.035),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment:
@@ -163,7 +197,11 @@ class _MessagesListState extends ConsumerState<MessagesList> {
         children: [
           Text(messageData['text'] ?? '',
               style: TextStyle(
-                  color: isMe ? Colors.white : Colors.black87, fontSize: 15)),
+                color: isMe ? Colors.white : _ink,
+                fontSize: 14.5,
+                height: 1.32,
+                fontWeight: FontWeight.w500,
+              )),
           const SizedBox(height: 4),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -171,11 +209,12 @@ class _MessagesListState extends ConsumerState<MessagesList> {
               Text(timeText,
                   style: TextStyle(
                       color: isMe ? Colors.white70 : Colors.grey[500],
-                      fontSize: 11)),
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600)),
               if (isMe) ...[
                 const SizedBox(width: 4),
                 Icon(messageData['read'] == true ? Icons.done_all : Icons.done,
-                    size: 12, color: isMe ? Colors.white70 : Colors.grey[500]),
+                    size: 12, color: isMe ? Colors.white70 : _muted),
               ],
             ],
           ),
@@ -194,16 +233,29 @@ class _MessagesListState extends ConsumerState<MessagesList> {
         GestureDetector(
           onTap: () => widget.onImageTap(imageUrl), // Added widget. prefix
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(imageUrl, fit: BoxFit.cover),
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _surface,
+                border: Border.all(color: _line),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Image.network(imageUrl, fit: BoxFit.cover),
+            ),
           ),
         ),
         const SizedBox(height: 4),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const Icon(Icons.image_outlined, size: 12, color: _muted),
+            const SizedBox(width: 4),
             Text(timeText,
-                style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                style: const TextStyle(
+                  color: _muted,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                )),
             if (isMe) ...[
               const SizedBox(width: 4),
               Icon(messageData['read'] == true ? Icons.done_all : Icons.done,

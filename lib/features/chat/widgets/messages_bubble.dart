@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/core/utils/common_modals.dart';
 
+const Color _bubbleInk = Color(0xFF17131F);
+const Color _bubbleMuted = Color(0xFF6B6475);
+const Color _bubbleLine = Color(0xFFE5DFEC);
+
 class MessageBubble extends StatelessWidget {
   final Map<String, dynamic> message;
   final String messageId;
@@ -122,7 +126,8 @@ class MessageBubble extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: isMe ? const Color(0xFF8B5CF6) : Colors.white,
+                    color: isMe ? _bubbleInk : Colors.white,
+                    border: isMe ? null : Border.all(color: _bubbleLine),
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(18),
                       topRight: const Radius.circular(18),
@@ -131,7 +136,7 @@ class MessageBubble extends StatelessWidget {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
+                        color: _bubbleInk.withValues(alpha: 0.04),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -146,7 +151,7 @@ class MessageBubble extends StatelessWidget {
                       Text(
                         message['text'] ?? '',
                         style: TextStyle(
-                          color: isMe ? Colors.white : Colors.black87,
+                          color: isMe ? Colors.white : _bubbleInk,
                           fontSize: 15,
                           height: 1.4,
                         ),
@@ -158,7 +163,7 @@ class MessageBubble extends StatelessWidget {
                           Text(
                             timeText,
                             style: TextStyle(
-                              color: isMe ? Colors.white70 : Colors.grey[500],
+                              color: isMe ? Colors.white70 : _bubbleMuted,
                               fontSize: 11,
                             ),
                           ),

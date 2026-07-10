@@ -17,6 +17,12 @@ import 'package:thryfto/core/services/chat_service.dart';
 import 'package:thryfto/core/utils/snackbar_utils.dart';
 import 'package:thryfto/shared/widgets/share_modal.dart';
 
+const Color _homeInk = Color(0xFF17131F);
+const Color _homeMuted = Color(0xFF6B6475);
+const Color _homeSurface = Color(0xFFFBFAFC);
+const Color _homeLine = Color(0xFFE5DFEC);
+const Color _homeAccent = Color(0xFFA8752A);
+
 /// Format count helper function
 String formatCount(int count) {
   if (count >= 1000000) {
@@ -89,12 +95,12 @@ class _PostCardState extends State<PostCard>
             }
 
             return Container(
-              margin: const EdgeInsets.only(bottom: 8),
+              margin: const EdgeInsets.only(bottom: 10),
               decoration: const BoxDecoration(
                 color: Colors.white,
                 border: Border(
-                  top: BorderSide(color: Color(0xFFE5E7EB), width: 0.7),
-                  bottom: BorderSide(color: Color(0xFFE5E7EB), width: 0.7),
+                  top: BorderSide(color: _homeLine, width: 0.7),
+                  bottom: BorderSide(color: _homeLine, width: 0.7),
                 ),
               ),
               child: ClipRRect(
@@ -231,7 +237,7 @@ class PostUserHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 11, 12, 11),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -239,23 +245,34 @@ class PostUserHeader extends StatelessWidget {
             onTap: onTap,
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.primary,
-                  backgroundImage:
-                      (profileImageUrl != null && profileImageUrl!.isNotEmpty)
-                          ? NetworkImage(profileImageUrl!)
-                          : null,
-                  child: (profileImageUrl == null || profileImageUrl!.isEmpty)
-                      ? Text(
-                          username.isNotEmpty ? username[0].toUpperCase() : '?',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        )
-                      : null,
+                Container(
+                  width: 38,
+                  height: 38,
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border:
+                        Border.all(color: _homeAccent.withValues(alpha: 0.45)),
+                  ),
+                  child: CircleAvatar(
+                    backgroundColor: _homeSurface,
+                    backgroundImage:
+                        (profileImageUrl != null && profileImageUrl!.isNotEmpty)
+                            ? NetworkImage(profileImageUrl!)
+                            : null,
+                    child: (profileImageUrl == null || profileImageUrl!.isEmpty)
+                        ? Text(
+                            username.isNotEmpty
+                                ? username[0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                              color: _homeInk,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 14,
+                            ),
+                          )
+                        : null,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Column(
@@ -264,9 +281,9 @@ class PostUserHeader extends StatelessWidget {
                     Text(
                       username,
                       style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w800,
                         fontSize: 14,
-                        color: const Color(0xFF1E293B),
+                        color: _homeInk,
                       ),
                     ),
                     const SizedBox(height: 1),
@@ -275,14 +292,15 @@ class PostUserHeader extends StatelessWidget {
                         const Icon(
                           Icons.location_on_outlined,
                           size: 11,
-                          color: Colors.grey,
+                          color: _homeMuted,
                         ),
                         const SizedBox(width: 2),
                         Text(
                           locationDisplay,
                           style: GoogleFonts.poppins(
-                            color: Colors.grey[500],
+                            color: _homeMuted,
                             fontSize: 11,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -297,7 +315,7 @@ class PostUserHeader extends StatelessWidget {
           IconButton(
             icon: const Icon(
               Icons.more_horiz_rounded,
-              color: Color(0xFF64748B),
+              color: _homeMuted,
               size: 20,
             ),
             onPressed: () {
@@ -440,10 +458,10 @@ class _PostImageState extends State<PostImage>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withValues(alpha: 0.42),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               width: 0.5,
             ),
           ),
@@ -495,7 +513,7 @@ class _PostImageState extends State<PostImage>
                                     loadingProgress.expectedTotalBytes!
                                 : null,
                             strokeWidth: 2.5,
-                            color: AppColors.primary,
+                            color: _homeInk,
                           ),
                         );
                       },
@@ -518,7 +536,7 @@ class _PostImageState extends State<PostImage>
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.15),
+                        color: Colors.black.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -560,7 +578,7 @@ class _PostImageState extends State<PostImage>
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
+                              color: Colors.black.withValues(alpha: 0.15),
                               blurRadius: 4,
                             ),
                           ],
@@ -923,7 +941,7 @@ class _BookmarkButtonOptimizedState extends State<BookmarkButtonOptimized>
               isBookmarked
                   ? Icons.bookmark_rounded
                   : Icons.bookmark_border_rounded,
-              color: isBookmarked ? AppColors.primary : const Color(0xFF475569),
+              color: isBookmarked ? _homeInk : _homeMuted,
               size: 22,
             ),
           ),
@@ -958,7 +976,7 @@ class PostPriceTitle extends StatelessWidget {
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.primary,
+                color: _homeInk,
               ),
             ),
             const SizedBox(height: 2),
@@ -1092,23 +1110,12 @@ class _PostCtaRowState extends State<PostCtaRow> {
           )
         : InkWell(
             onTap: _openChat,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(14),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, Color(0xFFD946EF)],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.25),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                color: _homeInk,
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1124,8 +1131,8 @@ class _PostCtaRowState extends State<PostCtaRow> {
                     style: GoogleFonts.poppins(
                       color: Colors.white,
                       fontSize: 12.5,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.3,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0,
                     ),
                   ),
                 ],
@@ -1184,8 +1191,8 @@ class _PostCtaRowState extends State<PostCtaRow> {
             isSeller ? 'Your active listing' : 'Interested in this item?',
             style: GoogleFonts.poppins(
               fontSize: 12,
-              color: const Color(0xFF64748B), // Slate 500
-              fontWeight: FontWeight.w500,
+              color: _homeMuted,
+              fontWeight: FontWeight.w600,
             ),
           ),
 
@@ -1203,16 +1210,15 @@ class _PostCtaRowState extends State<PostCtaRow> {
                   ),
                 );
               },
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(14),
               child: Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9), // Slate 100
-                  borderRadius: BorderRadius.circular(20),
+                  color: _homeSurface,
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: const Color(0xFFE2E8F0), // Slate 200
-                    width: 0.5,
+                    color: _homeLine,
                   ),
                 ),
                 child: Row(
@@ -1220,17 +1226,17 @@ class _PostCtaRowState extends State<PostCtaRow> {
                   children: [
                     const Icon(
                       Icons.edit_outlined,
-                      color: Color(0xFF475569),
+                      color: _homeInk,
                       size: 13,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       'Edit',
                       style: GoogleFonts.poppins(
-                        color: const Color(0xFF475569),
+                        color: _homeInk,
                         fontSize: 12.5,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.3,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0,
                       ),
                     ),
                   ],

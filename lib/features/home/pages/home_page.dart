@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/features/home/widgets/home_widgets.dart';
 import 'package:thryfto/features/home/pages/notification_page.dart';
 import 'package:thryfto/shared/widgets/notification_bell.dart';
@@ -19,6 +17,10 @@ class HomePage extends ConsumerStatefulWidget {
 
 class HomePageState extends ConsumerState<HomePage> {
   final ScrollController _scrollController = ScrollController();
+  static const Color _ink = Color(0xFF17131F);
+  static const Color _muted = Color(0xFF6B6475);
+  static const Color _page = Color(0xFFF6F3F8);
+  static const Color _line = Color(0xFFE5DFEC);
 
   @override
   void initState() {
@@ -50,7 +52,7 @@ class HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _page,
       body: SafeArea(
         child: _buildHomeFeed(context, ref),
       ),
@@ -116,14 +118,29 @@ class HomePageState extends ConsumerState<HomePage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.shopping_bag_outlined,
-                    size: 80, color: Colors.grey[400]),
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: _line),
+                  ),
+                  child: const Icon(
+                    Icons.shopping_bag_outlined,
+                    size: 32,
+                    color: _muted,
+                  ),
+                ),
                 const SizedBox(height: 16),
-                Text('No listings yet',
-                    style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500)),
+                const Text(
+                  'No listings yet',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: _ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ],
             ),
           ),
@@ -137,22 +154,34 @@ class HomePageState extends ConsumerState<HomePage> {
       floating: true,
       snap: true,
       elevation: 0,
+      surfaceTintColor: Colors.white,
       backgroundColor: Colors.white,
       automaticallyImplyLeading: false,
-      title: ShaderMask(
-        shaderCallback: (bounds) => const LinearGradient(
-          colors: [AppColors.primary, Color(0xFFD946EF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ).createShader(bounds),
-        child: Text(
-          'Thryfto',
-          style: GoogleFonts.righteous(
+      shape: const Border(bottom: BorderSide(color: _line)),
+      titleSpacing: 18,
+      title: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Thryfto',
+            style: TextStyle(
+              color: _ink,
               fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: 1.2),
-        ),
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
+          ),
+          SizedBox(height: 1),
+          Text(
+            'Fresh finds near you',
+            style: TextStyle(
+              color: _muted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0,
+            ),
+          ),
+        ],
       ),
       actions: [
         NotificationBell(
