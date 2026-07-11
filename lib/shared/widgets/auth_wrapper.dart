@@ -4,6 +4,7 @@ import 'package:thryfto/shared/widgets/main_navigation.dart';
 import 'package:thryfto/core/providers/auth_providers.dart';
 import 'package:thryfto/features/auth/pages/login_page.dart';
 import 'package:thryfto/features/auth/pages/onboarding_page.dart';
+import 'package:thryfto/shared/widgets/skeleton_loaders.dart';
 
 class AuthWrapper extends ConsumerWidget {
   const AuthWrapper({super.key});
@@ -21,8 +22,9 @@ class AuthWrapper extends ConsumerWidget {
             builder: (context, profileSnapshot) {
               if (profileSnapshot.connectionState == ConnectionState.waiting) {
                 return const Scaffold(
-                  body: Center(
-                    child: CircularProgressIndicator(),
+                  backgroundColor: Color(0xFFF6F3F8),
+                  body: SafeArea(
+                    child: PostCardListSkeleton(),
                   ),
                 );
               }
@@ -49,8 +51,9 @@ class AuthWrapper extends ConsumerWidget {
         return const LoginScreen();
       },
       loading: () => const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
+        backgroundColor: Color(0xFFF6F3F8),
+        body: SafeArea(
+          child: PostCardListSkeleton(),
         ),
       ),
       error: (error, stack) => const LoginScreen(),

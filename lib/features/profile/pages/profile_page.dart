@@ -14,6 +14,7 @@ import 'package:thryfto/core/services/database_service.dart';
 import 'package:thryfto/core/services/rating_service.dart';
 import 'package:thryfto/core/services/favorite_service.dart';
 import 'package:thryfto/core/services/location_service.dart';
+import 'package:thryfto/shared/widgets/skeleton_loaders.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   final Map<String, dynamic> user;
@@ -454,7 +455,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
       stream: _db.getUserListings(userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const ListingGridSkeleton(itemCount: 4);
         }
         final listings = snapshot.data ?? [];
         if (listings.isEmpty) {
@@ -473,7 +474,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
       stream: _db.getBookmarkedListings(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const ListingGridSkeleton(itemCount: 4);
         }
         final listings = snapshot.data ?? [];
         if (listings.isEmpty) {

@@ -4,6 +4,7 @@ import 'package:thryfto/features/home/widgets/home_widgets.dart';
 import 'package:thryfto/features/home/pages/notification_page.dart';
 import 'package:thryfto/shared/widgets/notification_bell.dart';
 import 'package:thryfto/core/providers/home_providers.dart';
+import 'package:thryfto/shared/widgets/skeleton_loaders.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   final Map<String, dynamic> user;
@@ -103,7 +104,7 @@ class HomePageState extends ConsumerState<HomePage> {
         return Center(child: Text('Error: $error'));
       },
       loading: () {
-        return const Center(child: CircularProgressIndicator());
+        return const PostCardListSkeleton();
       },
     );
   }

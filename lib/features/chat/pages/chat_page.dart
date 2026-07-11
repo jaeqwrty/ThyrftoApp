@@ -7,6 +7,7 @@ import 'package:thryfto/core/utils/common_dialogs.dart';
 import 'package:thryfto/core/utils/common_modals.dart';
 import 'package:thryfto/core/providers/chat_providers.dart';
 import 'package:thryfto/features/chat/pages/conversation_page.dart';
+import 'package:thryfto/shared/widgets/skeleton_loaders.dart';
 
 class ChatListPage extends ConsumerStatefulWidget {
   final Map<String, dynamic> user;
@@ -255,7 +256,7 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
           },
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const ChatListSkeleton(),
       error: (error, stack) => ErrorState(
         message: 'Error loading chats: ${error.toString()}',
       ),
@@ -416,33 +417,7 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
   }
 
   Widget _buildSkeletonTile() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _line),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            CircleAvatar(radius: 24, backgroundColor: Colors.grey[200]),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(width: 100, height: 16, color: Colors.grey[200]),
-                  const SizedBox(height: 6),
-                  Container(width: 150, height: 14, color: Colors.grey[100]),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return const ChatTileSkeleton();
   }
 
   String _formatTime(DateTime time) {

@@ -16,6 +16,7 @@ import 'package:thryfto/core/services/rating_service.dart';
 import 'package:thryfto/core/services/notification_service.dart';
 import 'package:thryfto/core/services/block_service.dart';
 import 'package:thryfto/features/chat/pages/conversation_page.dart';
+import 'package:thryfto/shared/widgets/skeleton_loaders.dart';
 
 class UserProfilePage extends StatefulWidget {
   final String userId;
@@ -62,10 +63,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         // Handle initial loading state
         if (snapshot.connectionState == ConnectionState.waiting &&
             !snapshot.hasData) {
-          return const Scaffold(
-            backgroundColor: _page,
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return const UserProfilePageSkeleton();
         }
 
         final userData = snapshot.data ?? {};
@@ -153,7 +151,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting &&
                         !snapshot.hasData) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const ListingGridSkeleton(itemCount: 4);
                     }
                     final listings = snapshot.data ?? [];
 

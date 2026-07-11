@@ -9,6 +9,7 @@ import 'package:thryfto/features/profile/pages/user_profile_page.dart';
 import 'package:thryfto/shared/widgets/comments_modal.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:thryfto/shared/widgets/skeleton_loaders.dart';
 
 class NotificationsPage extends ConsumerStatefulWidget {
   const NotificationsPage({super.key});
@@ -134,7 +135,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
           );
         },
         error: (error, stackTrace) => _buildErrorState(),
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const NotificationListSkeleton(),
       ),
     );
   }

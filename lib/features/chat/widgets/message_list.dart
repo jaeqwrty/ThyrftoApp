@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:thryfto/core/providers/chat_providers.dart';
+import 'package:thryfto/shared/widgets/skeleton_loaders.dart';
 
 class MessagesList extends ConsumerStatefulWidget {
   final String chatId;
@@ -94,7 +95,7 @@ class _MessagesListState extends ConsumerState<MessagesList> {
           },
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const MessageListSkeleton(),
       error: (error, stack) => Center(
         child: Text('Error loading messages: $error'),
       ),

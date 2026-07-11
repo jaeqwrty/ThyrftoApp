@@ -8,6 +8,7 @@ import 'package:thryfto/features/listings/pages/listing_detail_page.dart';
 import 'package:thryfto/core/services/location_service.dart';
 import 'package:thryfto/core/services/block_service.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
+import 'package:thryfto/shared/widgets/skeleton_loaders.dart';
 
 class SearchPage extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -378,7 +379,7 @@ class _SearchPageState extends State<SearchPage> {
       stream: query.snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const ListingGridSkeleton();
         }
 
         if (snapshot.hasError) {
@@ -426,7 +427,7 @@ class _SearchPageState extends State<SearchPage> {
           builder: (context, blockedFilterSnapshot) {
             if (blockedFilterSnapshot.connectionState ==
                 ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const ListingGridSkeleton();
             }
 
             var filteredListings = blockedFilterSnapshot.data ?? listingsList;
