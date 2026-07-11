@@ -22,7 +22,7 @@ class DatabaseService {
       );
       return urls;
     } catch (e) {
-      throw Exception('Failed to upload images: $e');
+      throw Exception('Image upload failed');
     }
   }
 
@@ -93,7 +93,8 @@ class DatabaseService {
     } catch (e) {
       return {
         'success': false,
-        'message': 'Failed to create listing: $e',
+        'message':
+            'We could not publish your listing right now. Check your photos and try again.',
       };
     }
   }
@@ -142,7 +143,8 @@ class DatabaseService {
     } catch (e) {
       return {
         'success': false,
-        'message': 'Failed to update listing: $e',
+        'message':
+            'We could not save your listing changes right now. Please try again.',
       };
     }
   }

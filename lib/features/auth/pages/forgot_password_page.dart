@@ -53,7 +53,12 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       if (mounted) {
-        SnackbarUtils.showError(context, 'An unexpected error occurred: $e');
+        SnackbarUtils.showError(
+          context,
+          'We could not send the reset link right now. Please try again.',
+          actionLabel: 'Try again',
+          onAction: _handleResetPassword,
+        );
       }
     }
   }

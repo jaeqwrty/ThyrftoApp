@@ -13,15 +13,19 @@ class SnackbarUtils {
     BuildContext context,
     String message, {
     Duration duration = const Duration(seconds: 2),
+    String? actionLabel,
+    VoidCallback? onAction,
   }) {
     _showCustomNotification(
       context: context,
-      title: 'Success',
+      title: 'Accepted',
       message: message,
       icon: Icons.check_circle_rounded,
       primaryColor: _success,
       iconBgColor: _success.withValues(alpha: 0.1),
       duration: duration,
+      actionLabel: actionLabel,
+      onAction: onAction,
     );
   }
 
@@ -30,15 +34,40 @@ class SnackbarUtils {
     BuildContext context,
     String message, {
     Duration duration = const Duration(seconds: 3),
+    String? actionLabel,
+    VoidCallback? onAction,
   }) {
     _showCustomNotification(
       context: context,
-      title: 'Error',
+      title: 'Not accepted',
       message: message,
       icon: Icons.error_outline_rounded,
       primaryColor: _error,
       iconBgColor: _error.withValues(alpha: 0.1),
       duration: duration,
+      actionLabel: actionLabel,
+      onAction: onAction,
+    );
+  }
+
+  /// Show a rejection snackbar for declined, cancelled, or blocked actions.
+  static void showRejected(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 3),
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
+    _showCustomNotification(
+      context: context,
+      title: 'Request rejected',
+      message: message,
+      icon: Icons.block_rounded,
+      primaryColor: _error,
+      iconBgColor: _error.withValues(alpha: 0.1),
+      duration: duration,
+      actionLabel: actionLabel,
+      onAction: onAction,
     );
   }
 
@@ -48,6 +77,8 @@ class SnackbarUtils {
     String message, {
     Duration duration = const Duration(seconds: 2),
     IconData icon = Icons.info_outline_rounded,
+    String? actionLabel,
+    VoidCallback? onAction,
   }) {
     _showCustomNotification(
       context: context,
@@ -57,6 +88,8 @@ class SnackbarUtils {
       primaryColor: _ink,
       iconBgColor: _ink.withValues(alpha: 0.08),
       duration: duration,
+      actionLabel: actionLabel,
+      onAction: onAction,
     );
   }
 
@@ -86,15 +119,19 @@ class SnackbarUtils {
     BuildContext context,
     String message, {
     Duration duration = const Duration(seconds: 2),
+    String? actionLabel,
+    VoidCallback? onAction,
   }) {
     _showCustomNotification(
       context: context,
-      title: 'Warning',
+      title: 'Needs attention',
       message: message,
       icon: Icons.warning_amber_rounded,
       primaryColor: _warning,
       iconBgColor: _warning.withValues(alpha: 0.12),
       duration: duration,
+      actionLabel: actionLabel,
+      onAction: onAction,
     );
   }
 
@@ -154,6 +191,8 @@ class SnackbarUtils {
     required Color primaryColor,
     required Color iconBgColor,
     required Duration duration,
+    String? actionLabel,
+    VoidCallback? onAction,
   }) {
     ScaffoldMessenger.of(context).clearSnackBars();
 
@@ -242,6 +281,35 @@ class SnackbarUtils {
                       ),
                     ),
                   ),
+                  if (actionLabel != null && onAction != null) ...[
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                        onAction();
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: primaryColor,
+                        backgroundColor: primaryColor.withValues(alpha: 0.08),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        minimumSize: const Size(0, 34),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                      child: Text(
+                        actionLabel,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
                   // Dismiss button
                   IconButton(
                     icon: const Icon(

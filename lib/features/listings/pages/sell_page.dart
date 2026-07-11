@@ -214,12 +214,19 @@ class _SellPageState extends State<SellPage> {
         SnackbarUtils.showError(
           context,
           result['message'] ?? 'Failed to create listing',
+          actionLabel: 'Try again',
+          onAction: _handleCreateListing,
         );
       }
     } catch (e) {
       setState(() => _isLoading = false);
       if (!mounted) return;
-      SnackbarUtils.showError(context, 'Error: $e');
+      SnackbarUtils.showError(
+        context,
+        'We could not publish this listing. Review the details and try again.',
+        actionLabel: 'Try again',
+        onAction: _handleCreateListing,
+      );
     }
   }
 

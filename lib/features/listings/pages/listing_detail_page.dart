@@ -87,9 +87,14 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
     setState(() => _isSoldProcessing = false);
 
     if (success) {
-      SnackbarUtils.showSuccess(context, 'Listing marked as sold!');
+      SnackbarUtils.showSuccess(context, 'Listing marked as sold.');
     } else {
-      SnackbarUtils.showError(context, 'Failed to update status');
+      SnackbarUtils.showError(
+        context,
+        'We could not update the listing status. Please try again.',
+        actionLabel: 'Try again',
+        onAction: _handleMarkAsSold,
+      );
     }
   }
 

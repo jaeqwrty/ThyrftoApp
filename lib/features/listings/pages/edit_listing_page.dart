@@ -157,13 +157,21 @@ class _EditListingPageState extends State<EditListingPage> {
       } else {
         SnackbarUtils.showError(
           context,
-          result['message'] ?? 'Failed to update listing',
+          result['message'] ??
+              'We could not save your changes right now. Please try again.',
+          actionLabel: 'Try again',
+          onAction: _handleUpdate,
         );
       }
     } catch (e) {
       setState(() => _isLoading = false);
       if (!mounted) return;
-      SnackbarUtils.showError(context, 'Error: $e');
+      SnackbarUtils.showError(
+        context,
+        'We could not save your listing changes. Please review and try again.',
+        actionLabel: 'Try again',
+        onAction: _handleUpdate,
+      );
     }
   }
 

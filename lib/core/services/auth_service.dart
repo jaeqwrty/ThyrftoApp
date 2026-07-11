@@ -19,13 +19,16 @@ class AuthService {
 
       final user = userCredential.user;
       if (user == null) {
-        return {'success': false, 'message': 'Authentication failed'};
+        return {'success': false, 'message': 'We could not sign you in. Please try again.'};
       }
 
       final userData = await getUserProfile(user.uid);
 
       if (userData == null) {
-        return {'success': false, 'message': 'User profile not found'};
+        return {
+          'success': false,
+          'message': 'We could not find your Thryfto profile yet.',
+        };
       }
 
       return {
@@ -36,7 +39,10 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       return {'success': false, 'message': _getErrorMessage(e.code)};
     } catch (e) {
-      return {'success': false, 'message': 'An unexpected error occurred: $e'};
+      return {
+        'success': false,
+        'message': 'We could not sign you in right now. Please try again.',
+      };
     }
   }
 
@@ -91,7 +97,10 @@ class AuthService {
 
       final user = userCredential.user;
       if (user == null) {
-        return {'success': false, 'message': 'Account creation failed'};
+        return {
+          'success': false,
+          'message': 'We could not create your account. Please try again.',
+        };
       }
 
       // Save user profile to database
@@ -105,7 +114,10 @@ class AuthService {
 
       if (!profileCreated) {
         await user.delete();
-        return {'success': false, 'message': 'Failed to create user profile'};
+        return {
+          'success': false,
+          'message': 'We could not finish your profile setup. Please try again.',
+        };
       }
 
       final userData = {
@@ -125,7 +137,10 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       return {'success': false, 'message': _getErrorMessage(e.code)};
     } catch (e) {
-      return {'success': false, 'message': 'An unexpected error occurred: $e'};
+      return {
+        'success': false,
+        'message': 'We could not create your account right now. Please try again.',
+      };
     }
   }
 
@@ -161,7 +176,10 @@ class AuthService {
 
       final User? user = userCredential.user;
       if (user == null) {
-        return {'success': false, 'message': 'Authentication failed'};
+        return {
+          'success': false,
+          'message': 'We could not sign you in with Google. Please try again.',
+        };
       }
 
       // Check if Firestore profile already exists
@@ -205,7 +223,10 @@ class AuthService {
       );
 
       if (!profileCreated) {
-        return {'success': false, 'message': 'Failed to create user profile'};
+        return {
+          'success': false,
+          'message': 'We could not finish your Google profile. Please try again.',
+        };
       }
 
       final newProfile = await getUserProfile(user.uid);
@@ -218,7 +239,10 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       return {'success': false, 'message': _getErrorMessage(e.code)};
     } catch (e) {
-      return {'success': false, 'message': 'Google sign-in failed: $e'};
+      return {
+        'success': false,
+        'message': 'Google sign-in was not completed. Please try again.',
+      };
     }
   }
 
@@ -247,7 +271,7 @@ class AuthService {
     } catch (e) {
       return {
         'success': false,
-        'message': 'Error checking username availability: $e',
+        'message': 'We could not check that username right now. Please try again.',
       };
     }
   }
@@ -416,11 +440,15 @@ class AuthService {
           errorMessage = 'Invalid email address';
           break;
         default:
-          errorMessage = 'Failed to send reset email: ${e.message}';
+          errorMessage =
+              'We could not send the reset email right now. Please try again.';
       }
       return {'success': false, 'message': errorMessage};
     } catch (e) {
-      return {'success': false, 'message': 'An unexpected error occurred: $e'};
+      return {
+        'success': false,
+        'message': 'We could not send the reset email right now. Please try again.',
+      };
     }
   }
 
@@ -463,7 +491,7 @@ class AuthService {
       case 'too-many-requests':
         return 'Too many failed attempts. Please try again later';
       default:
-        return 'Authentication error occurred';
+        return 'We could not accept those sign-in details. Please try again.';
     }
   }
 }
