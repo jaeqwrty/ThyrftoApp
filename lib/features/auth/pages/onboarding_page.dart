@@ -17,7 +17,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
   static const Color _muted = Color(0xFF6B6475);
   static const Color _line = Color(0xFFE5DFEC);
   static const Color _surface = Color(0xFFFBFAFC);
-  static const Color _accent = Color(0xFFA8752A);
 
   final List<Map<String, String>> _pages = [
     {

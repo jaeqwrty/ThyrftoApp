@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -128,9 +129,106 @@ class AuthService {
     }
   }
 
+  /// Sign in with Google
+  Future<Map<String, dynamic>> signInWithGoogle() async {
+    try {
+      // Trigger the Google account picker
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        serverClientId:
+            '41459314240-5oml340uroesq50e7ri5ujbb1m16tef7.apps.googleusercontent.com',
+      );
+
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+      // User cancelled the picker
+      if (googleUser == null) {
+        return {'success': false, 'message': 'Sign in cancelled'};
+      }
+
+      // Obtain auth tokens
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      // Build Firebase credential
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign into Firebase
+      final UserCredential userCredential =
+          await _auth.signInWithCredential(credential);
+
+      final User? user = userCredential.user;
+      if (user == null) {
+        return {'success': false, 'message': 'Authentication failed'};
+      }
+
+      // Check if Firestore profile already exists
+      final existingProfile = await getUserProfile(user.uid);
+
+      if (existingProfile != null) {
+        // Returning user — just return their profile
+        return {
+          'success': true,
+          'message': 'Welcome back!',
+          'user': existingProfile,
+          'isNewUser': false,
+        };
+      }
+
+      // New Google user — create a minimal profile; onboarding will complete it
+      final String displayName = user.displayName ?? '';
+      final String email = user.email ?? '';
+
+      // Derive a safe default username from the email prefix
+      String rawUsername = email.split('@').first.toLowerCase();
+      rawUsername = rawUsername.replaceAll(RegExp(r'[^a-z0-9_]'), '');
+      if (rawUsername.isEmpty) rawUsername = 'user${user.uid.substring(0, 6)}';
+
+      // Make sure username is unique by appending a suffix if needed
+      String username = rawUsername;
+      int suffix = 1;
+      while (true) {
+        final check = await isUsernameAvailable(username);
+        if (check['available'] == true) break;
+        username = '$rawUsername$suffix';
+        suffix++;
+      }
+
+      final profileCreated = await createUserProfile(
+        uid: user.uid,
+        fullName: displayName.isNotEmpty ? displayName : username,
+        username: username,
+        email: email,
+        cityState: '',
+      );
+
+      if (!profileCreated) {
+        return {'success': false, 'message': 'Failed to create user profile'};
+      }
+
+      final newProfile = await getUserProfile(user.uid);
+      return {
+        'success': true,
+        'message': 'Account created! Complete your profile.',
+        'user': newProfile,
+        'isNewUser': true,
+      };
+    } on FirebaseAuthException catch (e) {
+      return {'success': false, 'message': _getErrorMessage(e.code)};
+    } catch (e) {
+      return {'success': false, 'message': 'Google sign-in failed: $e'};
+    }
+  }
+
   /// Sign out
   Future<void> signOut() async {
     await _auth.signOut();
+    // Also sign out from Google so the picker shows next time
+    try {
+      await GoogleSignIn().signOut();
+    } catch (_) {}
   }
 
   /// Check if username is available

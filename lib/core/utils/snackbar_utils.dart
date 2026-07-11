@@ -4,7 +4,6 @@ class SnackbarUtils {
   static const Color _ink = Color(0xFF17131F);
   static const Color _muted = Color(0xFF6B6475);
   static const Color _line = Color(0xFFE5DFEC);
-  static const Color _surface = Color(0xFFFBFAFC);
   static const Color _success = Color(0xFF2F7D62);
   static const Color _error = Color(0xFFD94A4A);
   static const Color _warning = Color(0xFFA8752A);

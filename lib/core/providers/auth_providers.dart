@@ -79,6 +79,24 @@ class LoginNotifier extends StateNotifier<LoginState> {
     return result;
   }
 
+  Future<Map<String, dynamic>> signInWithGoogle() async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+
+    final result = await _authService.signInWithGoogle();
+
+    if (result['success']) {
+      state = state.copyWith(isLoading: false, isSuccess: true);
+    } else {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: result['message'],
+        isSuccess: false,
+      );
+    }
+
+    return result;
+  }
+
   void reset() {
     state = LoginState();
   }
@@ -137,6 +155,24 @@ class SignUpNotifier extends StateNotifier<SignUpState> {
       password: password,
       confirmPassword: confirmPassword,
     );
+
+    if (result['success']) {
+      state = state.copyWith(isLoading: false, isSuccess: true);
+    } else {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: result['message'],
+        isSuccess: false,
+      );
+    }
+
+    return result;
+  }
+
+  Future<Map<String, dynamic>> signInWithGoogle() async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+
+    final result = await _authService.signInWithGoogle();
 
     if (result['success']) {
       state = state.copyWith(isLoading: false, isSuccess: true);

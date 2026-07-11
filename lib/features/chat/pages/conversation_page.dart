@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/providers/auth_providers.dart';
 import 'package:thryfto/core/utils/common_dialogs.dart';
 import 'package:thryfto/core/utils/common_modals.dart';

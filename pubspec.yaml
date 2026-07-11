@@ -33,6 +33,7 @@ dependencies:
   cloudinary_flutter: ^1.2.0   # official Cloudinary SDK with widgets
   cloudinary_url_gen: ^1.2.0   # for building transformation URLs
   cloudinary_public: ^0.23.1
+  google_sign_in: ^6.2.2
   
 dev_dependencies:
   flutter_test:

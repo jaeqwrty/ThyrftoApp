@@ -47,6 +47,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    final result = await ref.read(loginProvider.notifier).signInWithGoogle();
+
+    if (!mounted) return;
+
+    if (!result['success'] && result['message'] != 'Sign in cancelled') {
+      SnackbarUtils.showError(context, result['message']);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final loginState = ref.watch(loginProvider);
@@ -222,10 +232,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     ),
                                   ),
                                   label: 'Google',
-                                  onTap: () => SnackbarUtils.showInfo(
-                                    context,
-                                    'Google Login is coming soon!',
-                                  ),
+                                  onTap:
+                                      isLoading ? () {} : _handleGoogleSignIn,
                                 ),
                                 const SizedBox(width: 12),
                                 buildSocialButton(

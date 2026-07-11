@@ -23,7 +23,6 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   static const Color _ink = Color(0xFF17131F);
   static const Color _muted = Color(0xFF6B6475);
   static const Color _page = Color(0xFFF6F3F8);
-  static const Color _surface = Color(0xFFFBFAFC);
   static const Color _line = Color(0xFFE5DFEC);
   static const Color _accent = Color(0xFFA8752A);
 

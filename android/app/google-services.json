@@ -12,7 +12,20 @@
           "package_name": "com.example.thryfto"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "41459314240-pcapoiffgajbfs5sq6rom5jeoj2r66if.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.thryfto",
+            "certificate_hash": "efc2bf2e5160187a3c6985ed85dacb6ddd63b7ea"
+          }
+        },
+        {
+          "client_id": "41459314240-5oml340uroesq50e7ri5ujbb1m16tef7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDblywVAJQ6DsI_KXBGUC2gKBUDdp0dosU"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "41459314240-5oml340uroesq50e7ri5ujbb1m16tef7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "41459314240-5959vfchk5r5evvkhn5gonjfpo9j4ccd.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.thryfto."
+              }
+            }
+          ]
         }
       }
     }

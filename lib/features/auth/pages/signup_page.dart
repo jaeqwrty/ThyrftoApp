@@ -59,6 +59,21 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    final result = await ref.read(signUpProvider.notifier).signInWithGoogle();
+
+    if (!mounted) return;
+
+    if (result['success']) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const AuthWrapper()),
+        (route) => false,
+      );
+    } else if (result['message'] != 'Sign in cancelled') {
+      SnackbarUtils.showError(context, result['message']);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final signUpState = ref.watch(signUpProvider);
@@ -392,11 +407,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                                           FontWeight.bold,
                                                       color: Colors.blue)),
                                               label: 'Google',
-                                              onTap: () =>
-                                                  SnackbarUtils.showInfo(
-                                                context,
-                                                'Google Sign Up is coming soon!',
-                                              ),
+                                              onTap: isLoading
+                                                  ? () {}
+                                                  : _handleGoogleSignIn,
                                             ),
                                             const SizedBox(width: 12),
                                             buildSocialButton(
