@@ -1,115 +1,121 @@
-🛍️ Thryfto — Community Thrift & Swap Marketplace
+<div align="center">
 
-Thryfto is a community thrift marketplace mobile application where users can post, sell, and swap pre-loved items such as clothes, shoes, bags, and accessories. The app functions as a social-style marketplace, allowing users to upload item photos, browse a community feed, and communicate through real-time chat to negotiate trades or purchases.
+# 🛍️ Thryfto
 
-Thryfto supports local livelihood and sustainable reuse, helping individuals and small thrift sellers earn income through circular exchange and thrift culture.
+**A community thrift & swap marketplace, reimagined for local, sustainable fashion.**
 
-✨ Key Highlights
+Built with Flutter & Firebase · Real-time feed & chat · Buy, sell, or swap pre-loved items
 
-Fully developed using Flutter & Firebase
+</div>
 
-Real-time feed and messaging
+---
 
-Clean, simple, community-focused UI
+## 📖 Overview
 
-Designed for local resale and swapping
+**Thryfto** is a mobile marketplace where people can post, sell, and swap pre-loved clothes, shoes, bags, and accessories. It works like a social-style marketplace — browse a community feed, upload item photos, and chat in real time to negotiate trades or purchases.
 
-Supports sustainability and reuse initiatives
+Thryfto exists to support local livelihoods and sustainable reuse, helping individuals and small thrift sellers earn income through circular exchange and thrift culture.
 
-🎯 Purpose & Impact
+---
 
-Thryfto was developed to:
+## ✨ Highlights
 
-✔ Provide a digital space for local thrift sellers
-✔ Encourage swapping instead of over-consumption
-✔ Support small sellers and community income
-✔ Promote sustainability through reuse
+| | |
+|---|---|
+| 🧵 | Fully built with **Flutter** & **Firebase** |
+| 🔄 | Real-time community feed and messaging |
+| 🎨 | Clean, simple, community-focused UI |
+| 📍 | Designed for local resale and swapping |
+| 🌱 | Built around sustainability and reuse |
 
-The app has been designed with a livelihood-driven and eco-friendly approach.
+---
 
-📱 App Features
-🏠 Home Feed
+## 🎯 Purpose & Impact
 
-A scrollable marketplace feed displaying user-posted thrift items including photos, price or swap status, and basic details.
+Thryfto was built to:
 
-➕ Post Item
+- ✅ Give local thrift sellers a digital space to sell
+- ✅ Encourage swapping instead of over-consumption
+- ✅ Support small sellers and community income
+- ✅ Promote sustainability through reuse
 
-Users can upload item photos and enter details such as:
+The app follows a **livelihood-driven, eco-friendly** design philosophy from the ground up.
 
-Category
+---
 
-Condition
+## 📱 Features
 
-Price or Swap option
+### 🏠 Home Feed
+A scrollable marketplace feed showing user-posted thrift items with photos, price or swap status, and item details.
 
-Posts appear in the community feed after submission.
+### ➕ Post an Item
+Sellers upload item photos and fill in:
+- Category
+- Condition
+- Price or Swap option
 
-💬 In-App Chat
+Posts appear instantly in the community feed after submission.
 
-Real-time messaging allows buyers and sellers to:
+### 💬 In-App Chat
+Real-time messaging lets buyers and sellers:
+- Ask questions about an item
+- Negotiate prices
+- Discuss swap terms
 
-Ask questions
+### 🔍 Search & Filter
+Find items quickly by:
+- Category
+- Item name
+- Price range
 
-Negotiate prices
+### 👤 Profile Page
+Every user has a profile featuring:
+- Bio and profile photo
+- List of posted items
+- Sold / swapped history
 
-Discuss swap terms
+### 🛡️ Moderation System
+Keeps the platform safe and on-topic:
+- Non-related posts can be reviewed or removed
+- Users can report inappropriate listings
 
-🔍 Search & Filter
+---
 
-Users can search items by:
+## 🧰 Tech Stack
 
-Category
+| Component | Technology |
+|---|---|
+| Framework | Flutter |
+| Backend | Firebase |
+| Database | Firestore |
+| Auth | Firebase Authentication |
+| Image Storage | Cloudinary |
 
-Item name
+> The architecture is built to support future feature expansion (e.g. payments, ratings, delivery integration).
 
-Price range
+---
 
-👤 Profile Page
+## 🧑‍🤝‍🧑 Target Users
 
-Displays:
+- Local thrift sellers
+- Online resellers
+- Students & budget shoppers
+- Sustainable lifestyle communities
 
-User bio and profile photo
+---
 
-List of posted items
+## 📄 Project Vision
 
-Sold / swapped history
+Thryfto aims to become a **trusted local thrift ecosystem** that connects communities through:
 
-🛡️ Moderation System
+- 👗 Affordable fashion
+- ♻️ Responsible consumption
+- 💰 Income opportunities
 
-To maintain relevance and safety:
+---
 
-Non-related posts can be reviewed or removed
+<div align="center">
 
-Users may report inappropriate listings
+Made with care for communities and the planet 🌍
 
-This ensures the platform remains focused on thrift and swap items only.
-
-🧰 Tech Stack
-Component	Technology
-Framework	Flutter
-Backend	Firebase
-Database	Firestore
-Auth	Firebase Authentication
-Storage	Firebase Storage
-
-The system architecture supports future feature expansion.
-
-🧑‍🤝‍🧑 Target Users
-
-Local thrift sellers
-
-Online resellers
-
-Students & budget shoppers
-
-Sustainable lifestyle communities
-
-📄 Project Vision
-
-Thryfto aims to become a trusted local thrift ecosystem that connects communities through:
-
-Affordable fashion
-
-Responsible consumption
-
-Income opportunities
+</div>
