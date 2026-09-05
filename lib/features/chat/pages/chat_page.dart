@@ -220,22 +220,9 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
           return currentUserId == null || !deletedFor.contains(currentUserId);
         }).toList();
 
-        // Filter by search query
-        final filteredChats = validChats.where((chat) {
-          if (_searchQuery.isEmpty) return true;
-
-          final chatData = chat.data() as Map<String, dynamic>;
-          final participants = List<String>.from(chatData['participants']);
-          final otherUserId = participants.firstWhere(
-            (id) => id != ref.read(chatServiceProvider).currentUserId,
-            orElse: () => '',
-          );
-
-          // You could expand this to search by user name if you fetch user data
-          return otherUserId.toLowerCase().contains(_searchQuery);
-        }).toList();
-
-        if (filteredChats.isEmpty) {
+        // Search is applied after each participant profile resolves in the tile.
+        // Filtering by Firebase UID here would discard valid name searches.
+        if (validChats.isEmpty) {
           return const EmptyState(
             icon: Icons.chat_bubble_outline,
             title: 'No messages yet',
@@ -245,9 +232,9 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
 
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
-          itemCount: filteredChats.length,
+          itemCount: validChats.length,
           itemBuilder: (context, index) {
-            final chat = filteredChats[index];
+            final chat = validChats[index];
             final chatId = chat.id;
             final chatData = chat.data() as Map<String, dynamic>;
             return _buildChatTile(chatId, chatData);
@@ -287,10 +274,15 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
         final lastMessage = chatData['lastMessage'] ?? '';
         final lastMessageTime = chatData['lastMessageTime'] as Timestamp?;
 
-        // Filter by search query
-        if (_searchQuery.isNotEmpty &&
-            !displayName.toLowerCase().contains(_searchQuery)) {
-          return const SizedBox.shrink();
+        // Search only after human-readable profile data is available.
+        if (_searchQuery.isNotEmpty) {
+          final searchable = [
+            displayName,
+            username?.toString() ?? '',
+          ].join(' ').toLowerCase();
+          if (!searchable.contains(_searchQuery)) {
+            return const SizedBox.shrink();
+          }
         }
 
         return Container(
