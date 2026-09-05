@@ -188,58 +188,74 @@ class DatabaseService {
     });
   }
 
-  // Toggle like
+  // Toggle like and listing counter as one atomic Firestore transaction.
   Future<void> toggleLikeWithNotification(String listingId) async {
-    if (currentUserId == null) return;
+    final userId = currentUserId;
+    if (userId == null) return;
 
     try {
-      final likeRef =
-          _firestore.collection('likes').doc('${currentUserId}_$listingId');
-      final likeDoc = await likeRef.get();
+      final likeRef = _firestore.collection('likes').doc('${userId}_$listingId');
+      final listingRef = _firestore.collection('listings').doc(listingId);
 
-      final listingDoc =
-          await _firestore.collection('listings').doc(listingId).get();
+      final result =
+          await _firestore.runTransaction<Map<String, dynamic>>((transaction) async {
+        final likeSnapshot = await transaction.get(likeRef);
+        final listingSnapshot = await transaction.get(listingRef);
 
-      if (!listingDoc.exists) {
-        throw Exception('Listing not found');
-      }
+        if (!listingSnapshot.exists) {
+          throw Exception('Listing not found');
+        }
 
-      final listingData = listingDoc.data()!;
-      final sellerId = listingData['seller_id'];
-      final listingTitle = listingData['title'] ?? 'a listing';
+        final listingData = listingSnapshot.data()!;
+        final likesValue = listingData['likes'];
+        final currentLikes = likesValue is num ? likesValue.toInt() : 0;
 
-      if (likeDoc.exists) {
-        await likeRef.delete();
-        await _firestore.collection('listings').doc(listingId).update({
-          'likes': FieldValue.increment(-1),
-        });
-      } else {
-        await likeRef.set({
-          'userId': currentUserId,
+        if (likeSnapshot.exists) {
+          transaction.delete(likeRef);
+          transaction.update(listingRef, {
+            'likes': currentLikes > 0 ? currentLikes - 1 : 0,
+          });
+
+          return {
+            'liked': false,
+            'sellerId': listingData['seller_id'],
+            'listingTitle': listingData['title'] ?? 'a listing',
+          };
+        }
+
+        transaction.set(likeRef, {
+          'userId': userId,
           'listingId': listingId,
           'createdAt': FieldValue.serverTimestamp(),
         });
-        await _firestore.collection('listings').doc(listingId).update({
-          'likes': FieldValue.increment(1),
+        transaction.update(listingRef, {
+          'likes': currentLikes + 1,
         });
 
-        if (sellerId != null && sellerId != currentUserId) {
-          final currentUserDoc =
-              await _firestore.collection('users').doc(currentUserId).get();
-          final currentUserName = currentUserDoc.data()?['fullName'] ??
-              currentUserDoc.data()?['full_name'] ??
-              currentUserDoc.data()?['username'] ??
-              'Someone';
+        return {
+          'liked': true,
+          'sellerId': listingData['seller_id'],
+          'listingTitle': listingData['title'] ?? 'a listing',
+        };
+      });
 
-          await _createNotification(
-            recipientId: sellerId,
-            type: 'like',
-            title: '$currentUserName liked your listing',
-            body: '"$listingTitle"',
-            relatedListingId: listingId,
-            relatedUserId: currentUserId,
-          );
-        }
+      final sellerId = result['sellerId'];
+      if (result['liked'] == true && sellerId != null && sellerId != userId) {
+        final currentUserDoc =
+            await _firestore.collection('users').doc(userId).get();
+        final currentUserName = currentUserDoc.data()?['fullName'] ??
+            currentUserDoc.data()?['full_name'] ??
+            currentUserDoc.data()?['username'] ??
+            'Someone';
+
+        await _createNotification(
+          recipientId: sellerId,
+          type: 'like',
+          title: '$currentUserName liked your listing',
+          body: '"${result['listingTitle']}"',
+          relatedListingId: listingId,
+          relatedUserId: userId,
+        );
       }
     } catch (e) {
       print('Error toggling like: $e');
