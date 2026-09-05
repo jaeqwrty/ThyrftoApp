@@ -16,6 +16,37 @@ class OfferService {
     });
   }
 
+  Stream<Map<String, dynamic>?> watchCurrentUserOfferForListing(
+    String listingId,
+  ) {
+    final buyerId = currentUserId;
+    if (buyerId == null || listingId.isEmpty) {
+      return Stream.value(null);
+    }
+
+    return _firestore
+        .collection('offers')
+        .where('buyer_id', isEqualTo: buyerId)
+        .snapshots()
+        .map((snapshot) {
+      final offers = snapshot.docs
+          .where((doc) => doc.data()['listing_id'] == listingId)
+          .map((doc) => <String, dynamic>{...doc.data(), 'id': doc.id})
+          .toList()
+        ..sort((a, b) => _offerTimestampMillis(b)
+            .compareTo(_offerTimestampMillis(a)));
+
+      if (offers.isEmpty) return null;
+
+      // A declined offer can be followed by a new offer. Any pending,
+      // countered, or accepted offer should remain the buyer's visible state.
+      for (final offer in offers) {
+        if (offer['status']?.toString() != 'declined') return offer;
+      }
+      return offers.first;
+    });
+  }
+
   Future<String> createOffer({
     required Map<String, dynamic> listing,
     required String chatId,
@@ -24,11 +55,6 @@ class OfferService {
     final buyerId = currentUserId;
     final listingId = listing['id']?.toString();
     final sellerId = listing['seller_id']?.toString();
-    final title = listing['title']?.toString() ?? 'Listing';
-    final listingPrice = (listing['price'] as num?)?.toDouble() ??
-        double.tryParse(listing['price']?.toString() ?? '') ??
-        0;
-
     if (buyerId == null || listingId == null || sellerId == null) {
       throw StateError('Missing offer participants or listing');
     }
@@ -39,6 +65,8 @@ class OfferService {
       throw ArgumentError('Offer amount must be greater than zero');
     }
 
+    final normalizedAmount = _normalizeMoney(amount);
+
     final listingDoc =
         await _firestore.collection('listings').doc(listingId).get();
     if (!listingDoc.exists ||
@@ -46,6 +74,12 @@ class OfferService {
         listingDoc.data()?['status'] != 'active') {
       throw StateError('This listing is no longer available for offers');
     }
+
+    final currentListing = listingDoc.data()!;
+    final title = currentListing['title']?.toString() ?? 'Listing';
+    final listingPrice = (currentListing['price'] as num?)?.toDouble() ??
+        double.tryParse(currentListing['price']?.toString() ?? '') ??
+        0;
 
     final chatDoc = await _firestore.collection('chats').doc(chatId).get();
     final participants =
@@ -64,10 +98,14 @@ class OfferService {
       final data = doc.data();
       final status = data['status'];
       return data['listing_id'] == listingId &&
-          (status == 'pending' || status == 'countered');
+          (status == 'pending' ||
+              status == 'countered' ||
+              status == 'accepted');
     });
     if (hasActiveOffer) {
-      throw StateError('You already have an active offer for this listing');
+      throw StateError(
+        'You already have an open or accepted offer for this listing',
+      );
     }
 
     final offerRef = _firestore.collection('offers').doc();
@@ -85,8 +123,8 @@ class OfferService {
       'seller_id': sellerId,
       'buyer_id': buyerId,
       'chat_id': chatId,
-      'initial_amount': amount,
-      'amount': amount,
+      'initial_amount': normalizedAmount,
+      'amount': normalizedAmount,
       'status': 'pending',
       'created_at': FieldValue.serverTimestamp(),
       'updated_at': FieldValue.serverTimestamp(),
@@ -101,7 +139,7 @@ class OfferService {
       'type': 'offer',
     });
     batch.update(_firestore.collection('chats').doc(chatId), {
-      'lastMessage': 'Offer: ${_formatAmount(amount)}',
+      'lastMessage': 'Offer: ${_formatAmount(normalizedAmount)}',
       'lastMessageTime': FieldValue.serverTimestamp(),
       'deletedFor': FieldValue.arrayRemove([buyerId, sellerId]),
     });
@@ -113,7 +151,7 @@ class OfferService {
         recipientId: sellerId,
         type: 'offer',
         title: 'New offer on $title',
-        body: '${_formatAmount(amount)} offer received',
+        body: '${_formatAmount(normalizedAmount)} offer received',
         relatedListingId: listingId,
         relatedUserId: buyerId,
         additionalData: {
@@ -181,7 +219,9 @@ class OfferService {
         }
       }
 
-      final nextAmount = action == 'countered' ? counterAmount! : currentAmount;
+      final nextAmount = action == 'countered'
+          ? _normalizeMoney(counterAmount!)
+          : currentAmount;
       transaction.update(offerRef, {
         'amount': nextAmount,
         'status': action,
@@ -190,12 +230,29 @@ class OfferService {
       });
 
       final chatId = data['chat_id']?.toString();
-      if (chatId != null) {
+      final listingId = data['listing_id']?.toString();
+      if (chatId != null && listingId != null) {
         final label = action == 'countered'
             ? 'Counter offer: ${_formatAmount(nextAmount)}'
             : action == 'accepted'
                 ? 'Offer accepted'
                 : 'Offer declined';
+        final updateMessageRef = _firestore
+            .collection('chats')
+            .doc(chatId)
+            .collection('messages')
+            .doc();
+
+        transaction.set(updateMessageRef, {
+          'senderId': userId,
+          'offerId': offerId,
+          'listingId': listingId,
+          'offerStatus': action,
+          'amount': nextAmount,
+          'timestamp': FieldValue.serverTimestamp(),
+          'read': false,
+          'type': 'offer_update',
+        });
         transaction.update(_firestore.collection('chats').doc(chatId), {
           'lastMessage': label,
           'lastMessageTime': FieldValue.serverTimestamp(),
@@ -248,6 +305,20 @@ class OfferService {
     } catch (_) {
       // The state transition is already committed; do not invite a retry.
     }
+  }
+
+  int _offerTimestampMillis(Map<String, dynamic> offer) {
+    final updatedAt = offer['updated_at'];
+    if (updatedAt is Timestamp) return updatedAt.millisecondsSinceEpoch;
+
+    final createdAt = offer['created_at'];
+    if (createdAt is Timestamp) return createdAt.millisecondsSinceEpoch;
+
+    return 0;
+  }
+
+  double _normalizeMoney(double amount) {
+    return (amount * 100).roundToDouble() / 100;
   }
 
   String _formatAmount(double amount) => '₱${amount.toStringAsFixed(2)}';

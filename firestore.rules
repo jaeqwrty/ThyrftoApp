@@ -447,15 +447,68 @@ service cloud.firestore {
         allow read: if isAuthenticated() 
           && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
         
-        // Only chat participants can send messages
-        allow create: if isAuthenticated() 
+        // Chat messages use a strict schema. Structured offer messages must
+        // correspond to the offer state written in the same atomic operation.
+        allow create: if isAuthenticated()
           && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
-          && request.resource.data.senderId == request.auth.uid;
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.timestamp == request.time
+          && request.resource.data.read == false
+          && (
+            (request.resource.data.type == 'text'
+              && request.resource.data.keys().hasOnly([
+                'senderId', 'text', 'timestamp', 'read', 'type'
+              ])
+              && request.resource.data.text is string
+              && request.resource.data.text.size() > 0
+              && request.resource.data.text.size() <= 5000)
+            ||
+            (request.resource.data.type == 'image'
+              && request.resource.data.keys().hasOnly([
+                'senderId', 'imageUrl', 'timestamp', 'read', 'type'
+              ])
+              && request.resource.data.imageUrl is string
+              && request.resource.data.imageUrl.size() > 0)
+            ||
+            (request.resource.data.type == 'offer'
+              && request.resource.data.keys().hasOnly([
+                'senderId', 'offerId', 'listingId', 'timestamp', 'read', 'type'
+              ])
+              && request.resource.data.offerId is string
+              && request.resource.data.listingId is string
+              && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.offerId)).data.buyer_id == request.auth.uid
+              && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.offerId)).data.chat_id == chatId
+              && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.offerId)).data.listing_id == request.resource.data.listingId
+              && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.offerId)).data.status == 'pending'
+              && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.offerId)).data.created_at == request.time
+              && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.offerId)).data.last_action_by == request.auth.uid)
+            ||
+            (request.resource.data.type == 'offer_update'
+              && request.resource.data.keys().hasOnly([
+                'senderId', 'offerId', 'listingId', 'offerStatus', 'amount',
+                'timestamp', 'read', 'type'
+              ])
+              && request.resource.data.offerId is string
+              && request.resource.data.listingId is string
+              && request.resource.data.offerStatus in [
+                'countered', 'accepted', 'declined'
+              ]
+              && request.resource.data.amount is number
+              && request.resource.data.amount > 0
+              && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.offerId)).data.chat_id == chatId
+              && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.offerId)).data.listing_id == request.resource.data.listingId
+              && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.offerId)).data.status == request.resource.data.offerStatus
+              && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.offerId)).data.amount == request.resource.data.amount
+              && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.offerId)).data.last_action_by == request.auth.uid
+              && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.offerId)).data.updated_at == request.time)
+          );
         
-        // Only the message sender can delete their own messages
-        allow delete: if isAuthenticated() 
+        // Users may remove their ordinary chat messages, but structured offer
+        // history remains available to both participants.
+        allow delete: if isAuthenticated()
           && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
-          && resource.data.senderId == request.auth.uid;
+          && resource.data.senderId == request.auth.uid
+          && resource.data.type in ['text', 'image'];
         
         // Allow participants to update read status
         allow update: if isAuthenticated() 

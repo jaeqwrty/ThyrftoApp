@@ -152,8 +152,11 @@ class _MessagesListState extends ConsumerState<MessagesList> {
         ? '${timestamp.toDate().hour.toString().padLeft(2, '0')}:${timestamp.toDate().minute.toString().padLeft(2, '0')}'
         : '';
 
+    final isStructuredOfferMessage =
+        messageType == 'offer' || messageType == 'offer_update';
+
     return GestureDetector(
-      onLongPress: isMe && messageType != 'offer'
+      onLongPress: isMe && !isStructuredOfferMessage
           ? () => widget.onDeleteMessage(messageId)
           : null,
       child: Align(
@@ -169,8 +172,72 @@ class _MessagesListState extends ConsumerState<MessagesList> {
                       offerId: messageData['offerId']?.toString() ?? '',
                       currentUserId: widget.currentUserId,
                     )
+                  : messageType == 'offer_update'
+                      ? _buildOfferUpdateMessage(
+                          messageData,
+                          isMe,
+                          timeText,
+                        )
                   : _buildTextMessage(messageData, isMe, timeText),
         ),
+      ),
+    );
+  }
+
+  Widget _buildOfferUpdateMessage(
+    Map<String, dynamic> messageData,
+    bool isMe,
+    String timeText,
+  ) {
+    final status = messageData['offerStatus']?.toString() ?? 'updated';
+    final amount = (messageData['amount'] as num?)?.toDouble() ?? 0;
+    final label = switch (status) {
+      'countered' => 'Counter offer · ₱${amount.toStringAsFixed(2)}',
+      'accepted' => 'Offer accepted · ₱${amount.toStringAsFixed(2)}',
+      'declined' => 'Offer declined · ₱${amount.toStringAsFixed(2)}',
+      _ => 'Offer updated',
+    };
+    final icon = switch (status) {
+      'countered' => Icons.swap_horiz_rounded,
+      'accepted' => Icons.check_circle_outline_rounded,
+      'declined' => Icons.cancel_outlined,
+      _ => Icons.local_offer_outlined,
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: isMe ? _ink.withValues(alpha: 0.06) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _line),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: _muted),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: _ink,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          if (timeText.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Text(
+              timeText,
+              style: const TextStyle(
+                color: _muted,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

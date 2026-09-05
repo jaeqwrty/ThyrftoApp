@@ -573,60 +573,127 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
 
   Widget _buildBuyerBottomBar() {
     final isSold = widget.listing['status'] == 'sold';
-    return _buildBottomShell(
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: isSold || _isMakingOffer ? null : _showMakeOfferDialog,
-              icon: _isMakingOffer
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.local_offer_outlined, size: 18),
-              label: Text(_isMakingOffer ? 'Sending…' : 'Make Offer'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _wine,
-                side: const BorderSide(color: _wine),
-                minimumSize: const Size.fromHeight(52),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+    final listingId = widget.listing['id']?.toString();
+
+    if (listingId == null || listingId.isEmpty) {
+      return _buildBottomShell(
+        child: _buildBuyerActions(
+          isSold: isSold,
+          offerStatus: null,
+          isCheckingOffer: false,
+          hasOfferError: true,
+        ),
+      );
+    }
+
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: _offerService.watchCurrentUserOfferForListing(listingId),
+      builder: (context, snapshot) {
+        return _buildBottomShell(
+          child: _buildBuyerActions(
+            isSold: isSold,
+            offerStatus: snapshot.data?['status']?.toString(),
+            isCheckingOffer:
+                snapshot.connectionState == ConnectionState.waiting,
+            hasOfferError: snapshot.hasError,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBuyerActions({
+    required bool isSold,
+    required String? offerStatus,
+    required bool isCheckingOffer,
+    required bool hasOfferError,
+  }) {
+    final hasTrackedOffer = offerStatus == 'pending' ||
+        offerStatus == 'countered' ||
+        offerStatus == 'accepted';
+    final isOpeningTrackedOffer = hasTrackedOffer && _isOpeningChat;
+
+    final offerLabel = isCheckingOffer
+        ? 'Checking…'
+        : hasOfferError
+            ? 'Offer unavailable'
+            : isOpeningTrackedOffer
+                ? 'Opening…'
+                : switch (offerStatus) {
+                    'pending' => 'Offer Pending',
+                    'countered' => 'View Counter',
+                    'accepted' => 'Offer Accepted',
+                    'declined' => 'Make New Offer',
+                    _ => 'Make Offer',
+                  };
+
+    final offerIcon = switch (offerStatus) {
+      'pending' => Icons.schedule_rounded,
+      'countered' => Icons.swap_horiz_rounded,
+      'accepted' => Icons.check_circle_outline_rounded,
+      _ => Icons.local_offer_outlined,
+    };
+
+    final offerBusy =
+        _isMakingOffer || isCheckingOffer || isOpeningTrackedOffer;
+    final canUseOfferAction = !isSold && !hasOfferError && !isCheckingOffer;
+
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: !canUseOfferAction || offerBusy
+                ? null
+                : hasTrackedOffer
+                    ? _openChat
+                    : _showMakeOfferDialog,
+            icon: offerBusy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(offerIcon, size: 18),
+            label: Text(_isMakingOffer ? 'Sending…' : offerLabel),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _wine,
+              side: const BorderSide(color: _wine),
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: _isOpeningChat ? null : _openChat,
-              icon: _isOpeningChat
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.message_outlined, size: 18),
-              label: Text(_isOpeningChat ? 'Opening…' : 'Message'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _ink,
-                disabledBackgroundColor: _ink.withValues(alpha: 0.62),
-                foregroundColor: Colors.white,
-                disabledForegroundColor: Colors.white,
-                minimumSize: const Size.fromHeight(52),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _isOpeningChat ? null : _openChat,
+            icon: _isOpeningChat
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.message_outlined, size: 18),
+            label: Text(_isOpeningChat ? 'Opening…' : 'Message'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _ink,
+              disabledBackgroundColor: _ink.withValues(alpha: 0.62),
+              foregroundColor: Colors.white,
+              disabledForegroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
+              elevation: 0,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
