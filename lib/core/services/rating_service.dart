@@ -5,302 +5,138 @@ class RatingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  /// Rate a seller with transaction to ensure consistency
+  CollectionReference<Map<String, dynamic>> _ratingsRef(String sellerId) {
+    return _firestore
+        .collection('users')
+        .doc(sellerId)
+        .collection('ratings');
+  }
+
+  double? _validRatingValue(Map<String, dynamic> data) {
+    final value = data['rating'];
+    if (value is! num) return null;
+    final rating = value.toDouble();
+    if (!rating.isFinite || rating < 1 || rating > 5) return null;
+    return rating;
+  }
+
+  Map<String, dynamic> _calculateStats(
+    Iterable<QueryDocumentSnapshot<Map<String, dynamic>>> documents,
+  ) {
+    double total = 0;
+    int count = 0;
+
+    for (final document in documents) {
+      final rating = _validRatingValue(document.data());
+      if (rating == null) continue;
+      total += rating;
+      count++;
+    }
+
+    return {
+      'average_rating': count == 0 ? 0.0 : total / count,
+      'ratings_count': count,
+    };
+  }
+
+  /// Creates or updates the signed-in user's single rating for a seller.
   Future<bool> rateSeller({
     required String sellerId,
     required double rating,
     String? review,
   }) async {
+    final currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null || currentUserId == sellerId) return false;
+    if (!rating.isFinite || rating < 1 || rating > 5) return false;
+
+    final normalizedReview = (review ?? '').trim();
+    if (normalizedReview.length > 1000) return false;
+
     try {
-      final currentUserId = _auth.currentUser?.uid;
-      if (currentUserId == null) {
-        print('❌ No current user');
-        return false;
-      }
+      final currentUserDoc =
+          await _firestore.collection('users').doc(currentUserId).get();
+      final sellerDoc = await _firestore.collection('users').doc(sellerId).get();
+      if (!currentUserDoc.exists || !sellerDoc.exists) return false;
 
-      if (currentUserId == sellerId) {
-        print('❌ Cannot rate yourself');
-        return false;
-      }
-
-      print('🔄 Rating user: $sellerId with $rating stars');
-
-      // Get current user info first
-      final userDoc = await _firestore.collection('users').doc(currentUserId).get();
-      final userData = userDoc.data();
-      final userName = userData?['fullName'] ?? 
-                       userData?['full_name'] ?? 
-                       'Anonymous';
+      final userData = currentUserDoc.data();
+      final userName = userData?['fullName'] ??
+          userData?['full_name'] ??
+          userData?['username'] ??
+          'Anonymous';
       final userImage = userData?['profileImageUrl'] ?? '';
 
-      // Prepare rating data
-      final ratingData = {
-        'rating': rating,
-        'review': review ?? '',
-        'reviewer_id': currentUserId,
-        'reviewer_name': userName,
-        'reviewer_image': userImage,
-        'created_at': FieldValue.serverTimestamp(),
-        'updated_at': FieldValue.serverTimestamp(),
-      };
+      final ratingRef = _ratingsRef(sellerId).doc(currentUserId);
+      await _firestore.runTransaction((transaction) async {
+        final existing = await transaction.get(ratingRef);
+        final data = <String, dynamic>{
+          'rating': rating,
+          'review': normalizedReview,
+          'reviewer_id': currentUserId,
+          'reviewer_name': userName,
+          'reviewer_image': userImage,
+          'updated_at': FieldValue.serverTimestamp(),
+        };
 
-      // Write rating document
-      final ratingRef = _firestore
-          .collection('users')
-          .doc(sellerId)
-          .collection('ratings')
-          .doc(currentUserId);
+        if (!existing.exists) {
+          data['created_at'] = FieldValue.serverTimestamp();
+        }
 
-      await ratingRef.set(ratingData, SetOptions(merge: true));
-      
-      print('✅ Rating document written');
+        transaction.set(ratingRef, data, SetOptions(merge: true));
+      });
 
-      // Update average rating immediately (no delay)
-      await _updateAverageRating(sellerId);
-
-      print('✅ Rating completed successfully');
       return true;
     } catch (e) {
-      print('❌ Error rating seller: $e');
+      print('Error rating seller: $e');
       return false;
     }
   }
 
-  /// Update average rating - reads all ratings and recalculates
-  Future<void> _updateAverageRating(String sellerId) async {
-    try {
-      print('🔄 Calculating average rating...');
-      
-      // Get all ratings for this seller
-      final ratingsSnapshot = await _firestore
-          .collection('users')
-          .doc(sellerId)
-          .collection('ratings')
-          .get();
-
-      print('   Found ${ratingsSnapshot.docs.length} ratings');
-
-      double totalRating = 0;
-      int count = 0;
-
-      for (var doc in ratingsSnapshot.docs) {
-        final data = doc.data();
-        final ratingValue = data['rating'];
-        
-        if (ratingValue != null) {
-          final ratingDouble = (ratingValue is int) 
-              ? ratingValue.toDouble() 
-              : (ratingValue as double);
-          totalRating += ratingDouble;
-          count++;
-          print('   Rating ${count}: $ratingDouble');
-        }
-      }
-
-      if (count == 0) {
-        print('   No valid ratings found');
-        // Update user document with zero ratings
-        await _firestore.collection('users').doc(sellerId).set({
-          'average_rating': 0.0,
-          'ratings_count': 0,
-        }, SetOptions(merge: true));
-        return;
-      }
-
-      final averageRating = totalRating / count;
-      print('   Average: $averageRating from $count ratings');
-
-      // Update user document with new stats
-      await _firestore.collection('users').doc(sellerId).set({
-        'average_rating': averageRating,
-        'ratings_count': count,
-      }, SetOptions(merge: true));
-
-      print('✅ Average rating updated in user document');
-      
-    } catch (e) {
-      print('❌ Error updating average: $e');
-      
-      // If update fails, try creating the fields
-      try {
-        await _firestore.collection('users').doc(sellerId).set({
-          'average_rating': 0.0,
-          'ratings_count': 0,
-        }, SetOptions(merge: true));
-        print('✅ Created rating fields with merge');
-      } catch (e2) {
-        print('❌ Failed to create fields: $e2');
-      }
-    }
-  }
-
-  /// Get user's rating for a seller
+  /// Gets the signed-in user's rating for a seller.
   Future<Map<String, dynamic>?> getUserRating(String sellerId) async {
+    final currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) return null;
+
     try {
-      final currentUserId = _auth.currentUser?.uid;
-      if (currentUserId == null) return null;
-
-      print('🔍 Checking existing rating for seller: $sellerId');
-
-      final doc = await _firestore
-          .collection('users')
-          .doc(sellerId)
-          .collection('ratings')
-          .doc(currentUserId)
-          .get();
-
-      if (!doc.exists) {
-        print('   No existing rating found');
+      final doc = await _ratingsRef(sellerId).doc(currentUserId).get();
+      final data = doc.data();
+      if (!doc.exists || data == null || _validRatingValue(data) == null) {
         return null;
       }
-
-      final data = doc.data();
-      print('   Found rating: ${data?['rating']} stars');
-
-      if (data == null) return null;
-
-      return {
-        'id': doc.id,
-        ...data,
-      };
+      return {'id': doc.id, ...data};
     } catch (e) {
-      print('❌ Error getting user rating: $e');
+      print('Error getting user rating: $e');
       return null;
     }
   }
 
-  /// Get all ratings for a seller 
+  /// Gets all valid ratings for a seller in realtime.
   Stream<List<Map<String, dynamic>>> getSellerRatings(String sellerId) {
-    return _firestore
-        .collection('users')
-        .doc(sellerId)
-        .collection('ratings')
+    return _ratingsRef(sellerId)
         .orderBy('created_at', descending: true)
         .snapshots()
         .map((snapshot) {
-      print('📡 Ratings stream: ${snapshot.docs.length} ratings');
-      
-      final ratings = snapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'id': doc.id,
-          ...data,
-        };
-      }).toList();
-
-      return ratings;
-    }).handleError((error) {
-      print('❌ Ratings stream error: $error');
-      return <Map<String, dynamic>>[];
+      return snapshot.docs
+          .where((doc) => _validRatingValue(doc.data()) != null)
+          .map((doc) => {'id': doc.id, ...doc.data()})
+          .toList();
     });
   }
 
-  /// Get seller's rating stats
+  /// Derives rating statistics from rating documents instead of writable
+  /// aggregate fields on the seller profile.
   Stream<Map<String, dynamic>> getSellerRatingStatsStream(String sellerId) {
-    return _firestore
-        .collection('users')
-        .doc(sellerId)
-        .snapshots()
-        .map((doc) {
-      final data = doc.data();
-      
-      // Handle different data types safely
-      final avgRaw = data?['average_rating'];
-      final countRaw = data?['ratings_count'];
-
-      double avgRating = 0.0;
-      int ratingsCount = 0;
-
-      // Convert average_rating to double
-      if (avgRaw != null) {
-        if (avgRaw is double) {
-          avgRating = avgRaw;
-        } else if (avgRaw is int) {
-          avgRating = avgRaw.toDouble();
-        } else if (avgRaw is num) {
-          avgRating = avgRaw.toDouble();
-        }
-      }
-
-      // Convert ratings_count to int
-      if (countRaw != null) {
-        if (countRaw is int) {
-          ratingsCount = countRaw;
-        } else if (countRaw is double) {
-          ratingsCount = countRaw.toInt();
-        } else if (countRaw is num) {
-          ratingsCount = countRaw.toInt();
-        }
-      }
-
-      print('📡 Stats stream: avg=$avgRating, count=$ratingsCount');
-
-      return {
-        'average_rating': avgRating,
-        'ratings_count': ratingsCount,
-      };
-    }).handleError((error) {
-      print('❌ Stats stream error: $error');
-      return {
-        'average_rating': 0.0,
-        'ratings_count': 0,
-      };
+    return _ratingsRef(sellerId).snapshots().map((snapshot) {
+      return _calculateStats(snapshot.docs);
     });
   }
 
-  /// Get seller's rating stats (single fetch)
+  /// Gets rating statistics from the source rating documents.
   Future<Map<String, dynamic>> getSellerRatingStats(String sellerId) async {
     try {
-      final doc = await _firestore.collection('users').doc(sellerId).get();
-      
-      if (!doc.exists) {
-        return {
-          'average_rating': 0.0,
-          'ratings_count': 0,
-        };
-      }
-
-      final data = doc.data();
-      if (data == null) {
-        return {
-          'average_rating': 0.0,
-          'ratings_count': 0,
-        };
-      }
-
-      // Safely extract values
-      final avgRaw = data['average_rating'];
-      final countRaw = data['ratings_count'];
-
-      double avgRating = 0.0;
-      int ratingsCount = 0;
-
-      if (avgRaw != null) {
-        if (avgRaw is double) {
-          avgRating = avgRaw;
-        } else if (avgRaw is int) {
-          avgRating = avgRaw.toDouble();
-        } else if (avgRaw is num) {
-          avgRating = avgRaw.toDouble();
-        }
-      }
-
-      if (countRaw != null) {
-        if (countRaw is int) {
-          ratingsCount = countRaw;
-        } else if (countRaw is double) {
-          ratingsCount = countRaw.toInt();
-        } else if (countRaw is num) {
-          ratingsCount = countRaw.toInt();
-        }
-      }
-
-      return {
-        'average_rating': avgRating,
-        'ratings_count': ratingsCount,
-      };
+      final snapshot = await _ratingsRef(sellerId).get();
+      return _calculateStats(snapshot.docs);
     } catch (e) {
-      print('❌ Error getting rating stats: $e');
+      print('Error getting rating stats: $e');
       return {
         'average_rating': 0.0,
         'ratings_count': 0,
@@ -308,32 +144,16 @@ class RatingService {
     }
   }
 
-  /// Delete a rating
+  /// Deletes only the signed-in user's rating for the seller.
   Future<bool> deleteRating(String sellerId) async {
+    final currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) return false;
+
     try {
-      final currentUserId = _auth.currentUser?.uid;
-      if (currentUserId == null) {
-        print('❌ No current user');
-        return false;
-      }
-
-      print('🗑️ Deleting rating for seller: $sellerId');
-
-      await _firestore
-          .collection('users')
-          .doc(sellerId)
-          .collection('ratings')
-          .doc(currentUserId)
-          .delete();
-
-      print('✅ Rating deleted');
-
-      // Recalculate immediately (no delay)
-      await _updateAverageRating(sellerId);
-
+      await _ratingsRef(sellerId).doc(currentUserId).delete();
       return true;
     } catch (e) {
-      print('❌ Error deleting rating: $e');
+      print('Error deleting rating: $e');
       return false;
     }
   }

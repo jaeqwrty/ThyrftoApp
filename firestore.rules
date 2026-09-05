@@ -48,34 +48,48 @@ service cloud.firestore {
       // Anyone can read user profiles (for seller info display and username checks)
       allow read: if true;
       
-      // Users can only manage their own profile
-      // DEV BYPASS: Allow a@test.com to manage all users for reset/seeding
-      // RATING UPDATE: Allow authenticated users to update average_rating and ratings_count
+      // Users can only manage their own profile.
+      // DEV BYPASS remains temporarily for reset/seeding and is hardened later.
       allow create, delete: if isOwner(userId) || request.auth.token.email == "a@test.com";
       
-      allow update: if isOwner(userId) 
-                    || request.auth.token.email == "a@test.com"
-                    // Allow any authenticated user to update rating stats
-                    || (isAuthenticated() && 
-                        request.resource.data.diff(resource.data).affectedKeys()
-                          .hasOnly(['average_rating', 'ratings_count']));
+      allow update: if isOwner(userId)
+                    || request.auth.token.email == "a@test.com";
       
       // Ratings subcollection (nested under users)
       match /ratings/{ratingId} {
-        // Anyone can read ratings
         allow read: if true;
-        
-        // Authenticated users can create ratings for other users
-        allow create: if isAuthenticated() 
+
+        allow create: if isAuthenticated()
+          && ratingId == request.auth.uid
+          && request.auth.uid != userId
+          && exists(/databases/$(database)/documents/users/$(userId))
+          && request.resource.data.keys().hasOnly([
+            'rating', 'review', 'reviewer_id', 'reviewer_name',
+            'reviewer_image', 'created_at', 'updated_at'
+          ])
           && request.resource.data.reviewer_id == request.auth.uid
-          && request.auth.uid != userId; // Can't rate yourself
-        
-        // Only rating creator can update their own rating
-        allow update: if isAuthenticated() 
-          && resource.data.reviewer_id == request.auth.uid;
-        
-        // Only rating creator can delete their own rating
-        allow delete: if isAuthenticated() 
+          && request.resource.data.rating is number
+          && request.resource.data.rating >= 1
+          && request.resource.data.rating <= 5
+          && request.resource.data.review is string
+          && request.resource.data.review.size() <= 1000;
+
+        allow update: if isAuthenticated()
+          && ratingId == request.auth.uid
+          && resource.data.reviewer_id == request.auth.uid
+          && request.resource.data.reviewer_id == resource.data.reviewer_id
+          && request.resource.data.keys().hasOnly([
+            'rating', 'review', 'reviewer_id', 'reviewer_name',
+            'reviewer_image', 'created_at', 'updated_at'
+          ])
+          && request.resource.data.rating is number
+          && request.resource.data.rating >= 1
+          && request.resource.data.rating <= 5
+          && request.resource.data.review is string
+          && request.resource.data.review.size() <= 1000;
+
+        allow delete: if isAuthenticated()
+          && ratingId == request.auth.uid
           && resource.data.reviewer_id == request.auth.uid;
       }
     }
