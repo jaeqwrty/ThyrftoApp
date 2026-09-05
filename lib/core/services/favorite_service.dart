@@ -142,6 +142,7 @@ class FavoritesService {
           'is_read': false,
           'created_at': FieldValue.serverTimestamp(),
           'additional_data': {
+            'listing_id': listingId,
             'listing_image': listingImage,
             'listing_title': listingTitle,
           },
