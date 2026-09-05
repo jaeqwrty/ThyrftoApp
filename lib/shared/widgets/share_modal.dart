@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/services/database_service.dart';
+import 'package:thryfto/core/navigation/deep_link_service.dart';
 import 'package:thryfto/core/utils/snackbar_utils.dart';
 
 class ShareModal extends StatelessWidget {
@@ -28,10 +29,8 @@ ${listing['description'] ?? ''}''';
   }
 
   String _getShareLink() {
-    // In production, this would be your actual deep link
-    // For now, we'll use a placeholder
-    final listingId = listing['id'] ?? '';
-    return 'https://thryfto.app/listing/$listingId';
+    final listingId = listing['id']?.toString() ?? '';
+    return DeepLinkService.listingUri(listingId).toString();
   }
 
   Future<void> _copyToClipboard(BuildContext context) async {

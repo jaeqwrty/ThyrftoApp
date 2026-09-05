@@ -744,17 +744,156 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Future<void> _handleRating(String sellerName) async {
+    final transactions =
+        await _ratingService.getCompletedTransactionsWithUser(widget.userId);
+    if (!mounted) return;
+
+    if (transactions.isEmpty) {
+      _showSnackBar(
+        message:
+            'Reviews are available only after a completed transaction with this user.',
+        icon: Icons.verified_outlined,
+        backgroundColor: AppColors.textSecondary,
+      );
+      return;
+    }
+
+    Map<String, dynamic>? selectedTransaction;
+    if (transactions.length == 1) {
+      selectedTransaction = transactions.first;
+    } else {
+      selectedTransaction = await showModalBottomSheet<Map<String, dynamic>>(
+        context: context,
+        backgroundColor: Colors.white,
+        showDragHandle: true,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (sheetContext) {
+          return SafeArea(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(sheetContext).size.height * 0.72,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Choose a completed transaction',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Each completed deal has its own verified review.',
+                          style: TextStyle(
+                            color: _muted,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: transactions.length,
+                      separatorBuilder: (_, __) => const Divider(
+                        height: 1,
+                        indent: 68,
+                      ),
+                      itemBuilder: (context, index) {
+                        final transaction = transactions[index];
+                        final listingTitle =
+                            transaction['listing_title']?.toString() ??
+                                'Listing';
+                        final role =
+                            transaction['reviewer_role']?.toString() ??
+                                'participant';
+                        final completedAt = transaction['completed_at'];
+                        final dateText = completedAt is Timestamp
+                            ? formatDate(completedAt.toDate())
+                            : 'Completed transaction';
+                        final agreedPrice = transaction['agreed_price'];
+                        final hasReview =
+                            transaction['existing_review'] != null;
+
+                        return ListTile(
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: _accent.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                            child: const Icon(
+                              Icons.verified_rounded,
+                              color: _accent,
+                              size: 20,
+                            ),
+                          ),
+                          title: Text(
+                            listingTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${role == 'buyer' ? 'Bought' : 'Sold'} · $dateText${agreedPrice is num ? ' · ₱${agreedPrice.toDouble().toStringAsFixed(2)}' : ''}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: Text(
+                            hasReview ? 'Edit' : 'Review',
+                            style: TextStyle(
+                              color: hasReview ? _muted : _accent,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                            ),
+                          ),
+                          onTap: () =>
+                              Navigator.pop(sheetContext, transaction),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
+
+    if (selectedTransaction == null || !mounted) return;
+    final wasExistingReview = selectedTransaction['existing_review'] != null;
     final result = await RatingDialog.show(
       context: context,
       userId: widget.userId,
       sellerName: sellerName,
       currentUser: widget.currentUser,
+      transaction: selectedTransaction,
       ratingService: _ratingService,
       notificationService: _notificationService,
     );
     if (result == true && mounted) {
       _showSnackBar(
-          message: 'Rating submitted successfully!',
+          message: wasExistingReview
+              ? 'Review updated successfully.'
+              : 'Verified review submitted successfully.',
           icon: Icons.check_circle,
           backgroundColor: Colors.green);
     }

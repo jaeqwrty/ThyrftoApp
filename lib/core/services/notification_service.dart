@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:thryfto/core/navigation/deep_link_service.dart';
 
 class NotificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -45,6 +46,18 @@ class NotificationService {
       return;
     }
 
+    final normalizedAdditionalData = <String, dynamic>{
+      ...?additionalData,
+    };
+    final deepLink = _buildDeepLink(
+      type: type,
+      relatedListingId: relatedListingId,
+      additionalData: normalizedAdditionalData,
+    );
+    if (deepLink != null) {
+      normalizedAdditionalData['deep_link'] = deepLink.toString();
+    }
+
     try {
       final senderDoc =
           await _firestore.collection('users').doc(senderId).get();
@@ -69,11 +82,47 @@ class NotificationService {
         'related_user_id': relatedUserId ?? senderId,
         'is_read': false,
         'created_at': FieldValue.serverTimestamp(),
-        'additional_data': additionalData ?? <String, dynamic>{},
+        'additional_data': normalizedAdditionalData,
       });
     } catch (e) {
       print('Error creating notification: $e');
       rethrow;
+    }
+  }
+
+  Uri? _buildDeepLink({
+    required String type,
+    required String? relatedListingId,
+    required Map<String, dynamic> additionalData,
+  }) {
+    switch (type) {
+      case 'like':
+      case 'comment':
+      case 'share':
+      case 'new_listing':
+        final listingId = relatedListingId ??
+            additionalData['listing_id']?.toString();
+        if (listingId != null && listingId.isNotEmpty) {
+          return DeepLinkService.listingUri(listingId);
+        }
+        return null;
+      case 'message':
+      case 'offer':
+        final chatId = additionalData['chat_id']?.toString() ??
+            additionalData['conversation_id']?.toString();
+        if (chatId != null && chatId.isNotEmpty) {
+          return DeepLinkService.chatUri(chatId);
+        }
+        return null;
+      case 'transaction':
+      case 'rating':
+        final transactionId = additionalData['transaction_id']?.toString();
+        if (transactionId != null && transactionId.isNotEmpty) {
+          return DeepLinkService.transactionUri(transactionId);
+        }
+        return null;
+      default:
+        return null;
     }
   }
 

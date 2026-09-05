@@ -13,10 +13,17 @@ class RatingDialog {
     required String userId,
     required String sellerName,
     required Map<String, dynamic> currentUser,
+    required Map<String, dynamic> transaction,
     required RatingService ratingService,
     required NotificationService notificationService,
   }) async {
-    final existingRating = await ratingService.getUserRating(userId);
+    final transactionId = transaction['id']?.toString() ?? '';
+    if (transactionId.isEmpty) return null;
+
+    final existingRating = await ratingService.getTransactionReview(
+      revieweeId: userId,
+      transactionId: transactionId,
+    );
     double rating = existingRating?['rating']?.toDouble() ?? 0.0;
     String review = existingRating?['review'] ?? '';
 
@@ -31,6 +38,7 @@ class RatingDialog {
         userId: userId,
         sellerName: sellerName,
         currentUser: currentUser,
+        transaction: transaction,
         ratingService: ratingService,
         notificationService: notificationService,
         existingRating: existingRating,
@@ -45,6 +53,7 @@ class _RatingDialogContent extends StatefulWidget {
   final String userId;
   final String sellerName;
   final Map<String, dynamic> currentUser;
+  final Map<String, dynamic> transaction;
   final RatingService ratingService;
   final NotificationService notificationService;
   final Map<String, dynamic>? existingRating;
@@ -55,6 +64,7 @@ class _RatingDialogContent extends StatefulWidget {
     required this.userId,
     required this.sellerName,
     required this.currentUser,
+    required this.transaction,
     required this.ratingService,
     required this.notificationService,
     required this.existingRating,
@@ -80,6 +90,11 @@ class _RatingDialogContentState extends State<_RatingDialogContent> {
   Widget build(BuildContext context) {
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final screenHeight = MediaQuery.of(context).size.height;
+    final listingTitle =
+        widget.transaction['listing_title']?.toString() ?? 'Listing';
+    final reviewerRole =
+        widget.transaction['reviewer_role']?.toString() ?? 'participant';
+    final agreedPrice = widget.transaction['agreed_price'];
     
     return Dialog(
       shape: RoundedRectangleBorder(
@@ -108,13 +123,68 @@ class _RatingDialogContentState extends State<_RatingDialogContent> {
             children: [
               Text(
                 widget.existingRating == null
-                    ? 'Rate ${widget.sellerName}'
-                    : 'Update Rating',
+                    ? 'Review ${widget.sellerName}'
+                    : 'Update Review',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(11),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7F4F9),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE5DFEC)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.verified_rounded,
+                      size: 18,
+                      color: Color(0xFF5B2A6F),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Verified completed transaction',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            agreedPrice is num
+                                ? '$listingTitle · ₱${agreedPrice.toDouble().toStringAsFixed(2)}'
+                                : listingTitle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'You were the $reviewerRole in this transaction.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -264,8 +334,8 @@ class _RatingDialogContentState extends State<_RatingDialogContent> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Rating'),
-        content: const Text('Are you sure you want to delete your rating?'),
+        title: const Text('Delete Review'),
+        content: const Text('Are you sure you want to delete this review?'),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
@@ -283,40 +353,52 @@ class _RatingDialogContentState extends State<_RatingDialogContent> {
 
     if (confirm == true && mounted) {
       setState(() => isSubmitting = true);
-      final deleted = await widget.ratingService.deleteRating(widget.userId);
-      if (mounted) Navigator.pop(context, deleted);
+      final deleted = await widget.ratingService.deleteTransactionReview(
+        revieweeId: widget.userId,
+        transactionId: widget.transaction['id']?.toString() ?? '',
+      );
+      if (mounted) Navigator.pop(context, deleted ? false : null);
     }
   }
 
   Future<void> _handleSubmit() async {
     setState(() => isSubmitting = true);
 
-    final success = await widget.ratingService.rateSeller(
-      sellerId: widget.userId,
+    final reviewResult = await widget.ratingService.submitTransactionReview(
+      revieweeId: widget.userId,
+      transactionId: widget.transaction['id']?.toString() ?? '',
       rating: rating,
       review: widget.reviewController.text.trim().isEmpty
           ? null
           : widget.reviewController.text.trim(),
     );
 
-    if (success) {
+    if (reviewResult != null && reviewResult['created'] == true) {
       final currentUserName = widget.currentUser['fullName'] ??
           widget.currentUser['full_name'] ??
           'Someone';
-      await widget.notificationService.createNotification(
-        recipientId: widget.userId,
-        type: 'rating',
-        title: 'New Rating',
-        body: '$currentUserName rated you ${rating.toStringAsFixed(1)} stars',
-        relatedUserId: FirebaseAuth.instance.currentUser?.uid,
-        additionalData: {
-          'rating': rating,
-          'review': widget.reviewController.text.trim(),
-        },
-      );
+      try {
+        await widget.notificationService.createNotification(
+          recipientId: widget.userId,
+          type: 'rating',
+          title: 'New Verified Review',
+          body:
+              '$currentUserName reviewed your completed transaction for ${reviewResult['listing_title'] ?? 'an item'}',
+          relatedListingId: reviewResult['listing_id']?.toString(),
+          relatedUserId: FirebaseAuth.instance.currentUser?.uid,
+          additionalData: {
+            'rating_id': reviewResult['review_id'],
+            'transaction_id': reviewResult['transaction_id'],
+            'rating': rating,
+            'reviewer_role': reviewResult['reviewer_role'],
+          },
+        );
+      } catch (_) {
+        // The verified review is already stored; notification is best-effort.
+      }
     }
 
-    if (mounted) Navigator.pop(context, success);
+    if (mounted) Navigator.pop(context, reviewResult != null);
   }
 
   String _getRatingText(double rating) {
@@ -396,7 +478,7 @@ class RatingsBottomSheet {
                     return Column(
                       children: [
                         const Text(
-                          'Ratings & Reviews',
+                          'Verified Reviews',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -417,7 +499,7 @@ class RatingsBottomSheet {
                                 ),
                               ),
                               Text(
-                                ' ($count ${count == 1 ? 'rating' : 'ratings'})',
+                                ' ($count ${count == 1 ? 'review' : 'reviews'})',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Colors.grey[600],
@@ -450,7 +532,7 @@ class RatingsBottomSheet {
                             Icon(Icons.star_outline, size: 64, color: Colors.grey[300]),
                             const SizedBox(height: 16),
                             Text(
-                              'No ratings yet',
+                              'No verified reviews yet',
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.grey[600],
@@ -547,6 +629,9 @@ class _RatingCardWithRealtimeProfile extends StatelessWidget {
     required String reviewerName,
     required String? profileImageUrl,
   }) {
+    final listingTitle = rating['listing_title']?.toString() ?? 'Listing';
+    final reviewerRole = rating['reviewer_role']?.toString() ?? 'participant';
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -567,7 +652,9 @@ class _RatingCardWithRealtimeProfile extends StatelessWidget {
                     : null,
                 child: (profileImageUrl == null || profileImageUrl.isEmpty)
                     ? Text(
-                        reviewerName[0].toUpperCase(),
+                        reviewerName.isNotEmpty
+                            ? reviewerName[0].toUpperCase()
+                            : 'U',
                         style: const TextStyle(color: Colors.white),
                       )
                     : null,
@@ -605,6 +692,37 @@ class _RatingCardWithRealtimeProfile extends StatelessWidget {
                   ),
                 ),
             ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7F4F9),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.verified_rounded,
+                  size: 15,
+                  color: Color(0xFF5B2A6F),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Verified ${reviewerRole == 'buyer' ? 'buyer' : reviewerRole == 'seller' ? 'seller' : 'participant'} · $listingTitle',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF5B2A6F),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           if (hasReview) ...[
             const SizedBox(height: 10),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:thryfto/core/utils/app_page_route.dart';
+import 'package:thryfto/core/navigation/deep_link_router.dart';
+import 'package:thryfto/core/navigation/deep_link_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/providers/notification_providers.dart';
@@ -156,7 +158,8 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         // Group comments by listing
         groupKey = 'comment_${relatedListingId ?? 'unknown'}';
       } else if (type == 'rating') {
-        groupKey = 'rating_${notification['recipient_id']}';
+        final ratingId = notification['additional_data']?['rating_id'];
+        groupKey = 'rating_${ratingId ?? 'unknown'}';
       } else if (type == 'follow' || type == 'favorite') {
         groupKey = 'follow_${notification['recipient_id']}';
       } else if (type == 'new_listing') {
@@ -502,8 +505,8 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
             : "$firstName and $othersCount others liked your listing";
       case 'rating':
         return othersCount == 1
-            ? "$firstName and 1 other rated you"
-            : "$firstName and $othersCount others rated you";
+            ? "$firstName and 1 other left verified reviews"
+            : "$firstName and $othersCount others left verified reviews";
       case 'offer':
         return othersCount == 1
             ? "$firstName and 1 other updated offers"
@@ -615,6 +618,68 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     final relatedUserId = mostRecent['related_user_id'] as String?;
     final senderId = mostRecent['sender_id'] as String?;
     final additionalData = mostRecent['additional_data'] as Map<String, dynamic>?;
+
+    // Derive the authoritative target from source metadata first. Persisted
+    // deep_link values are accepted only when they point to the same target.
+    Uri? deepLink;
+    switch (type) {
+      case 'like':
+      case 'comment':
+      case 'reply':
+      case 'share':
+        if (relatedListingId != null && relatedListingId.isNotEmpty) {
+          deepLink = DeepLinkService.listingUri(relatedListingId);
+        }
+        break;
+      case 'new_listing':
+        final listingId = relatedListingId ??
+            additionalData?['listing_id']?.toString();
+        if (listingId != null && listingId.isNotEmpty) {
+          deepLink = DeepLinkService.listingUri(listingId);
+        }
+        break;
+      case 'message':
+      case 'offer':
+        final chatId = additionalData?['chat_id']?.toString() ??
+            additionalData?['conversation_id']?.toString();
+        if (chatId != null && chatId.isNotEmpty) {
+          deepLink = DeepLinkService.chatUri(chatId);
+        }
+        break;
+      case 'transaction':
+      case 'rating':
+        final transactionId = additionalData?['transaction_id']?.toString();
+        if (transactionId != null && transactionId.isNotEmpty) {
+          deepLink = DeepLinkService.transactionUri(transactionId);
+        }
+        break;
+    }
+
+    final storedDeepLink = additionalData?['deep_link']?.toString();
+    if (deepLink != null &&
+        storedDeepLink != null &&
+        storedDeepLink.isNotEmpty) {
+      final storedUri = Uri.tryParse(storedDeepLink);
+      final expectedTarget = DeepLinkTarget.parse(deepLink);
+      final storedTarget = storedUri == null ? null : DeepLinkTarget.parse(storedUri);
+      if (expectedTarget != null &&
+          storedTarget != null &&
+          expectedTarget.kind == storedTarget.kind &&
+          expectedTarget.id == storedTarget.id) {
+        deepLink = storedUri;
+      }
+    }
+
+    if (deepLink != null && mounted) {
+      final currentUser = await _getCurrentUser();
+      if (!mounted) return;
+      final handled = await DeepLinkRouter.open(
+        context,
+        deepLink,
+        currentUser: currentUser,
+      );
+      if (handled) return;
+    }
     
     try {
       switch (type) {

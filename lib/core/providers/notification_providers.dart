@@ -43,7 +43,8 @@ List<Map<String, dynamic>> _groupNotifications(List<Map<String, dynamic>> notifi
       // Group comments by listing
       groupKey = 'comment_${relatedListingId ?? 'unknown'}';
     } else if (type == 'rating') {
-      groupKey = 'rating_${notification['recipient_id']}';
+      final ratingId = notification['additional_data']?['rating_id'];
+      groupKey = 'rating_${ratingId ?? 'unknown'}';
     } else if (type == 'follow' || type == 'favorite') {
       groupKey = 'follow_${notification['recipient_id']}';
     } else if (type == 'new_listing') {

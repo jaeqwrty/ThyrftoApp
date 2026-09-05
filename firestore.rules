@@ -89,7 +89,16 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/listings/$(data.related_listing_id)).data.seller_id == data.recipient_id)
         ||
         (data.type == 'rating'
-          && exists(/databases/$(database)/documents/users/$(data.recipient_id)/ratings/$(request.auth.uid)))
+          && data.related_listing_id is string
+          && data.additional_data.rating_id is string
+          && data.additional_data.transaction_id is string
+          && exists(/databases/$(database)/documents/users/$(data.recipient_id)/ratings/$(data.additional_data.rating_id))
+          && get(/databases/$(database)/documents/users/$(data.recipient_id)/ratings/$(data.additional_data.rating_id)).data.reviewer_id == request.auth.uid
+          && get(/databases/$(database)/documents/users/$(data.recipient_id)/ratings/$(data.additional_data.rating_id)).data.reviewee_id == data.recipient_id
+          && get(/databases/$(database)/documents/users/$(data.recipient_id)/ratings/$(data.additional_data.rating_id)).data.transaction_id == data.additional_data.transaction_id
+          && get(/databases/$(database)/documents/users/$(data.recipient_id)/ratings/$(data.additional_data.rating_id)).data.listing_id == data.related_listing_id
+          && exists(/databases/$(database)/documents/transactions/$(data.additional_data.transaction_id))
+          && get(/databases/$(database)/documents/transactions/$(data.additional_data.transaction_id)).data.status == 'completed')
         ||
         (data.type == 'offer'
           && data.related_listing_id is string
@@ -156,42 +165,80 @@ service cloud.firestore {
       // Users can only manage their own profile.
       allow create, update, delete: if isOwner(userId);
       
-      // Ratings subcollection (nested under users)
+      // Verified transaction reviews. A participant may leave one review for
+      // the other participant per completed transaction. The deterministic
+      // document ID prevents duplicate reviews for the same side/deal.
       match /ratings/{ratingId} {
         allow read: if true;
 
         allow create: if isAuthenticated()
-          && ratingId == request.auth.uid
           && request.auth.uid != userId
           && exists(/databases/$(database)/documents/users/$(userId))
           && request.resource.data.keys().hasOnly([
-            'rating', 'review', 'reviewer_id', 'reviewer_name',
-            'reviewer_image', 'created_at', 'updated_at'
+            'transaction_id', 'listing_id', 'listing_title', 'reviewer_id',
+            'reviewee_id', 'reviewer_role', 'reviewee_role', 'rating', 'review',
+            'created_at', 'updated_at'
           ])
+          && request.resource.data.transaction_id is string
+          && ratingId == request.resource.data.transaction_id + '_' + request.auth.uid
           && request.resource.data.reviewer_id == request.auth.uid
+          && request.resource.data.reviewee_id == userId
+          && request.resource.data.reviewer_role in ['buyer', 'seller']
+          && request.resource.data.reviewee_role in ['buyer', 'seller']
+          && request.resource.data.reviewer_role != request.resource.data.reviewee_role
           && request.resource.data.rating is number
           && request.resource.data.rating >= 1
           && request.resource.data.rating <= 5
           && request.resource.data.review is string
-          && request.resource.data.review.size() <= 1000;
+          && request.resource.data.review.size() <= 1000
+          && request.resource.data.created_at == request.time
+          && request.resource.data.updated_at == request.time
+          && exists(/databases/$(database)/documents/transactions/$(request.resource.data.transaction_id))
+          && get(/databases/$(database)/documents/transactions/$(request.resource.data.transaction_id)).data.status == 'completed'
+          && get(/databases/$(database)/documents/transactions/$(request.resource.data.transaction_id)).data.listing_id == request.resource.data.listing_id
+          && get(/databases/$(database)/documents/transactions/$(request.resource.data.transaction_id)).data.listing_title == request.resource.data.listing_title
+          && ((get(/databases/$(database)/documents/transactions/$(request.resource.data.transaction_id)).data.buyer_id == request.auth.uid
+                && get(/databases/$(database)/documents/transactions/$(request.resource.data.transaction_id)).data.seller_id == userId
+                && request.resource.data.reviewer_role == 'buyer'
+                && request.resource.data.reviewee_role == 'seller')
+              || (get(/databases/$(database)/documents/transactions/$(request.resource.data.transaction_id)).data.seller_id == request.auth.uid
+                && get(/databases/$(database)/documents/transactions/$(request.resource.data.transaction_id)).data.buyer_id == userId
+                && request.resource.data.reviewer_role == 'seller'
+                && request.resource.data.reviewee_role == 'buyer'));
 
         allow update: if isAuthenticated()
-          && ratingId == request.auth.uid
           && resource.data.reviewer_id == request.auth.uid
-          && request.resource.data.reviewer_id == resource.data.reviewer_id
+          && resource.data.reviewee_id == userId
+          && ratingId == resource.data.transaction_id + '_' + request.auth.uid
           && request.resource.data.keys().hasOnly([
-            'rating', 'review', 'reviewer_id', 'reviewer_name',
-            'reviewer_image', 'created_at', 'updated_at'
+            'transaction_id', 'listing_id', 'listing_title', 'reviewer_id',
+            'reviewee_id', 'reviewer_role', 'reviewee_role', 'rating', 'review',
+            'created_at', 'updated_at'
           ])
+          && request.resource.data.transaction_id == resource.data.transaction_id
+          && request.resource.data.listing_id == resource.data.listing_id
+          && request.resource.data.listing_title == resource.data.listing_title
+          && request.resource.data.reviewer_id == resource.data.reviewer_id
+          && request.resource.data.reviewee_id == resource.data.reviewee_id
+          && request.resource.data.reviewer_role == resource.data.reviewer_role
+          && request.resource.data.reviewee_role == resource.data.reviewee_role
+          && request.resource.data.created_at == resource.data.created_at
+          && request.resource.data.updated_at == request.time
           && request.resource.data.rating is number
           && request.resource.data.rating >= 1
           && request.resource.data.rating <= 5
           && request.resource.data.review is string
-          && request.resource.data.review.size() <= 1000;
+          && request.resource.data.review.size() <= 1000
+          && exists(/databases/$(database)/documents/transactions/$(resource.data.transaction_id))
+          && get(/databases/$(database)/documents/transactions/$(resource.data.transaction_id)).data.status == 'completed';
 
         allow delete: if isAuthenticated()
-          && ratingId == request.auth.uid
-          && resource.data.reviewer_id == request.auth.uid;
+          && resource.data.reviewer_id == request.auth.uid
+          && ((resource.data.keys().hasAll(['transaction_id', 'reviewee_id'])
+                && resource.data.reviewee_id == userId
+                && ratingId == resource.data.transaction_id + '_' + request.auth.uid)
+              || (!resource.data.keys().hasAny(['transaction_id'])
+                && ratingId == request.auth.uid));
       }
     }
     

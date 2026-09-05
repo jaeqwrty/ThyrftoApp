@@ -209,7 +209,7 @@ class _OfferMessageCardState extends State<OfferMessageCard> {
               listing?['sold_transaction_id']?.toString() ==
                   offer['id']?.toString();
           return _buildStatusText(completedThroughThisOffer
-              ? 'Transaction completed. Both sides confirmed the exchange and the listing is sold.'
+              ? 'Transaction completed. Both sides confirmed the exchange and the listing is sold. You can now leave a verified review from this user’s profile.'
               : 'Offer accepted. This listing is now marked sold.');
         }
 
@@ -268,7 +268,7 @@ class _OfferMessageCardState extends State<OfferMessageCard> {
 
         if (transactionStatus == 'completed') {
           return _buildStatusText(
-            'Transaction completed. Both sides confirmed the exchange and the listing is sold.',
+            'Transaction completed. Both sides confirmed the exchange and the listing is sold. You can now leave a verified review from this user’s profile.',
           );
         }
 

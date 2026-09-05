@@ -5,6 +5,7 @@ import 'package:thryfto/core/providers/auth_providers.dart';
 import 'package:thryfto/features/auth/pages/login_page.dart';
 import 'package:thryfto/features/auth/pages/onboarding_page.dart';
 import 'package:thryfto/shared/widgets/skeleton_loaders.dart';
+import 'package:thryfto/shared/widgets/deep_link_gate.dart';
 
 class AuthWrapper extends ConsumerWidget {
   const AuthWrapper({super.key});
@@ -42,7 +43,10 @@ class AuthWrapper extends ConsumerWidget {
                 return const OnboardingPage();
               }
 
-              return MainNavigation(user: userData);
+              return DeepLinkGate(
+                user: userData,
+                child: MainNavigation(user: userData),
+              );
             },
           );
         }

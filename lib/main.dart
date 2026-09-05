@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:thryfto/shared/widgets/auth_wrapper.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
+import 'package:thryfto/core/navigation/deep_link_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,6 +12,8 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  await DeepLinkService.instance.initialize();
 
   runApp(const ProviderScope(child: MyApp()));
 }
