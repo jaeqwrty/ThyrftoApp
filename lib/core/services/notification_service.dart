@@ -16,6 +16,7 @@ class NotificationService {
     'new_listing',
     'rating',
     'offer',
+    'transaction',
   };
 
   /// Create a notification using one canonical client-side schema.

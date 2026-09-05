@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:thryfto/core/services/offer_service.dart';
+import 'package:thryfto/core/services/transaction_service.dart';
 
 class OfferMessageCard extends StatefulWidget {
   final String offerId;
@@ -17,6 +18,7 @@ class OfferMessageCard extends StatefulWidget {
 
 class _OfferMessageCardState extends State<OfferMessageCard> {
   final OfferService _offerService = OfferService();
+  final TransactionService _transactionService = TransactionService();
   bool _isProcessing = false;
 
   static const Color _ink = Color(0xFF17131F);
@@ -192,65 +194,23 @@ class _OfferMessageCardState extends State<OfferMessageCard> {
             listing?['reserved_offer_id']?.toString() == offer['id']?.toString();
 
         if (status == 'accepted' && isThisReservation) {
-          if (isSeller) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildStatusText(
-                  'Item reserved for this buyer. Release it only if the deal will not continue.',
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: _isProcessing
-                      ? null
-                      : () => _confirmReleaseReservation(
-                            offer['id'].toString(),
-                            asBuyer: false,
-                          ),
-                  icon: const Icon(Icons.lock_open_outlined, size: 17),
-                  label: const Text('Release Reservation'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _accent,
-                    side: const BorderSide(color: _accent),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          }
-          if (isBuyer) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildStatusText('This item is reserved for you.'),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: _isProcessing
-                      ? null
-                      : () => _confirmReleaseReservation(
-                            offer['id'].toString(),
-                            asBuyer: true,
-                          ),
-                  icon: const Icon(Icons.close_rounded, size: 17),
-                  label: const Text('Withdraw from Reservation'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.redAccent,
-                    side: const BorderSide(color: Colors.redAccent),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ],
+          if (isSeller || isBuyer) {
+            return _buildReservedTransactionActions(
+              offer: offer,
+              isSeller: isSeller,
+              isBuyer: isBuyer,
             );
           }
           return _buildStatusText('This item is reserved.');
         }
 
         if (status == 'accepted' && listingStatus == 'sold') {
-          return _buildStatusText('Offer accepted. This listing is now marked sold.');
+          final completedThroughThisOffer =
+              listing?['sold_transaction_id']?.toString() ==
+                  offer['id']?.toString();
+          return _buildStatusText(completedThroughThisOffer
+              ? 'Transaction completed. Both sides confirmed the exchange and the listing is sold.'
+              : 'Offer accepted. This listing is now marked sold.');
         }
 
         if (canSellerRespond) {
@@ -284,6 +244,129 @@ class _OfferMessageCardState extends State<OfferMessageCard> {
 
         return _buildStatusText(_statusHelp(status, isSeller: isSeller));
       },
+    );
+  }
+
+  Widget _buildReservedTransactionActions({
+    required Map<String, dynamic> offer,
+    required bool isSeller,
+    required bool isBuyer,
+  }) {
+    final offerId = offer['id']?.toString() ?? '';
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: _transactionService.watchTransactionForOffer(offerId),
+      builder: (context, snapshot) {
+        final transaction = snapshot.data;
+        final transactionStatus = transaction?['status']?.toString() ?? 'reserved';
+        final buyerConfirmed = transaction?['buyer_confirmed'] == true;
+        final sellerConfirmed = transaction?['seller_confirmed'] == true;
+        final currentUserConfirmed = isBuyer
+            ? buyerConfirmed
+            : isSeller
+                ? sellerConfirmed
+                : false;
+
+        if (transactionStatus == 'completed') {
+          return _buildStatusText(
+            'Transaction completed. Both sides confirmed the exchange and the listing is sold.',
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildStatusText(
+              'Confirm only after the item and agreed payment have been exchanged. The listing becomes sold after both sides confirm.',
+            ),
+            const SizedBox(height: 10),
+            _transactionConfirmationRow(
+              label: 'Buyer confirmation',
+              confirmed: buyerConfirmed,
+            ),
+            const SizedBox(height: 6),
+            _transactionConfirmationRow(
+              label: 'Seller confirmation',
+              confirmed: sellerConfirmed,
+            ),
+            const SizedBox(height: 10),
+            if (!currentUserConfirmed)
+              ElevatedButton.icon(
+                onPressed: _isProcessing
+                    ? null
+                    : () => _confirmTransactionCompletion(offerId),
+                icon: const Icon(Icons.handshake_outlined, size: 17),
+                label: const Text('Confirm Exchange Complete'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _ink,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              )
+            else
+              _buildStatusText(
+                buyerConfirmed && sellerConfirmed
+                    ? 'Both sides confirmed the exchange.'
+                    : 'You confirmed the exchange. Waiting for the other participant.',
+              ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _isProcessing
+                  ? null
+                  : () => _confirmReleaseReservation(
+                        offerId,
+                        asBuyer: isBuyer,
+                      ),
+              icon: Icon(
+                isBuyer ? Icons.close_rounded : Icons.lock_open_outlined,
+                size: 17,
+              ),
+              label: Text(
+                isBuyer
+                    ? 'Withdraw from Reservation'
+                    : 'Release Reservation',
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: isBuyer ? Colors.redAccent : _accent,
+                side: BorderSide(
+                  color: isBuyer ? Colors.redAccent : _accent,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _transactionConfirmationRow({
+    required String label,
+    required bool confirmed,
+  }) {
+    return Row(
+      children: [
+        Icon(
+          confirmed ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+          size: 17,
+          color: confirmed ? Colors.green : _muted,
+        ),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            '$label · ${confirmed ? 'Confirmed' : 'Waiting'}',
+            style: TextStyle(
+              color: confirmed ? _ink : _muted,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -527,6 +610,59 @@ class _OfferMessageCardState extends State<OfferMessageCard> {
           content: Text('Reservation released'),
           behavior: SnackBarBehavior.floating,
         ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_cleanError(e)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> _confirmTransactionCompletion(String offerId) async {
+    if (_isProcessing) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confirm Exchange Complete?'),
+        content: const Text(
+          'Confirm only after the item and the agreed payment have been exchanged. The listing will be marked sold once both buyer and seller confirm.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Not Yet'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isProcessing = true);
+    try {
+      final result =
+          await _transactionService.confirmCompletionForOffer(offerId);
+      if (!mounted) return;
+
+      final completed = result['completed'] == true;
+      final alreadyConfirmed = result['already_confirmed'] == true;
+      final message = completed
+          ? 'Transaction completed. Listing marked as sold.'
+          : alreadyConfirmed
+              ? 'Your confirmation is already recorded.'
+              : 'Confirmation recorded. Waiting for the other participant.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
       );
     } catch (e) {
       if (!mounted) return;

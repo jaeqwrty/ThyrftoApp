@@ -244,6 +244,25 @@ class OfferService {
       // one-off item for the accepted buyer. Keeping both writes in the same
       // transaction prevents multiple offers from being accepted concurrently.
       if (action == 'accepted' && listingRef != null && listingData != null) {
+        final transactionRef =
+            _firestore.collection('transactions').doc(offerId);
+        transaction.set(transactionRef, {
+          'offer_id': offerId,
+          'listing_id': data['listing_id'],
+          'listing_title': data['listing_title']?.toString() ??
+              listingData['title']?.toString() ??
+              'Listing',
+          'seller_id': sellerId,
+          'buyer_id': buyerId,
+          'chat_id': data['chat_id'],
+          'agreed_price': nextAmount,
+          'status': 'reserved',
+          'buyer_confirmed': false,
+          'seller_confirmed': false,
+          'created_at': FieldValue.serverTimestamp(),
+          'updated_at': FieldValue.serverTimestamp(),
+          'last_action_by': userId,
+        });
         transaction.update(listingRef, {
           'status': 'reserved',
           'reserved_for_user_id': buyerId,
@@ -370,6 +389,15 @@ class OfferService {
         throw StateError('This reservation is no longer active');
       }
 
+      final transactionRef =
+          _firestore.collection('transactions').doc(offerId);
+      final transactionSnapshot = await transaction.get(transactionRef);
+      final transactionData = transactionSnapshot.data();
+      if (transactionSnapshot.exists &&
+          transactionData?['status'] != 'reserved') {
+        throw StateError('This transaction can no longer be cancelled');
+      }
+
       transaction.update(offerRef, {
         'status': 'cancelled',
         'updated_at': FieldValue.serverTimestamp(),
@@ -382,6 +410,14 @@ class OfferService {
         'reserved_at': FieldValue.delete(),
         'updated_at': FieldValue.serverTimestamp(),
       });
+      if (transactionSnapshot.exists) {
+        transaction.update(transactionRef, {
+          'status': 'cancelled',
+          'cancelled_at': FieldValue.serverTimestamp(),
+          'updated_at': FieldValue.serverTimestamp(),
+          'last_action_by': userId,
+        });
+      }
 
       if (chatId != null) {
         final updateMessageRef = _firestore

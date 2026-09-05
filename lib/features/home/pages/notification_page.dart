@@ -169,6 +169,13 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         final offerId = notification['additional_data']?['offer_id'];
         final offerStatus = notification['additional_data']?['offer_status'];
         groupKey = 'offer_${offerId ?? 'unknown'}_${offerStatus ?? 'update'}';
+      } else if (type == 'transaction') {
+        final transactionId =
+            notification['additional_data']?['transaction_id'];
+        final transactionStatus =
+            notification['additional_data']?['transaction_status'];
+        groupKey =
+            'transaction_${transactionId ?? 'unknown'}_${transactionStatus ?? 'update'}';
       } else {
         groupKey = '${type}_${notification['recipient_id']}';
       }
@@ -501,6 +508,10 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         return othersCount == 1
             ? "$firstName and 1 other updated offers"
             : "$firstName and $othersCount others updated offers";
+      case 'transaction':
+        return othersCount == 1
+            ? "$firstName and 1 other updated transactions"
+            : "$firstName and $othersCount others updated transactions";
       case 'follow':
       case 'favorite':
         return othersCount == 1
@@ -575,6 +586,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       case 'new_listing': return Icons.shopping_bag;
       case 'rating': return Icons.star;
       case 'offer': return Icons.local_offer_outlined;
+      case 'transaction': return Icons.handshake_outlined;
       default: return Icons.notifications;
     }
   }
@@ -591,6 +603,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       case 'new_listing': return AppColors.success;
       case 'rating': return AppColors.rating;
       case 'offer': return _accent;
+      case 'transaction': return AppColors.success;
       default: return AppColors.textSecondary;
     }
   }
@@ -643,6 +656,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
           
         case 'message':
         case 'offer':
+        case 'transaction':
           // Open the conversation associated with the interaction.
           if (senderId != null && mounted) {
             final currentUserId = FirebaseAuth.instance.currentUser?.uid;

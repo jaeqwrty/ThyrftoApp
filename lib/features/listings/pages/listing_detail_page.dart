@@ -429,7 +429,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                       isSold
                           ? 'This listing is marked as sold.'
                           : isReserved
-                              ? 'This item is reserved for the buyer whose offer was accepted. Other shoppers can still see it, but new offers are disabled.'
+                              ? 'This item is reserved for the accepted buyer. Complete the exchange from the offer in chat; it becomes sold only after both buyer and seller confirm.'
                           : 'This listing is active and visible to shoppers.',
                       style: const TextStyle(
                         color: _mutedInk,
@@ -467,7 +467,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                   ),
                 ),
               ],
-              if (!isSold) ...[
+              if (!isSold && !isReserved) ...[
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,

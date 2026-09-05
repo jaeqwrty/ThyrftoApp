@@ -56,6 +56,13 @@ List<Map<String, dynamic>> _groupNotifications(List<Map<String, dynamic>> notifi
       final offerId = notification['additional_data']?['offer_id'];
       final offerStatus = notification['additional_data']?['offer_status'];
       groupKey = 'offer_${offerId ?? 'unknown'}_${offerStatus ?? 'update'}';
+    } else if (type == 'transaction') {
+      final transactionId =
+          notification['additional_data']?['transaction_id'];
+      final transactionStatus =
+          notification['additional_data']?['transaction_status'];
+      groupKey =
+          'transaction_${transactionId ?? 'unknown'}_${transactionStatus ?? 'update'}';
     } else {
       groupKey = '${type}_${notification['recipient_id']}';
     }
