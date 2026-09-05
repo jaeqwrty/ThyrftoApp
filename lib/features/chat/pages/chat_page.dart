@@ -208,19 +208,16 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
 
     return chatsAsync.when(
       data: (chats) {
-        // Filter chats based on deleted status and search query
+        // Hide only conversations currently soft-deleted for this user. A
+        // deletion timestamp may remain after reactivation so older messages
+        // stay hidden without hiding the conversation itself.
         final validChats = chats.where((chat) {
           final chatData = chat.data() as Map<String, dynamic>;
-          final deletedForTimestamps =
-              chatData['deletedForTimestamps'] as Map<String, dynamic>?;
+          final deletedFor =
+              List<String>.from(chatData['deletedFor'] ?? const <String>[]);
           final currentUserId = ref.read(chatServiceProvider).currentUserId;
 
-          if (deletedForTimestamps != null &&
-              deletedForTimestamps.containsKey(currentUserId)) {
-            return false;
-          }
-
-          return true;
+          return currentUserId == null || !deletedFor.contains(currentUserId);
         }).toList();
 
         // Filter by search query

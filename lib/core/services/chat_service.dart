@@ -32,75 +32,71 @@ class ChatService {
     return true;
   }
 
-  /// Get existing chat ID or create new one - ALWAYS returns a chat ID
-  /// This ensures only ONE conversation exists per user pair
+  /// Get the single conversation for a user pair, creating it when needed.
   Future<String?> getOrCreateChat(String otherUserId) async {
-    if (currentUserId == null) return null;
+    final userId = currentUserId;
+    if (userId == null || otherUserId.isEmpty || otherUserId == userId) {
+      return null;
+    }
 
     try {
-      // First, search for existing chat
+      final canonicalChatId = _chatIdForUsers(userId, otherUserId);
       final existingChats = await _firestore
           .collection('chats')
-          .where('participants', arrayContains: currentUserId)
+          .where('participants', arrayContains: userId)
           .get();
 
-      for (var doc in existingChats.docs) {
-        final chatData = doc.data();
-        final participants = List<String>.from(chatData['participants']);
+      final matchingChats = existingChats.docs.where((doc) {
+        final participants =
+            List<String>.from(doc.data()['participants'] ?? const <String>[]);
+        return participants.contains(otherUserId);
+      }).toList();
 
-        // Check if this chat is with the target user
-        if (participants.contains(otherUserId)) {
-          final deletedFor = List<String>.from(chatData['deletedFor'] ?? []);
+      if (matchingChats.isNotEmpty) {
+        // Prefer the canonical document when it already exists. For legacy random
+        // IDs, prefer the most recently active thread and reuse it instead of
+        // creating yet another conversation.
+        matchingChats.sort((a, b) {
+          if (a.id == canonicalChatId) return -1;
+          if (b.id == canonicalChatId) return 1;
+          final aTime = a.data()['lastMessageTime'] as Timestamp?;
+          final bTime = b.data()['lastMessageTime'] as Timestamp?;
+          if (aTime == null && bTime == null) return 0;
+          if (aTime == null) return 1;
+          if (bTime == null) return -1;
+          return bTime.compareTo(aTime);
+        });
 
-          // If user deleted this chat, check if we should restore or create new
-          if (deletedFor.contains(currentUserId)) {
-            final deletedForTimestamps =
-                chatData['deletedForTimestamps'] as Map<String, dynamic>?;
-            final deletionTimestamp =
-                deletedForTimestamps?[currentUserId] as Timestamp?;
+        final chat = matchingChats.first;
+        final deletedFor =
+            List<String>.from(chat.data()['deletedFor'] ?? const <String>[]);
 
-            if (deletionTimestamp != null) {
-              // Check if there are any messages after deletion
-              final messagesAfterDeletion = await _firestore
-                  .collection('chats')
-                  .doc(doc.id)
-                  .collection('messages')
-                  .where('timestamp', isGreaterThan: deletionTimestamp)
-                  .limit(1)
-                  .get();
-
-              // If no messages after deletion, don't restore - create new chat instead
-              if (messagesAfterDeletion.docs.isEmpty) {
-                print(
-                    'Old chat was deleted with no new messages - creating fresh chat');
-                // Don't restore this old chat, create a new one below
-                continue;
-              }
-
-              // There are messages after deletion, so restore the chat
-              print('Restoring chat with new messages after deletion');
-              await _firestore.collection('chats').doc(doc.id).update({
-                'deletedFor': FieldValue.arrayRemove([currentUserId]),
-                'deletedForTimestamps.$currentUserId': FieldValue.delete(),
-              });
-              return doc.id;
-            }
-          }
-
-          // Chat exists and wasn't deleted by current user
-          return doc.id;
+        if (deletedFor.contains(userId)) {
+          // Reactivate the same thread. Keep the deletion timestamp so the
+          // message list can continue hiding messages from before deletion.
+          await chat.reference.update({
+            'deletedFor': FieldValue.arrayRemove([userId]),
+          });
         }
+
+        return chat.id;
       }
 
-      // No existing chat found - create new one
-      print('Creating new chat between $currentUserId and $otherUserId');
-      final chatRef = await _firestore.collection('chats').add({
-        'participants': [currentUserId, otherUserId],
-        'createdAt': FieldValue.serverTimestamp(),
-        'lastMessage': '',
-        'lastMessageTime': FieldValue.serverTimestamp(),
-        'deletedFor': [],
-        'deletedForTimestamps': {},
+      // Deterministic IDs make concurrent creation attempts converge on the
+      // same document instead of producing duplicate conversations.
+      final chatRef = _firestore.collection('chats').doc(canonicalChatId);
+      await _firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(chatRef);
+        if (!snapshot.exists) {
+          transaction.set(chatRef, {
+            'participants': [userId, otherUserId],
+            'createdAt': FieldValue.serverTimestamp(),
+            'lastMessage': '',
+            'lastMessageTime': FieldValue.serverTimestamp(),
+            'deletedFor': [],
+            'deletedForTimestamps': {},
+          });
+        }
       });
 
       return chatRef.id;
@@ -108,6 +104,11 @@ class ChatService {
       print('Error getting/creating chat: $e');
       return null;
     }
+  }
+
+  String _chatIdForUsers(String firstUserId, String secondUserId) {
+    final userIds = [firstUserId, secondUserId]..sort();
+    return userIds.join('_');
   }
 
   /// Create a new chat (ONLY used internally - prefer getOrCreateChat)
