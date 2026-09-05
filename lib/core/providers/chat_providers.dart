@@ -155,6 +155,7 @@ class ChatNotifier extends StateNotifier<AsyncValue<void>> {
 
       // Send notification
       await chatService.sendMessageWithNotification(
+        chatId: chatId,
         recipientId: otherUserId,
         messageText: text,
       );
@@ -211,6 +212,7 @@ class ChatNotifier extends StateNotifier<AsyncValue<void>> {
 
       // Send notification
       await chatService.sendMessageWithNotification(
+        chatId: chatId,
         recipientId: otherUserId,
         messageText: '📷 Sent a photo',
       );

@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:thryfto/core/services/notification_service.dart';
 
 class FavoritesService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final NotificationService _notificationService = NotificationService();
 
   String? get _currentUserId => _auth.currentUser?.uid;
 
@@ -117,6 +119,8 @@ class FavoritesService {
     String? listingImage,
   }) async {
     try {
+      if (_currentUserId == null || _currentUserId != sellerId) return;
+
       // Get seller's info
       final sellerDoc =
           await _firestore.collection('users').doc(sellerId).get();
@@ -127,26 +131,21 @@ class FavoritesService {
       // Get all users who favorited this seller
       final favoritedUsers = await getUsersWhoFavorited(sellerId);
 
-      // Send notification to each user
+      // Send notifications through the canonical notification schema.
       for (final userId in favoritedUsers) {
-        await _firestore.collection('notifications').add({
-          'recipient_id': userId,
-          'sender_id': sellerId,
-          'sender_name': sellerName,
-          'sender_profile_image': sellerDoc.data()?['profileImageUrl'],
-          'type': 'new_listing',
-          'title': 'New Listing',
-          'body': '$sellerName posted "$listingTitle"',
-          'related_listing_id': listingId,
-          'related_user_id': sellerId,
-          'is_read': false,
-          'created_at': FieldValue.serverTimestamp(),
-          'additional_data': {
+        await _notificationService.createNotification(
+          recipientId: userId,
+          type: 'new_listing',
+          title: 'New Listing',
+          body: '$sellerName posted "$listingTitle"',
+          relatedListingId: listingId,
+          relatedUserId: sellerId,
+          additionalData: {
             'listing_id': listingId,
             'listing_image': listingImage,
             'listing_title': listingTitle,
           },
-        });
+        );
       }
 
       print('Notified ${favoritedUsers.length} users about new listing');

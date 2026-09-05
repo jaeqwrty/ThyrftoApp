@@ -7,28 +7,67 @@ class NotificationService {
 
   String? get currentUserId => _auth.currentUser?.uid;
 
-  /// Create a notification
+  static const Set<String> supportedTypes = {
+    'like',
+    'comment',
+    'share',
+    'message',
+    'follow',
+    'new_listing',
+    'rating',
+  };
+
+  /// Create a notification using one canonical client-side schema.
   Future<void> createNotification({
     required String recipientId,
-    required String type, // 'like', 'comment', 'share', 'message', 'follow'
+    required String type,
     required String title,
     required String body,
     String? relatedListingId,
     String? relatedUserId,
     Map<String, dynamic>? additionalData,
   }) async {
+    final senderId = currentUserId;
+    if (senderId == null ||
+        recipientId.isEmpty ||
+        recipientId == senderId ||
+        !supportedTypes.contains(type)) {
+      return;
+    }
+
+    final normalizedTitle = title.trim();
+    final normalizedBody = body.trim();
+    if (normalizedTitle.isEmpty ||
+        normalizedTitle.length > 160 ||
+        normalizedBody.length > 1000) {
+      return;
+    }
+
     try {
+      final senderDoc =
+          await _firestore.collection('users').doc(senderId).get();
+      if (!senderDoc.exists) return;
+
+      final senderData = senderDoc.data()!;
+      final senderName = senderData['fullName'] ??
+          senderData['full_name'] ??
+          senderData['username'] ??
+          'Someone';
+      final senderProfileImage = senderData['profileImageUrl'] as String?;
+
       await _firestore.collection('notifications').add({
         'recipient_id': recipientId,
-        'sender_id': currentUserId,
+        'sender_id': senderId,
+        'sender_name': senderName.toString(),
+        'sender_profile_image': senderProfileImage,
         'type': type,
-        'title': title,
-        'body': body,
+        'title': normalizedTitle,
+        'body': normalizedBody,
         'related_listing_id': relatedListingId,
-        'related_user_id': relatedUserId,
+        'related_user_id': relatedUserId ?? senderId,
         'is_read': false,
         'created_at': FieldValue.serverTimestamp(),
-        'additional_data': additionalData ?? {},
+        'additional_data': additionalData ?? <String, dynamic>{},
       });
     } catch (e) {
       print('Error creating notification: $e');

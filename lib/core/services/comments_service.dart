@@ -1,9 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:thryfto/core/services/notification_service.dart';
 
 class CommentService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final NotificationService _notificationService = NotificationService();
 
   String? get currentUserId => _auth.currentUser?.uid;
 
@@ -31,8 +33,17 @@ class CommentService {
     required String userName,
     required String comment,
   }) async {
-    // Add comment to Firestore
-    await _db.collection('listings').doc(listingId).collection('comments').add({
+    if (currentUserId == null || currentUserId != userId) {
+      throw StateError('Comment author does not match the signed-in user');
+    }
+
+    // Create the source comment first so notification rules can verify it.
+    final commentRef = _db
+        .collection('listings')
+        .doc(listingId)
+        .collection('comments')
+        .doc();
+    await commentRef.set({
       'user_id': userId,
       'user_name': userName,
       'comment': comment,
@@ -47,43 +58,16 @@ class CommentService {
       
       // Only create notification if commenter is not the seller
       if (sellerId != null && sellerId != userId) {
-        await _createNotification(
+        await _notificationService.createNotification(
           recipientId: sellerId,
           type: 'comment',
           title: '$userName commented on your listing',
           body: comment,
           relatedListingId: listingId,
           relatedUserId: userId,
+          additionalData: {'comment_id': commentRef.id},
         );
       }
-    }
-  }
-
-  // Create notification helper
-  Future<void> _createNotification({
-    required String recipientId,
-    required String type,
-    required String title,
-    required String body,
-    String? relatedListingId,
-    String? relatedUserId,
-    Map<String, dynamic>? additionalData,
-  }) async {
-    try {
-      await _db.collection('notifications').add({
-        'recipient_id': recipientId,
-        'sender_id': currentUserId,
-        'type': type,
-        'title': title,
-        'body': body,
-        'related_listing_id': relatedListingId,
-        'related_user_id': relatedUserId,
-        'is_read': false,
-        'created_at': FieldValue.serverTimestamp(),
-        'additional_data': additionalData ?? {},
-      });
-    } catch (e) {
-      print('Error creating comment notification: $e');
     }
   }
 

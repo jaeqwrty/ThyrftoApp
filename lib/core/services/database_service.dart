@@ -2,11 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:thryfto/core/services/cloudinary_service.dart';
+import 'package:thryfto/core/services/notification_service.dart';
 
 class DatabaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final CloudinaryService _cloudinary = CloudinaryService();
+  final NotificationService _notificationService = NotificationService();
 
   String? get currentUserId => _auth.currentUser?.uid;
 
@@ -247,7 +249,7 @@ class DatabaseService {
             currentUserDoc.data()?['username'] ??
             'Someone';
 
-        await _createNotification(
+        await _notificationService.createNotification(
           recipientId: sellerId,
           type: 'like',
           title: '$currentUserName liked your listing',
@@ -634,7 +636,8 @@ class DatabaseService {
       final sellerId = listingDoc.data()?['seller_id'];
       final listingTitle = listingDoc.data()?['title'] ?? 'a listing';
 
-      await _firestore.collection('listing_shares').add({
+      final shareRef = _firestore.collection('listing_shares').doc();
+      await shareRef.set({
         'listing_id': listingId,
         'shared_by': userId,
         'shared_at': FieldValue.serverTimestamp(),
@@ -648,65 +651,18 @@ class DatabaseService {
             currentUserDoc.data()?['username'] ??
             'Someone';
 
-        await _createNotification(
+        await _notificationService.createNotification(
           recipientId: sellerId,
           type: 'share',
           title: '$currentUserName shared your listing',
           body: '"$listingTitle"',
           relatedListingId: listingId,
           relatedUserId: userId,
+          additionalData: {'share_id': shareRef.id},
         );
       }
     } catch (e) {
       print('Error tracking share: $e');
-      rethrow;
-    }
-  }
-
-  // --- Internal Helper ---
-
-  Future<void> _createNotification({
-    required String recipientId,
-    required String type,
-    required String title,
-    required String body,
-    String? relatedListingId,
-    String? relatedUserId,
-    Map<String, dynamic>? additionalData,
-  }) async {
-    try {
-      String senderName = 'Someone';
-      String? senderProfileImage;
-
-      if (currentUserId != null) {
-        final senderDoc =
-            await _firestore.collection('users').doc(currentUserId).get();
-        if (senderDoc.exists) {
-          final senderData = senderDoc.data()!;
-          senderName = senderData['fullName'] ??
-              senderData['full_name'] ??
-              senderData['username'] ??
-              'Someone';
-          senderProfileImage = senderData['profileImageUrl'] as String?;
-        }
-      }
-
-      await _firestore.collection('notifications').add({
-        'recipient_id': recipientId,
-        'sender_id': currentUserId,
-        'sender_name': senderName,
-        'sender_profile_image': senderProfileImage,
-        'type': type,
-        'title': title,
-        'body': body,
-        'related_listing_id': relatedListingId,
-        'related_user_id': relatedUserId,
-        'is_read': false,
-        'created_at': FieldValue.serverTimestamp(),
-        'additional_data': additionalData ?? {},
-      });
-    } catch (e) {
-      print('Error creating notification: $e');
       rethrow;
     }
   }

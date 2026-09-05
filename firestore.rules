@@ -23,6 +23,79 @@ service cloud.firestore {
         && request.resource.data.price is number
         && request.resource.data.price >= 0;
     }
+
+    function isCanonicalNotification() {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'recipient_id', 'sender_id', 'sender_name', 'sender_profile_image',
+          'type', 'title', 'body', 'related_listing_id', 'related_user_id',
+          'is_read', 'created_at', 'additional_data'
+        ])
+        && data.recipient_id is string
+        && data.recipient_id != request.auth.uid
+        && exists(/databases/$(database)/documents/users/$(data.recipient_id))
+        && data.sender_id == request.auth.uid
+        && data.sender_name is string
+        && data.sender_name.size() > 0
+        && data.sender_name.size() <= 160
+        && (data.sender_profile_image == null || data.sender_profile_image is string)
+        && data.type in [
+          'like', 'comment', 'share', 'message', 'follow', 'new_listing', 'rating'
+        ]
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 160
+        && data.body is string
+        && data.body.size() <= 1000
+        && (data.related_listing_id == null || data.related_listing_id is string)
+        && data.related_user_id == request.auth.uid
+        && data.is_read == false
+        && data.created_at == request.time
+        && data.additional_data is map;
+    }
+
+    function hasValidNotificationSource() {
+      let data = request.resource.data;
+      return
+        (data.type == 'follow'
+          && exists(/databases/$(database)/documents/favorites/$(request.auth.uid + '_' + data.recipient_id)))
+        ||
+        (data.type == 'new_listing'
+          && data.related_listing_id is string
+          && exists(/databases/$(database)/documents/listings/$(data.related_listing_id))
+          && get(/databases/$(database)/documents/listings/$(data.related_listing_id)).data.seller_id == request.auth.uid
+          && exists(/databases/$(database)/documents/favorites/$(data.recipient_id + '_' + request.auth.uid)))
+        ||
+        (data.type == 'like'
+          && data.related_listing_id is string
+          && exists(/databases/$(database)/documents/listings/$(data.related_listing_id))
+          && get(/databases/$(database)/documents/listings/$(data.related_listing_id)).data.seller_id == data.recipient_id
+          && exists(/databases/$(database)/documents/likes/$(request.auth.uid + '_' + data.related_listing_id)))
+        ||
+        (data.type == 'share'
+          && data.related_listing_id is string
+          && data.additional_data.share_id is string
+          && exists(/databases/$(database)/documents/listing_shares/$(data.additional_data.share_id))
+          && get(/databases/$(database)/documents/listing_shares/$(data.additional_data.share_id)).data.shared_by == request.auth.uid
+          && get(/databases/$(database)/documents/listing_shares/$(data.additional_data.share_id)).data.listing_id == data.related_listing_id
+          && get(/databases/$(database)/documents/listings/$(data.related_listing_id)).data.seller_id == data.recipient_id)
+        ||
+        (data.type == 'comment'
+          && data.related_listing_id is string
+          && data.additional_data.comment_id is string
+          && exists(/databases/$(database)/documents/listings/$(data.related_listing_id)/comments/$(data.additional_data.comment_id))
+          && get(/databases/$(database)/documents/listings/$(data.related_listing_id)/comments/$(data.additional_data.comment_id)).data.user_id == request.auth.uid
+          && get(/databases/$(database)/documents/listings/$(data.related_listing_id)).data.seller_id == data.recipient_id)
+        ||
+        (data.type == 'rating'
+          && exists(/databases/$(database)/documents/users/$(data.recipient_id)/ratings/$(request.auth.uid)))
+        ||
+        (data.type == 'message'
+          && data.additional_data.chat_id is string
+          && exists(/databases/$(database)/documents/chats/$(data.additional_data.chat_id))
+          && request.auth.uid in get(/databases/$(database)/documents/chats/$(data.additional_data.chat_id)).data.participants
+          && data.recipient_id in get(/databases/$(database)/documents/chats/$(data.additional_data.chat_id)).data.participants);
+    }
     
     // Username reservations provide race-safe, case-normalized uniqueness.
     match /usernames/{username} {
@@ -386,8 +459,10 @@ service cloud.firestore {
       allow read: if isAuthenticated() 
         && request.auth.uid == resource.data.recipient_id;
       
-      // Authenticated users can create notifications (for sending to others)
-      allow create: if isAuthenticated();
+      // Notifications must match the canonical schema and a real source action.
+      allow create: if isAuthenticated()
+        && isCanonicalNotification()
+        && hasValidNotificationSource();
       
       // Recipients may only change read state.
       allow update: if isAuthenticated()
@@ -395,10 +470,10 @@ service cloud.firestore {
         && request.resource.data.recipient_id == resource.data.recipient_id
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['is_read']);
       
-      // Recipient can delete their notification. A listing owner may also delete
-      // notifications tied to that listing while the listing still exists.
+      // Recipient, authenticated sender, or listing owner may clean a notification.
       allow delete: if isAuthenticated()
         && (request.auth.uid == resource.data.recipient_id
+            || request.auth.uid == resource.data.sender_id
             || (resource.data.related_listing_id is string
                 && isListingOwner(resource.data.related_listing_id)));
     }

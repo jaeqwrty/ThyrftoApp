@@ -2,11 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:thryfto/core/services/cloudinary_service.dart';
+import 'package:thryfto/core/services/notification_service.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final CloudinaryService _cloudinary = CloudinaryService();
+  final NotificationService _notificationService = NotificationService();
 
   String? get currentUserId => _auth.currentUser?.uid;
 
@@ -183,6 +185,7 @@ class ChatService {
   }
 
   Future<void> sendMessageWithNotification({
+    required String chatId,
     required String recipientId,
     required String messageText,
   }) async {
@@ -196,7 +199,7 @@ class ChatService {
           currentUserDoc.data()?['username'] ??
           'Someone';
 
-      await _createNotification(
+      await _notificationService.createNotification(
         recipientId: recipientId,
         type: 'message',
         title: 'New message from $currentUserName',
@@ -204,6 +207,7 @@ class ChatService {
             ? '${messageText.substring(0, 50)}...'
             : messageText,
         relatedUserId: currentUserId,
+        additionalData: {'chat_id': chatId},
       );
     } catch (e) {
       print('Error sending notification: $e');
@@ -273,48 +277,4 @@ class ChatService {
     }
   }
 
-  Future<void> _createNotification({
-    required String recipientId,
-    required String type,
-    required String title,
-    required String body,
-    String? relatedListingId,
-    String? relatedUserId,
-    Map<String, dynamic>? additionalData,
-  }) async {
-    try {
-      String senderName = 'Someone';
-      String? senderProfileImage;
-
-      if (currentUserId != null) {
-        final senderDoc =
-            await _firestore.collection('users').doc(currentUserId).get();
-        if (senderDoc.exists) {
-          final senderData = senderDoc.data()!;
-          senderName = senderData['fullName'] ??
-              senderData['full_name'] ??
-              senderData['username'] ??
-              'Someone';
-          senderProfileImage = senderData['profileImageUrl'] as String?;
-        }
-      }
-
-      await _firestore.collection('notifications').add({
-        'recipient_id': recipientId,
-        'sender_id': currentUserId,
-        'sender_name': senderName,
-        'sender_profile_image': senderProfileImage,
-        'type': type,
-        'title': title,
-        'body': body,
-        'related_listing_id': relatedListingId,
-        'related_user_id': relatedUserId,
-        'is_read': false,
-        'created_at': FieldValue.serverTimestamp(),
-        'additional_data': additionalData ?? {},
-      });
-    } catch (e) {
-      print('Error creating notification: $e');
-    }
-  }
 }
