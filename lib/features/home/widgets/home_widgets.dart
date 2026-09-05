@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/shared/widgets/image_placeholder.dart';
@@ -7,7 +7,6 @@ import 'package:thryfto/shared/widgets/user_avatar.dart';
 import 'package:thryfto/shared/widgets/comments_modal.dart';
 import 'package:thryfto/core/services/comments_service.dart';
 import 'package:thryfto/core/services/database_service.dart';
-import 'package:thryfto/core/services/location_service.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/features/profile/pages/user_profile_page.dart';
 import 'package:thryfto/features/listings/pages/listing_detail_page.dart';
@@ -53,15 +52,36 @@ class PostCard extends StatefulWidget {
   State<PostCard> createState() => _PostCardState();
 }
 
-class _PostCardState extends State<PostCard>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
+class _PostCardState extends State<PostCard> {
+  String _sellerLocation(Map<String, dynamic>? seller) {
+    if (seller == null) return 'Location not set';
+
+    bool isUsable(String? value) {
+      if (value == null) return false;
+      final normalized = value.trim();
+      return normalized.isNotEmpty &&
+          !normalized.startsWith('Lat:') &&
+          normalized != 'Location set' &&
+          normalized != 'Location detected';
+    }
+
+    final directAddress = seller['address']?.toString();
+    if (isUsable(directAddress)) return directAddress!.trim();
+
+    final cityState = seller['cityState']?.toString();
+    if (isUsable(cityState)) return cityState!.trim();
+
+    final nestedLocation = seller['location'];
+    if (nestedLocation is Map) {
+      final nestedAddress = nestedLocation['address']?.toString();
+      if (isUsable(nestedAddress)) return nestedAddress!.trim();
+    }
+
+    return 'Location not set';
+  }
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
-
     return StreamBuilder<Map<String, dynamic>?>(
       stream: widget.db.getUserProfileStream(widget.listing['seller_id']),
       builder: (context, userSnapshot) {
@@ -74,27 +94,10 @@ class _PostCardState extends State<PostCard>
         final distanceText = widget.listing['distance_text'] as String?;
         final imageUrls = widget.listing['image_urls'] as List?;
         final imageCount = imageUrls?.length ?? 0;
+        final locationDisplay = _sellerLocation(seller);
 
-        return FutureBuilder<Map<String, dynamic>?>(
-          future:
-              LocationService().getUserLocation(widget.listing['seller_id']),
-          builder: (context, locationSnapshot) {
-            String locationDisplay = 'Location not set';
-
-            if (locationSnapshot.hasData && locationSnapshot.data != null) {
-              final locationData = locationSnapshot.data!;
-              final address = locationData['address'] as String?;
-
-              if (address != null &&
-                  address.isNotEmpty &&
-                  !address.startsWith('Lat:') &&
-                  address != 'Location set' &&
-                  address != 'Location detected') {
-                locationDisplay = address;
-              }
-            }
-
-            return Container(
+        return RepaintBoundary(
+              child: Container(
               margin: const EdgeInsets.only(bottom: 10),
               decoration: const BoxDecoration(
                 color: Colors.white,
@@ -207,8 +210,7 @@ class _PostCardState extends State<PostCard>
                   ],
                 ),
               ),
-            );
-          },
+            ),
         );
       },
     );
@@ -451,14 +453,10 @@ class _PostImageState extends State<PostImage>
   }
 
   Widget _buildGlassBadge(String text, IconData icon) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-        child: Container(
+    return Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.42),
+            color: Colors.black.withValues(alpha: 0.56),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: Colors.white.withValues(alpha: 0.15),
@@ -480,9 +478,7 @@ class _PostImageState extends State<PostImage>
               ),
             ],
           ),
-        ),
-      ),
-    );
+        );
   }
 
   @override
@@ -501,23 +497,16 @@ class _PostImageState extends State<PostImage>
             child: ColoredBox(
               color: const Color(0xFFF8FAFC),
               child: hasImages
-                  ? Image.network(
-                      widget.imageUrls![0],
+                  ? CachedNetworkImage(
+                      imageUrl: widget.imageUrls![0].toString(),
                       fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Center(
-                          child: CircularProgressIndicator(
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                                : null,
-                            strokeWidth: 2.5,
-                            color: _homeInk,
-                          ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) =>
+                      memCacheWidth: 1200,
+                      fadeInDuration: const Duration(milliseconds: 180),
+                      placeholder: (context, _) => const ColoredBox(
+                        color: Color(0xFFF1EDF4),
+                        child: Center(child: ImagePlaceholder(size: 45)),
+                      ),
+                      errorWidget: (context, _, __) =>
                           const ImagePlaceholder(size: 45),
                     )
                   : const ImagePlaceholder(size: 45),

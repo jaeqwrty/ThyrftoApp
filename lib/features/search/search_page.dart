@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -19,8 +22,6 @@ class SearchPage extends StatefulWidget {
   State<SearchPage> createState() => _SearchPageState();
 }
 
-Stream<Map<String, dynamic>?>? _userLocationStream;
-
 class _SearchPageState extends State<SearchPage> {
   static const Color _ink = Color(0xFF17131F);
   static const Color _muted = Color(0xFF6B6475);
@@ -38,6 +39,8 @@ class _SearchPageState extends State<SearchPage> {
   String _priceSortDirection = 'low';
   String _distanceSortDirection = 'near';
   Map<String, dynamic>? _userLocation;
+  Timer? _searchDebounce;
+  StreamSubscription<Map<String, dynamic>?>? _userLocationSubscription;
 
   final List<String> _categories = [
     'All',
@@ -61,7 +64,7 @@ class _SearchPageState extends State<SearchPage> {
 
       if (userId != null) {
         // Create a stream that listens to user document changes
-        _userLocationStream =
+        final userLocationStream =
             _firestore.collection('users').doc(userId).snapshots().map((doc) {
           if (!doc.exists) return null;
 
@@ -86,13 +89,9 @@ class _SearchPageState extends State<SearchPage> {
         });
 
         // Listen to the stream and update state
-        _userLocationStream?.listen((location) {
-          if (mounted) {
-            setState(() {
-              _userLocation = location;
-              // State update triggers rebuild, which recalculates distances!
-            });
-          }
+        _userLocationSubscription = userLocationStream.listen((location) {
+          if (!mounted) return;
+          setState(() => _userLocation = location);
         });
       }
     } catch (_) {}
@@ -100,6 +99,8 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _userLocationSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -159,7 +160,12 @@ class _SearchPageState extends State<SearchPage> {
               controller: _searchController,
               textInputAction: TextInputAction.search,
               onChanged: (value) {
-                setState(() => _searchQuery = value.toLowerCase());
+                _searchDebounce?.cancel();
+                _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+                  if (mounted) {
+                    setState(() => _searchQuery = value.toLowerCase());
+                  }
+                });
               },
               decoration: InputDecoration(
                 hintText: 'Search clothing, bags, shoes...',
@@ -449,6 +455,7 @@ class _SearchPageState extends State<SearchPage> {
             }
 
             return GridView.builder(
+              cacheExtent: 700,
               padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
@@ -534,7 +541,8 @@ class _SearchPageState extends State<SearchPage> {
             _userLocation != null &&
             listing['distance_text'] != null;
 
-    return GestureDetector(
+    return RepaintBoundary(
+      child: GestureDetector(
       onTap: () {
         Navigator.push(
           context,
@@ -569,10 +577,16 @@ class _SearchPageState extends State<SearchPage> {
                 fit: StackFit.expand,
                 children: [
                   hasImage
-                      ? Image.network(
-                          imageUrls[0],
+                      ? CachedNetworkImage(
+                          imageUrl: imageUrls[0].toString(),
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
+                          memCacheWidth: 600,
+                          fadeInDuration: const Duration(milliseconds: 160),
+                          placeholder: (context, _) => const ColoredBox(
+                            color: Color(0xFFF1EDF4),
+                            child: Center(child: ImagePlaceholder()),
+                          ),
+                          errorWidget: (context, _, __) =>
                               const ImagePlaceholder(),
                         )
                       : const ImagePlaceholder(),
@@ -643,6 +657,7 @@ class _SearchPageState extends State<SearchPage> {
           ],
         ),
       ),
+    ),
     );
   }
 

@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/services/chat_service.dart';
@@ -175,11 +176,13 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
           itemCount: imageUrls.length,
           onPageChanged: (index) => setState(() => _currentImageIndex = index),
           itemBuilder: (context, index) {
-            return Image.network(
-              imageUrls[index],
+            return CachedNetworkImage(
+              imageUrl: imageUrls[index].toString(),
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  _buildImagePlaceholder(),
+              memCacheWidth: 1600,
+              fadeInDuration: const Duration(milliseconds: 180),
+              placeholder: (context, _) => _buildImagePlaceholder(),
+              errorWidget: (context, _, __) => _buildImagePlaceholder(),
             );
           },
         ),
