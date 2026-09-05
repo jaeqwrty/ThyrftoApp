@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
@@ -197,7 +198,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   Future<void> _openMapPicker() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
+      AppPageRoute.fadeThrough(
         builder: (context) => LocationPicker(
           initialLatitude: _selectedLatitude,
           initialLongitude: _selectedLongitude,

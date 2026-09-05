@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thryfto/shared/widgets/image_placeholder.dart';
 import 'package:thryfto/shared/widgets/tag.dart';
@@ -123,7 +124,7 @@ class _PostCardState extends State<PostCard> {
                             sellerId != widget.db.currentUserId) {
                           final result = await Navigator.push(
                             context,
-                            MaterialPageRoute(
+                            AppPageRoute.fadeThrough(
                               builder: (context) => UserProfilePage(
                                 userId: sellerId,
                                 currentUser: widget.user,
@@ -147,7 +148,7 @@ class _PostCardState extends State<PostCard> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
+                          AppPageRoute.fadeThrough(
                             builder: (context) => ListingDetailPage(
                               listing: widget.listing,
                               user: widget.user,
@@ -175,7 +176,7 @@ class _PostCardState extends State<PostCard> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
+                          AppPageRoute.fadeThrough(
                             builder: (context) => ListingDetailPage(
                               listing: widget.listing,
                               user: widget.user,
@@ -1012,7 +1013,7 @@ class PostDescription extends StatelessWidget {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
+            AppPageRoute.fadeThrough(
               builder: (context) => ListingDetailPage(
                 listing: listing,
                 user: user,
@@ -1126,7 +1127,7 @@ class _PostCtaRowState extends State<PostCtaRow> {
       if (chatId != null) {
         Navigator.push(
           context,
-          MaterialPageRoute(
+          AppPageRoute.fadeThrough(
             builder: (context) => ConversationPage(
               chatId: chatId,
               otherUserId: widget.listing['seller_id'],
@@ -1174,7 +1175,7 @@ class _PostCtaRowState extends State<PostCtaRow> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
+                  AppPageRoute.fadeThrough(
                     builder: (context) => EditListingPage(
                       listing: widget.listing,
                       user: widget.user,

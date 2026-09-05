@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -147,7 +148,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
   Future<void> _openMapPicker() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
+      AppPageRoute.fadeThrough(
         builder: (context) => LocationPicker(
           initialLatitude: _selectedLatitude,
           initialLongitude: _selectedLongitude,
@@ -278,7 +279,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
           // Navigate to Happy Thrifting confirmation page
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(
+            AppPageRoute.fadeThrough(
                 builder: (context) => HappyThriftingPage(userProfile: userProfile)),
             (route) => false,
           );

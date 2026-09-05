@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -122,7 +123,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
                         isPrimary: true,
                         onTap: () => Navigator.push(
                           context,
-                          MaterialPageRoute(
+                          AppPageRoute.fadeThrough(
                             builder: (context) => EditProfilePage(
                               user: userData,
                             ),
@@ -318,7 +319,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
                 child: InkWell(
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(
+                    AppPageRoute.fadeThrough(
                       builder: (context) => UserListPage(
                         title: 'Followers',
                         userStream:
@@ -343,7 +344,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
                 child: InkWell(
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(
+                    AppPageRoute.fadeThrough(
                       builder: (context) => UserListPage(
                         title: 'Following',
                         userStream:

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:thryfto/shared/widgets/empty_state.dart';
@@ -546,7 +547,7 @@ class _SearchPageState extends State<SearchPage> {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
+          AppPageRoute.fadeThrough(
             builder: (context) => ListingDetailPage(
               listing: listing,
               user: widget.user,

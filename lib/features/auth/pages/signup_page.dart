@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/providers/auth_providers.dart';
@@ -51,7 +52,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     if (result['success']) {
       SnackbarUtils.showSuccess(context, result['message']);
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const AuthWrapper()),
+        AppPageRoute.fadeThrough(builder: (context) => const AuthWrapper()),
         (route) => false,
       );
     } else {
@@ -66,7 +67,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
     if (result['success']) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const AuthWrapper()),
+        AppPageRoute.fadeThrough(builder: (context) => const AuthWrapper()),
         (route) => false,
       );
     } else if (result['message'] != 'Sign in cancelled') {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/services/location_service.dart';
@@ -196,7 +197,7 @@ class ListingGridCard extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
+          AppPageRoute.fadeThrough(
             builder: (context) => ListingDetailPage(
               listing: listing,
               user: user,

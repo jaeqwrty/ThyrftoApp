@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:thryfto/features/home/pages/home_page.dart';
 import 'package:thryfto/features/search/search_page.dart';
 import 'package:thryfto/features/listings/pages/sell_page.dart';
@@ -43,6 +44,7 @@ class _MainNavigationState extends State<MainNavigation> {
       _homePageKey.currentState?.scrollToTop();
       return;
     }
+    HapticFeedback.selectionClick();
     setState(() => _selectedIndex = index);
   }
 
@@ -50,9 +52,36 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
+      body: Stack(
+        children: List.generate(_pages.length, (index) {
+          final isSelected = index == _selectedIndex;
+          final horizontalOffset = index < _selectedIndex ? -0.025 : 0.025;
+
+          return Positioned.fill(
+            child: IgnorePointer(
+              ignoring: !isSelected,
+              child: ExcludeSemantics(
+                excluding: !isSelected,
+                child: TickerMode(
+                  enabled: isSelected,
+                  child: AnimatedOpacity(
+                    opacity: isSelected ? 1 : 0,
+                    duration: const Duration(milliseconds: 240),
+                    curve: Curves.easeOutCubic,
+                    child: AnimatedSlide(
+                      offset: isSelected
+                          ? Offset.zero
+                          : Offset(horizontalOffset, 0),
+                      duration: const Duration(milliseconds: 240),
+                      curve: Curves.easeOutCubic,
+                      child: _pages[index],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );

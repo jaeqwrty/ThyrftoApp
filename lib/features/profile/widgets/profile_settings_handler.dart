@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -41,7 +42,7 @@ class ProfileSettingsHandler {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
+                      AppPageRoute.fadeThrough(
                         builder: (context) => const BlockedUsersPage(),
                       ),
                     );
@@ -96,7 +97,7 @@ class ProfileSettingsHandler {
       await signOut();
       if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const AuthWrapper()),
+          AppPageRoute.fadeThrough(builder: (context) => const AuthWrapper()),
           (route) => false,
         );
       }

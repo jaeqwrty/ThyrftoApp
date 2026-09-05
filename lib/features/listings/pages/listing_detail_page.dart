@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/services/chat_service.dart';
 import 'package:thryfto/core/services/database_service.dart';
@@ -576,7 +577,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
               onPressed: () async {
                 final result = await Navigator.push<bool>(
                   context,
-                  MaterialPageRoute(
+                  AppPageRoute.fadeThrough(
                     builder: (context) => EditListingPage(
                       listing: widget.listing,
                       user: widget.user,
@@ -896,14 +897,14 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
     if (sellerId == _db.currentUserId) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => ProfilePage(user: widget.user)),
+        AppPageRoute.fadeThrough(builder: (context) => ProfilePage(user: widget.user)),
       );
       return;
     }
 
     Navigator.push(
       context,
-      MaterialPageRoute(
+      AppPageRoute.fadeThrough(
         builder: (context) => UserProfilePage(
           userId: sellerId,
           currentUser: widget.user,
@@ -944,7 +945,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
     if (chatId != null) {
       Navigator.push(
         context,
-        MaterialPageRoute(
+        AppPageRoute.fadeThrough(
           builder: (context) => ConversationPage(
             chatId: chatId,
             otherUserId: widget.listing['seller_id'],

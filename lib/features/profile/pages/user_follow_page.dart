@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/features/profile/pages/user_profile_page.dart';
 
@@ -78,7 +79,7 @@ class UserListPage extends StatelessWidget {
                   // CORRECT REDIRECTION
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
+                    AppPageRoute.fadeThrough(
                       builder: (context) => UserProfilePage(
                         userId: targetUserId,    // Pass the ID of the user clicked
                         currentUser: currentUser, // Pass YOUR data (for follow logic)

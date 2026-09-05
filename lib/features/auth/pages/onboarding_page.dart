@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/features/profile/pages/profile_setup_page.dart';
 import 'package:thryfto/features/auth/widgets/auth_widgets.dart';
@@ -51,7 +52,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
     } else {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const ProfileSetupPage()),
+        AppPageRoute.fadeThrough(builder: (context) => const ProfileSetupPage()),
       );
     }
   }
@@ -74,7 +75,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     onPressed: () {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(
+                        AppPageRoute.fadeThrough(
                             builder: (context) => const ProfileSetupPage()),
                       );
                     },

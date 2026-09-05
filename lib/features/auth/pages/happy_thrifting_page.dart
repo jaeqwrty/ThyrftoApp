@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/shared/widgets/main_navigation.dart';
 
@@ -170,7 +171,7 @@ class _HappyThriftingPageState extends State<HappyThriftingPage>
                           onTap: () {
                             Navigator.pushAndRemoveUntil(
                               context,
-                              MaterialPageRoute(
+                              AppPageRoute.fadeThrough(
                                 builder: (context) =>
                                     MainNavigation(user: widget.userProfile),
                               ),

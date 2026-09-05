@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/providers/notification_providers.dart';
@@ -602,7 +603,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
               final currentUser = await _getCurrentUser();
               Navigator.push(
                 context,
-                MaterialPageRoute(
+                AppPageRoute.fadeThrough(
                   builder: (context) => ListingDetailPage(
                     listing: listing,
                     user: currentUser,
@@ -642,7 +643,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
               if (otherUser != null) {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
+                  AppPageRoute.fadeThrough(
                     builder: (context) => ConversationPage(
                       chatId: conversationId,
                       otherUserId: senderId,
@@ -663,7 +664,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
             final currentUser = await _getCurrentUser();
             Navigator.push(
               context,
-              MaterialPageRoute(
+              AppPageRoute.fadeThrough(
                 builder: (context) => UserProfilePage(
                   userId: relatedUserId,
                   currentUser: currentUser,
@@ -682,7 +683,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
               final currentUser = await _getCurrentUser();
               Navigator.push(
                 context,
-                MaterialPageRoute(
+                AppPageRoute.fadeThrough(
                   builder: (context) => ListingDetailPage(
                     listing: listing,
                     user: currentUser,
@@ -701,7 +702,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
               final currentUser = await _getCurrentUser();
               Navigator.push(
                 context,
-                MaterialPageRoute(
+                AppPageRoute.fadeThrough(
                   builder: (context) => ListingDetailPage(
                     listing: listing,
                     user: currentUser,
@@ -719,7 +720,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
             final currentUser = await _getCurrentUser();
             Navigator.push(
               context,
-              MaterialPageRoute(
+              AppPageRoute.fadeThrough(
                 builder: (context) => UserProfilePage(
                   userId: relatedUserId,
                   currentUser: currentUser,

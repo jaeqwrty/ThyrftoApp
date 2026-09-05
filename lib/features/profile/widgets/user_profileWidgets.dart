@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/services/location_service.dart';
 import 'package:thryfto/core/services/rating_service.dart';
@@ -269,7 +270,7 @@ class ListingCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(
+        AppPageRoute.fadeThrough(
           builder: (context) => ListingDetailPage(
             listing: listing,
             user: currentUser,

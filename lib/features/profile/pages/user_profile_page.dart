@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
@@ -724,7 +725,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     if (chatId != null) {
       Navigator.push(
         context,
-        MaterialPageRoute(
+        AppPageRoute.fadeThrough(
           builder: (context) => ConversationPage(
             chatId: chatId, // Always provide chat ID
             otherUserId: widget.userId,

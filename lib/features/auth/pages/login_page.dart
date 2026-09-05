@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
 import 'package:thryfto/core/providers/auth_providers.dart';
@@ -157,7 +158,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 onTap: () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(
+                                    AppPageRoute.fadeThrough(
                                       builder: (context) =>
                                           const ForgotPasswordPage(),
                                     ),
@@ -270,7 +271,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   onTap: () {
                                     Navigator.push(
                                       context,
-                                      MaterialPageRoute(
+                                      AppPageRoute.fadeThrough(
                                         builder: (context) =>
                                             const SignUpScreen(),
                                       ),

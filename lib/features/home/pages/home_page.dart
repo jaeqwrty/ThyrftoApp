@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:thryfto/features/home/widgets/home_widgets.dart';
 import 'package:thryfto/features/home/pages/notification_page.dart';
@@ -189,7 +190,7 @@ class HomePageState extends ConsumerState<HomePage> {
         NotificationBell(
           onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(
+              AppPageRoute.fadeThrough(
                   builder: (context) => const NotificationsPage())),
         ),
         const SizedBox(width: 7),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:thryfto/shared/widgets/empty_state.dart';
@@ -315,7 +316,7 @@ class _ChatListPageState extends ConsumerState<ChatListPage> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
+                  AppPageRoute.fadeThrough(
                     builder: (context) => ConversationPage(
                       chatId: chatId,
                       otherUserId: otherUserId,
