@@ -49,6 +49,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   bool _isBookmarked = false;
   int _likeCount = 0;
   bool _isSoldProcessing = false;
+  bool _isReservationProcessing = false;
   bool _isOpeningChat = false;
   bool _isMakingOffer = false;
 
@@ -107,6 +108,29 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
         actionLabel: 'Try again',
         onAction: _handleMarkAsSold,
       );
+    }
+  }
+
+  Future<void> _handleReleaseReservation(String offerId) async {
+    final confirmed = await CommonDialogs.showConfirmationDialog(
+      context,
+      title: 'Release Reservation?',
+      message:
+          'This will make the item available to shoppers again and cancel the accepted offer.',
+      confirmText: 'Release',
+    );
+    if (confirmed != true) return;
+
+    setState(() => _isReservationProcessing = true);
+    try {
+      await _offerService.releaseReservationForOffer(offerId);
+      if (!mounted) return;
+      SnackbarUtils.showSuccess(context, 'Reservation released.');
+    } catch (e) {
+      if (!mounted) return;
+      SnackbarUtils.showError(context, _cleanOfferError(e));
+    } finally {
+      if (mounted) setState(() => _isReservationProcessing = false);
     }
   }
 
@@ -254,12 +278,26 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
             ],
           ),
         ),
-        if (widget.listing['status'] == 'sold')
-          Positioned(
-            left: 16,
-            bottom: 58,
-            child: _buildOverlayPill('SOLD', Icons.check_circle),
+        Positioned(
+          left: 16,
+          bottom: 58,
+          child: StreamBuilder<Map<String, dynamic>?>(
+            stream: _db.getListingStream(widget.listing['id'] ?? ''),
+            builder: (context, snapshot) {
+              final status =
+                  (snapshot.data ?? widget.listing)['status']?.toString();
+              if (status != 'sold' && status != 'reserved') {
+                return const SizedBox.shrink();
+              }
+              return _buildOverlayPill(
+                status == 'reserved' ? 'RESERVED' : 'SOLD',
+                status == 'reserved'
+                    ? Icons.schedule_rounded
+                    : Icons.check_circle,
+              );
+            },
           ),
+        ),
         if (imageUrls.length > 1)
           Positioned(
             right: 16,
@@ -362,6 +400,8 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
         builder: (context, snapshot) {
           final listingData = snapshot.data ?? widget.listing;
           final isSold = listingData['status'] == 'sold';
+          final isReserved = listingData['status'] == 'reserved';
+          final reservedOfferId = listingData['reserved_offer_id']?.toString();
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,14 +412,24 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(
-                    isSold ? Icons.check_circle : Icons.sell_outlined,
-                    color: isSold ? _mutedInk : _wine,
+                    isSold
+                        ? Icons.check_circle
+                        : isReserved
+                            ? Icons.schedule_rounded
+                            : Icons.sell_outlined,
+                    color: isSold
+                        ? _mutedInk
+                        : isReserved
+                            ? _gilt
+                            : _wine,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       isSold
                           ? 'This listing is marked as sold.'
+                          : isReserved
+                              ? 'This item is reserved for the buyer whose offer was accepted. Other shoppers can still see it, but new offers are disabled.'
                           : 'This listing is active and visible to shoppers.',
                       style: const TextStyle(
                         color: _mutedInk,
@@ -390,6 +440,33 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                   ),
                 ],
               ),
+              if (isReserved && reservedOfferId != null) ...[
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _isReservationProcessing
+                        ? null
+                        : () => _handleReleaseReservation(reservedOfferId),
+                    icon: _isReservationProcessing
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.lock_open_outlined),
+                    label: const Text('Release Reservation'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _gilt,
+                      side: const BorderSide(color: _gilt),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               if (!isSold) ...[
                 const SizedBox(height: 16),
                 SizedBox(
@@ -572,13 +649,13 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   }
 
   Widget _buildBuyerBottomBar() {
-    final isSold = widget.listing['status'] == 'sold';
     final listingId = widget.listing['id']?.toString();
 
     if (listingId == null || listingId.isEmpty) {
       return _buildBottomShell(
         child: _buildBuyerActions(
-          isSold: isSold,
+          listingStatus: widget.listing['status']?.toString() ?? 'active',
+          isReservedForCurrentUser: false,
           offerStatus: null,
           isCheckingOffer: false,
           hasOfferError: true,
@@ -587,23 +664,35 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
     }
 
     return StreamBuilder<Map<String, dynamic>?>(
-      stream: _offerService.watchCurrentUserOfferForListing(listingId),
-      builder: (context, snapshot) {
-        return _buildBottomShell(
-          child: _buildBuyerActions(
-            isSold: isSold,
-            offerStatus: snapshot.data?['status']?.toString(),
-            isCheckingOffer:
-                snapshot.connectionState == ConnectionState.waiting,
-            hasOfferError: snapshot.hasError,
-          ),
+      stream: _db.getListingStream(listingId),
+      builder: (context, listingSnapshot) {
+        final liveListing = listingSnapshot.data ?? widget.listing;
+        final listingStatus = liveListing['status']?.toString() ?? 'active';
+        final isReservedForCurrentUser = listingStatus == 'reserved' &&
+            liveListing['reserved_for_user_id'] == _db.currentUserId;
+
+        return StreamBuilder<Map<String, dynamic>?>(
+          stream: _offerService.watchCurrentUserOfferForListing(listingId),
+          builder: (context, offerSnapshot) {
+            return _buildBottomShell(
+              child: _buildBuyerActions(
+                listingStatus: listingStatus,
+                isReservedForCurrentUser: isReservedForCurrentUser,
+                offerStatus: offerSnapshot.data?['status']?.toString(),
+                isCheckingOffer:
+                    offerSnapshot.connectionState == ConnectionState.waiting,
+                hasOfferError: offerSnapshot.hasError,
+              ),
+            );
+          },
         );
       },
     );
   }
 
   Widget _buildBuyerActions({
-    required bool isSold,
+    required String listingStatus,
+    required bool isReservedForCurrentUser,
     required String? offerStatus,
     required bool isCheckingOffer,
     required bool hasOfferError,
@@ -613,19 +702,24 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
         offerStatus == 'accepted';
     final isOpeningTrackedOffer = hasTrackedOffer && _isOpeningChat;
 
-    final offerLabel = isCheckingOffer
-        ? 'Checking…'
-        : hasOfferError
-            ? 'Offer unavailable'
-            : isOpeningTrackedOffer
-                ? 'Opening…'
-                : switch (offerStatus) {
-                    'pending' => 'Offer Pending',
-                    'countered' => 'View Counter',
-                    'accepted' => 'Offer Accepted',
-                    'declined' => 'Make New Offer',
-                    _ => 'Make Offer',
-                  };
+    final offerLabel = switch (listingStatus) {
+      'sold' => 'Sold',
+      'reserved' => isReservedForCurrentUser ? 'Reserved for You' : 'Reserved',
+      _ => isCheckingOffer
+          ? 'Checking…'
+          : hasOfferError
+              ? 'Offer unavailable'
+              : isOpeningTrackedOffer
+                  ? 'Opening…'
+                  : switch (offerStatus) {
+                      'pending' => 'Offer Pending',
+                      'countered' => 'View Counter',
+                      'accepted' => 'Offer Accepted',
+                      'declined' => 'Make New Offer',
+                      'cancelled' => 'Make New Offer',
+                      _ => 'Make Offer',
+                    },
+    };
 
     final offerIcon = switch (offerStatus) {
       'pending' => Icons.schedule_rounded,
@@ -636,7 +730,12 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
 
     final offerBusy =
         _isMakingOffer || isCheckingOffer || isOpeningTrackedOffer;
-    final canUseOfferAction = !isSold && !hasOfferError && !isCheckingOffer;
+    final isMarketplaceActive = listingStatus == 'active';
+    final canOpenReservedDeal =
+        listingStatus == 'reserved' && isReservedForCurrentUser && hasTrackedOffer;
+    final canUseOfferAction = !hasOfferError &&
+        !isCheckingOffer &&
+        (isMarketplaceActive || canOpenReservedDeal);
 
     return Row(
       children: [
@@ -644,7 +743,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
           child: OutlinedButton.icon(
             onPressed: !canUseOfferAction || offerBusy
                 ? null
-                : hasTrackedOffer
+                : hasTrackedOffer || canOpenReservedDeal
                     ? _openChat
                     : _showMakeOfferDialog,
             icon: offerBusy
@@ -1198,6 +1297,19 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   }
 
   Future<void> _handleDelete() async {
+    final listingId = widget.listing['id']?.toString();
+    if (listingId == null) return;
+
+    final latestListing = await _db.getListingById(listingId);
+    if (!mounted) return;
+    if (latestListing?['status'] == 'reserved') {
+      SnackbarUtils.showError(
+        context,
+        'Release the reservation before deleting this listing.',
+      );
+      return;
+    }
+
     final confirmed = await CommonDialogs.showDeleteConfirmationDialog(
       context,
       title: 'Delete Listing',
@@ -1207,9 +1319,6 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
     );
 
     if (confirmed != true) return;
-
-    final listingId = widget.listing['id'];
-    if (listingId == null) return;
 
     final success = await _db.deleteListing(listingId);
     if (!mounted) return;

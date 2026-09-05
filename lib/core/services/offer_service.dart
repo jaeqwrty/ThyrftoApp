@@ -16,6 +16,14 @@ class OfferService {
     });
   }
 
+  Stream<Map<String, dynamic>?> watchListingState(String listingId) {
+    if (listingId.isEmpty) return Stream.value(null);
+    return _firestore.collection('listings').doc(listingId).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      return {...doc.data()!, 'id': doc.id};
+    });
+  }
+
   Stream<Map<String, dynamic>?> watchCurrentUserOfferForListing(
     String listingId,
   ) {
@@ -38,10 +46,11 @@ class OfferService {
 
       if (offers.isEmpty) return null;
 
-      // A declined offer can be followed by a new offer. Any pending,
-      // countered, or accepted offer should remain the buyer's visible state.
+      // Final offers can be followed by a new offer. Any pending, countered,
+      // or accepted offer should remain the buyer's visible state.
       for (final offer in offers) {
-        if (offer['status']?.toString() != 'declined') return offer;
+        final status = offer['status']?.toString();
+        if (status != 'declined' && status != 'cancelled') return offer;
       }
       return offers.first;
     });
@@ -206,17 +215,19 @@ class OfferService {
         throw StateError('This offer can no longer be changed by you');
       }
 
+      DocumentReference<Map<String, dynamic>>? listingRef;
+      Map<String, dynamic>? listingData;
       if (action != 'declined') {
         final listingId = data['listing_id']?.toString();
         if (listingId == null) {
           throw StateError('The listing for this offer is unavailable');
         }
-        final listing = await transaction.get(
-          _firestore.collection('listings').doc(listingId),
-        );
+        listingRef = _firestore.collection('listings').doc(listingId);
+        final listing = await transaction.get(listingRef);
         if (!listing.exists || listing.data()?['status'] != 'active') {
           throw StateError('This listing is no longer available for offers');
         }
+        listingData = listing.data();
       }
 
       final nextAmount = action == 'countered'
@@ -228,6 +239,19 @@ class OfferService {
         'updated_at': FieldValue.serverTimestamp(),
         'last_action_by': userId,
       });
+
+      // Acceptance completes the negotiation and immediately reserves this
+      // one-off item for the accepted buyer. Keeping both writes in the same
+      // transaction prevents multiple offers from being accepted concurrently.
+      if (action == 'accepted' && listingRef != null && listingData != null) {
+        transaction.update(listingRef, {
+          'status': 'reserved',
+          'reserved_for_user_id': buyerId,
+          'reserved_offer_id': offerId,
+          'reserved_at': FieldValue.serverTimestamp(),
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+      }
 
       final chatId = data['chat_id']?.toString();
       final listingId = data['listing_id']?.toString();
@@ -282,10 +306,12 @@ class OfferService {
     final notificationTitle = status == 'countered'
         ? 'Counter offer received'
         : status == 'accepted'
-            ? 'Offer accepted'
+            ? 'Offer accepted · Item reserved'
             : 'Offer declined';
     final notificationBody = status == 'countered'
         ? '${_formatAmount(amount)} counter offer on $title'
+        : status == 'accepted'
+            ? '${_formatAmount(amount)} accepted on $title. The item is now reserved.'
         : '${_formatAmount(amount)} offer on $title';
 
     try {
@@ -304,6 +330,109 @@ class OfferService {
       );
     } catch (_) {
       // The state transition is already committed; do not invite a retry.
+    }
+  }
+
+  Future<void> releaseReservationForOffer(String offerId) async {
+    final userId = currentUserId;
+    if (userId == null) throw StateError('User not authenticated');
+
+    final offerRef = _firestore.collection('offers').doc(offerId);
+    late Map<String, dynamic> cancelledOffer;
+
+    await _firestore.runTransaction((transaction) async {
+      final offerSnapshot = await transaction.get(offerRef);
+      if (!offerSnapshot.exists) throw StateError('Offer no longer exists');
+
+      final offer = offerSnapshot.data()!;
+      final sellerId = offer['seller_id']?.toString();
+      final buyerId = offer['buyer_id']?.toString();
+      final listingId = offer['listing_id']?.toString();
+      final chatId = offer['chat_id']?.toString();
+      final amount = (offer['amount'] as num?)?.toDouble() ?? 0;
+
+      final isSeller = sellerId == userId;
+      final isBuyer = buyerId == userId;
+      if ((!isSeller && !isBuyer) || offer['status'] != 'accepted') {
+        throw StateError('Only the buyer or seller can cancel this reservation');
+      }
+      if (listingId == null || buyerId == null) {
+        throw StateError('Reservation information is incomplete');
+      }
+
+      final listingRef = _firestore.collection('listings').doc(listingId);
+      final listingSnapshot = await transaction.get(listingRef);
+      final listing = listingSnapshot.data();
+      if (!listingSnapshot.exists ||
+          listing?['status'] != 'reserved' ||
+          listing?['reserved_offer_id'] != offerId ||
+          listing?['reserved_for_user_id'] != buyerId) {
+        throw StateError('This reservation is no longer active');
+      }
+
+      transaction.update(offerRef, {
+        'status': 'cancelled',
+        'updated_at': FieldValue.serverTimestamp(),
+        'last_action_by': userId,
+      });
+      transaction.update(listingRef, {
+        'status': 'active',
+        'reserved_for_user_id': FieldValue.delete(),
+        'reserved_offer_id': FieldValue.delete(),
+        'reserved_at': FieldValue.delete(),
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+
+      if (chatId != null) {
+        final updateMessageRef = _firestore
+            .collection('chats')
+            .doc(chatId)
+            .collection('messages')
+            .doc();
+        transaction.set(updateMessageRef, {
+          'senderId': userId,
+          'offerId': offerId,
+          'listingId': listingId,
+          'offerStatus': 'cancelled',
+          'amount': amount,
+          'timestamp': FieldValue.serverTimestamp(),
+          'read': false,
+          'type': 'offer_update',
+        });
+        transaction.update(_firestore.collection('chats').doc(chatId), {
+          'lastMessage': isBuyer ? 'Buyer withdrew from reservation' : 'Reservation released',
+          'lastMessageTime': FieldValue.serverTimestamp(),
+          'deletedFor': FieldValue.arrayRemove([buyerId, sellerId]),
+        });
+      }
+
+      cancelledOffer = {...offer, 'status': 'cancelled'};
+    });
+
+    final sellerId = cancelledOffer['seller_id']?.toString();
+    final buyerId = cancelledOffer['buyer_id']?.toString();
+    final cancelledByBuyer = userId == buyerId;
+    final recipientId = cancelledByBuyer ? sellerId : buyerId;
+    if (recipientId == null) return;
+
+    try {
+      await _notificationService.createNotification(
+        recipientId: recipientId,
+        type: 'offer',
+        title: cancelledByBuyer ? 'Buyer withdrew' : 'Reservation released',
+        body: cancelledByBuyer
+            ? 'The buyer withdrew from ${cancelledOffer['listing_title'] ?? 'the item'}. It is available again.'
+            : '${cancelledOffer['listing_title'] ?? 'The item'} is available again.',
+        relatedListingId: cancelledOffer['listing_id']?.toString(),
+        relatedUserId: userId,
+        additionalData: {
+          'offer_id': offerId,
+          'offer_status': 'cancelled',
+          'chat_id': cancelledOffer['chat_id'],
+        },
+      );
+    } catch (_) {
+      // Reservation release is already committed; notification is best-effort.
     }
   }
 

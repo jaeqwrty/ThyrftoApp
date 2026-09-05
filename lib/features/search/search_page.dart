@@ -441,8 +441,9 @@ class SearchPageState extends State<SearchPage> {
   }
 
   Widget _buildSearchResults() {
-    Query<Map<String, dynamic>> query =
-        _firestore.collection('listings').where('status', isEqualTo: 'active');
+    Query<Map<String, dynamic>> query = _firestore
+        .collection('listings')
+        .where('status', whereIn: ['active', 'reserved']);
 
     if (_selectedCategory != 'All') {
       query = query.where('category', isEqualTo: _selectedCategory);
@@ -685,6 +686,15 @@ class SearchPageState extends State<SearchPage> {
                       child: _buildCardBadge(
                         Icons.location_on_outlined,
                         listing['distance_text'],
+                      ),
+                    ),
+                  if (listing['status'] == 'reserved')
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: _buildCardBadge(
+                        Icons.schedule_rounded,
+                        'Reserved',
                       ),
                     ),
                 ],

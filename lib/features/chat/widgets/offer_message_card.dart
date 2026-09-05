@@ -147,22 +147,175 @@ class _OfferMessageCardState extends State<OfferMessageCard> {
                 ),
               ],
               const SizedBox(height: 12),
-              if (canSellerRespond) _sellerActions(offer, amount),
-              if (canBuyerRespond) _buyerCounterActions(offer),
-              if (!canSellerRespond && !canBuyerRespond)
-                Text(
-                  _statusHelp(status, isSeller: isSeller),
-                  style: const TextStyle(
-                    color: _muted,
-                    fontSize: 12,
-                    height: 1.35,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              _buildActionArea(
+                offer: offer,
+                status: status,
+                amount: amount,
+                isSeller: isSeller,
+                isBuyer: isBuyer,
+                canSellerRespond: canSellerRespond,
+                canBuyerRespond: canBuyerRespond,
+              ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildActionArea({
+    required Map<String, dynamic> offer,
+    required String status,
+    required double amount,
+    required bool isSeller,
+    required bool isBuyer,
+    required bool canSellerRespond,
+    required bool canBuyerRespond,
+  }) {
+    final listingId = offer['listing_id']?.toString();
+    if (listingId == null || listingId.isEmpty) {
+      return _buildStatusText(_statusHelp(status, isSeller: isSeller));
+    }
+
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: _offerService.watchListingState(listingId),
+      builder: (context, listingSnapshot) {
+        if (listingSnapshot.connectionState == ConnectionState.waiting &&
+            !listingSnapshot.hasData) {
+          return _buildStatusText('Checking listing availability…');
+        }
+
+        final listing = listingSnapshot.data;
+        final listingStatus = listing?['status']?.toString();
+        final isMarketplaceActive = listingStatus == 'active';
+        final isThisReservation = listingStatus == 'reserved' &&
+            listing?['reserved_offer_id']?.toString() == offer['id']?.toString();
+
+        if (status == 'accepted' && isThisReservation) {
+          if (isSeller) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildStatusText(
+                  'Item reserved for this buyer. Release it only if the deal will not continue.',
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _isProcessing
+                      ? null
+                      : () => _confirmReleaseReservation(
+                            offer['id'].toString(),
+                            asBuyer: false,
+                          ),
+                  icon: const Icon(Icons.lock_open_outlined, size: 17),
+                  label: const Text('Release Reservation'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _accent,
+                    side: const BorderSide(color: _accent),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+          if (isBuyer) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildStatusText('This item is reserved for you.'),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _isProcessing
+                      ? null
+                      : () => _confirmReleaseReservation(
+                            offer['id'].toString(),
+                            asBuyer: true,
+                          ),
+                  icon: const Icon(Icons.close_rounded, size: 17),
+                  label: const Text('Withdraw from Reservation'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(color: Colors.redAccent),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+          return _buildStatusText('This item is reserved.');
+        }
+
+        if (status == 'accepted' && listingStatus == 'sold') {
+          return _buildStatusText('Offer accepted. This listing is now marked sold.');
+        }
+
+        if (canSellerRespond) {
+          if (isMarketplaceActive) return _sellerActions(offer, amount);
+          return _blockedOfferActions(
+            offerId: offer['id'].toString(),
+            message: listingStatus == 'reserved'
+                ? 'This item is reserved for another buyer. Close this pending offer if it will not proceed.'
+                : 'This listing is no longer available for negotiation.',
+          );
+        }
+
+        if (canBuyerRespond) {
+          if (isMarketplaceActive) return _buyerCounterActions(offer);
+          return _blockedOfferActions(
+            offerId: offer['id'].toString(),
+            message: listingStatus == 'reserved'
+                ? 'This item has been reserved. You can decline this counter offer.'
+                : 'This listing is no longer available for negotiation.',
+          );
+        }
+
+        if ((status == 'pending' || status == 'countered') &&
+            listingStatus != 'active') {
+          return _buildStatusText(
+            listingStatus == 'reserved'
+                ? 'This listing is reserved for another accepted offer.'
+                : 'This listing is no longer available for negotiation.',
+          );
+        }
+
+        return _buildStatusText(_statusHelp(status, isSeller: isSeller));
+      },
+    );
+  }
+
+  Widget _blockedOfferActions({
+    required String offerId,
+    required String message,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildStatusText(message),
+        const SizedBox(height: 6),
+        TextButton(
+          onPressed: _isProcessing ? null : () => _respond(offerId, 'declined'),
+          child: const Text(
+            'Decline offer',
+            style: TextStyle(color: Colors.redAccent),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusText(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        color: _muted,
+        fontSize: 12,
+        height: 1.35,
+        fontWeight: FontWeight.w600,
+      ),
     );
   }
 
@@ -363,16 +516,74 @@ class _OfferMessageCardState extends State<OfferMessageCard> {
     }
   }
 
+  Future<void> _releaseReservation(String offerId) async {
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
+    try {
+      await _offerService.releaseReservationForOffer(offerId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Reservation released'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_cleanError(e)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> _confirmReleaseReservation(
+    String offerId, {
+    required bool asBuyer,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(asBuyer ? 'Withdraw from Reservation?' : 'Release Reservation?'),
+        content: Text(
+          asBuyer
+              ? 'The item will become available to other shoppers again.'
+              : 'The accepted offer will be cancelled and the item will become available again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep Reservation'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(asBuyer ? 'Withdraw' : 'Release'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _releaseReservation(offerId);
+    }
+  }
+
   Widget _statusBadge(String status) {
     final label = switch (status) {
       'accepted' => 'Accepted',
       'declined' => 'Declined',
+      'cancelled' => 'Cancelled',
       'countered' => 'Countered',
       _ => 'Pending',
     };
     final color = switch (status) {
       'accepted' => Colors.green,
       'declined' => Colors.redAccent,
+      'cancelled' => Colors.grey,
       'countered' => _wine,
       _ => _accent,
     };
@@ -409,8 +620,11 @@ class _OfferMessageCardState extends State<OfferMessageCard> {
 
   String _statusHelp(String status, {required bool isSeller}) {
     return switch (status) {
-      'accepted' => 'Offer accepted. You can continue arranging the exchange in chat.',
+      'accepted' => isSeller
+          ? 'Offer accepted. The item is reserved for this buyer.'
+          : 'Offer accepted. This item is now reserved for you.',
       'declined' => 'This offer was declined.',
+      'cancelled' => 'The reservation was released and this offer is no longer active.',
       'countered' => isSeller
           ? 'Counter sent. Waiting for the buyer to respond.'
           : 'The seller sent a counter offer.',

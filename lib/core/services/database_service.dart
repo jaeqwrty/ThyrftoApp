@@ -154,11 +154,12 @@ class DatabaseService {
     }
   }
 
-  // Get active listings stream
+  // Get marketplace-visible listings. Reserved items stay discoverable so
+  // shoppers can see that the one-off item is temporarily unavailable.
   Stream<List<Map<String, dynamic>>> getActiveListings() {
     return _firestore
         .collection('listings')
-        .where('status', isEqualTo: 'active')
+        .where('status', whereIn: ['active', 'reserved'])
         .snapshots()
         .map((snapshot) {
       final listings = snapshot.docs.map((doc) {
@@ -366,6 +367,9 @@ class DatabaseService {
       final listingRef = _firestore.collection('listings').doc(listingId);
       final listing = await listingRef.get();
       if (!listing.exists || listing.data()?['seller_id'] != currentUserId) {
+        return false;
+      }
+      if (listing.data()?['status'] == 'reserved') {
         return false;
       }
 

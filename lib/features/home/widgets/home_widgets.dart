@@ -667,12 +667,15 @@ class _PostImageState extends State<PostImage>
                 // Top-Right Badges (Sold & Image Count)
                 Row(
                   children: [
-                    if (widget.listing['status'] == 'sold')
+                    if (widget.listing['status'] == 'sold' ||
+                        widget.listing['status'] == 'reserved')
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEF4444), // Crimson Red
+                          color: widget.listing['status'] == 'reserved'
+                              ? const Color(0xFFA8752A)
+                              : const Color(0xFFEF4444),
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: [
                             BoxShadow(
@@ -682,7 +685,9 @@ class _PostImageState extends State<PostImage>
                           ],
                         ),
                         child: Text(
-                          'SOLD',
+                          widget.listing['status'] == 'reserved'
+                              ? 'RESERVED'
+                              : 'SOLD',
                           style: GoogleFonts.poppins(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -691,7 +696,8 @@ class _PostImageState extends State<PostImage>
                           ),
                         ),
                       ),
-                    if (widget.listing['status'] == 'sold' &&
+                    if ((widget.listing['status'] == 'sold' ||
+                            widget.listing['status'] == 'reserved') &&
                         widget.imageCount > 1)
                       const SizedBox(width: 6),
                     if (widget.imageCount > 1)

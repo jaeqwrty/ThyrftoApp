@@ -201,12 +201,92 @@ service cloud.firestore {
       // Users can create listings
       allow create: if isAuthenticated() 
                     && isValidListing()
-                    && request.resource.data.seller_id == request.auth.uid;
+                    && request.resource.data.seller_id == request.auth.uid
+                    && request.resource.data.status == 'active'
+                    && !request.resource.data.keys().hasAny([
+                      'reserved_for_user_id', 'reserved_offer_id', 'reserved_at'
+                    ]);
       
-      // Sellers can edit their listing. Other users may only change the like
-      // counter when their deterministic like document changes in the same write.
+      // Sellers can edit their listing. A buyer may only transition an active
+      // listing to reserved when accepting the seller's counter offer in the
+      // same atomic transaction. Other users may only change the like counter
+      // when their deterministic like document changes in the same write.
       allow update: if isAuthenticated()
-        && (resource.data.seller_id == request.auth.uid
+        && ((resource.data.seller_id == request.auth.uid
+              && request.resource.data.seller_id == resource.data.seller_id
+              && request.resource.data.status in ['active', 'reserved', 'sold']
+              && (request.resource.data.status == resource.data.status
+                || (resource.data.status == 'active'
+                  && request.resource.data.status in ['reserved', 'sold'])
+                || (resource.data.status == 'reserved'
+                  && request.resource.data.status in ['active', 'sold']))
+              && (request.resource.data.status != 'active'
+                || !request.resource.data.keys().hasAny([
+                  'reserved_for_user_id', 'reserved_offer_id', 'reserved_at'
+                ]))
+              && (!(resource.data.status == 'reserved'
+                    && request.resource.data.status == 'active')
+                || (resource.data.reserved_offer_id is string
+                  && existsAfter(/databases/$(database)/documents/offers/$(resource.data.reserved_offer_id))
+                  && getAfter(/databases/$(database)/documents/offers/$(resource.data.reserved_offer_id)).data.status == 'cancelled'
+                  && getAfter(/databases/$(database)/documents/offers/$(resource.data.reserved_offer_id)).data.last_action_by == request.auth.uid))
+              && (request.resource.data.status != 'reserved'
+                || (resource.data.status == 'reserved'
+                  && request.resource.data.reserved_for_user_id == resource.data.reserved_for_user_id
+                  && request.resource.data.reserved_offer_id == resource.data.reserved_offer_id
+                  && request.resource.data.reserved_at == resource.data.reserved_at)
+                || (resource.data.status == 'active'
+                  && request.resource.data.reserved_for_user_id is string
+                  && request.resource.data.reserved_offer_id is string
+                  && request.resource.data.reserved_at == request.time
+                  && existsAfter(/databases/$(database)/documents/offers/$(request.resource.data.reserved_offer_id))
+                  && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.reserved_offer_id)).data.status == 'accepted'
+                  && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.reserved_offer_id)).data.listing_id == listingId
+                  && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.reserved_offer_id)).data.seller_id == request.auth.uid
+                  && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.reserved_offer_id)).data.buyer_id == request.resource.data.reserved_for_user_id))
+              && (request.resource.data.status != 'sold'
+                || (resource.data.status == 'reserved'
+                  && request.resource.data.reserved_for_user_id == resource.data.reserved_for_user_id
+                  && request.resource.data.reserved_offer_id == resource.data.reserved_offer_id
+                  && request.resource.data.reserved_at == resource.data.reserved_at)
+                || (resource.data.status != 'reserved'
+                  && !request.resource.data.keys().hasAny([
+                    'reserved_for_user_id', 'reserved_offer_id', 'reserved_at'
+                  ]))))
+          || (resource.data.status == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status', 'reserved_for_user_id', 'reserved_offer_id',
+              'reserved_at', 'updated_at'
+            ])
+            && request.resource.data.status == 'reserved'
+            && request.resource.data.reserved_for_user_id == request.auth.uid
+            && request.resource.data.reserved_offer_id is string
+            && request.resource.data.reserved_at == request.time
+            && request.resource.data.updated_at == request.time
+            && existsAfter(/databases/$(database)/documents/offers/$(request.resource.data.reserved_offer_id))
+            && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.reserved_offer_id)).data.status == 'accepted'
+            && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.reserved_offer_id)).data.last_action_by == request.auth.uid
+            && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.reserved_offer_id)).data.listing_id == listingId
+            && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.reserved_offer_id)).data.seller_id == resource.data.seller_id
+            && getAfter(/databases/$(database)/documents/offers/$(request.resource.data.reserved_offer_id)).data.buyer_id == request.auth.uid)
+          || (resource.data.status == 'reserved'
+            && resource.data.reserved_for_user_id == request.auth.uid
+            && resource.data.reserved_offer_id is string
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status', 'reserved_for_user_id', 'reserved_offer_id',
+              'reserved_at', 'updated_at'
+            ])
+            && request.resource.data.status == 'active'
+            && request.resource.data.updated_at == request.time
+            && !request.resource.data.keys().hasAny([
+              'reserved_for_user_id', 'reserved_offer_id', 'reserved_at'
+            ])
+            && existsAfter(/databases/$(database)/documents/offers/$(resource.data.reserved_offer_id))
+            && getAfter(/databases/$(database)/documents/offers/$(resource.data.reserved_offer_id)).data.status == 'cancelled'
+            && getAfter(/databases/$(database)/documents/offers/$(resource.data.reserved_offer_id)).data.last_action_by == request.auth.uid
+            && getAfter(/databases/$(database)/documents/offers/$(resource.data.reserved_offer_id)).data.listing_id == listingId
+            && getAfter(/databases/$(database)/documents/offers/$(resource.data.reserved_offer_id)).data.seller_id == resource.data.seller_id
+            && getAfter(/databases/$(database)/documents/offers/$(resource.data.reserved_offer_id)).data.buyer_id == request.auth.uid)
           || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
             && request.resource.data.likes is number
             && resource.data.likes is number
@@ -222,7 +302,8 @@ service cloud.firestore {
       
       // Only the seller can delete their listing
       allow delete: if isAuthenticated() 
-                    && resource.data.seller_id == request.auth.uid;
+                    && resource.data.seller_id == request.auth.uid
+                    && resource.data.status != 'reserved';
       
       // Comments subcollection
       match /comments/{commentId} {
@@ -388,7 +469,7 @@ service cloud.firestore {
         && request.resource.data.last_action_by == request.auth.uid
         && request.resource.data.amount is number
         && request.resource.data.amount > 0
-        && (request.resource.data.status == 'declined'
+        && (request.resource.data.status in ['declined', 'cancelled']
           || (exists(/databases/$(database)/documents/listings/$(resource.data.listing_id))
             && get(/databases/$(database)/documents/listings/$(resource.data.listing_id)).data.status == 'active'))
         && (
@@ -405,7 +486,25 @@ service cloud.firestore {
             && resource.data.status == 'countered'
             && request.resource.data.status in ['accepted', 'declined']
             && request.resource.data.amount == resource.data.amount)
-        );
+          ||
+          ((request.auth.uid == resource.data.seller_id
+              || request.auth.uid == resource.data.buyer_id)
+            && resource.data.status == 'accepted'
+            && request.resource.data.status == 'cancelled'
+            && request.resource.data.amount == resource.data.amount
+            && get(/databases/$(database)/documents/listings/$(resource.data.listing_id)).data.status == 'reserved'
+            && get(/databases/$(database)/documents/listings/$(resource.data.listing_id)).data.reserved_offer_id == offerId
+            && (request.auth.uid == resource.data.seller_id
+              || get(/databases/$(database)/documents/listings/$(resource.data.listing_id)).data.reserved_for_user_id == request.auth.uid)
+            && getAfter(/databases/$(database)/documents/listings/$(resource.data.listing_id)).data.status == 'active'
+            && !getAfter(/databases/$(database)/documents/listings/$(resource.data.listing_id)).data.keys().hasAny([
+              'reserved_for_user_id', 'reserved_offer_id', 'reserved_at'
+            ]))
+        )
+        && (request.resource.data.status != 'accepted'
+          || (getAfter(/databases/$(database)/documents/listings/$(resource.data.listing_id)).data.status == 'reserved'
+            && getAfter(/databases/$(database)/documents/listings/$(resource.data.listing_id)).data.reserved_offer_id == offerId
+            && getAfter(/databases/$(database)/documents/listings/$(resource.data.listing_id)).data.reserved_for_user_id == resource.data.buyer_id));
 
       allow delete: if isAuthenticated()
         && (resource.data.buyer_id == request.auth.uid
@@ -491,7 +590,7 @@ service cloud.firestore {
               && request.resource.data.offerId is string
               && request.resource.data.listingId is string
               && request.resource.data.offerStatus in [
-                'countered', 'accepted', 'declined'
+                'countered', 'accepted', 'declined', 'cancelled'
               ]
               && request.resource.data.amount is number
               && request.resource.data.amount > 0

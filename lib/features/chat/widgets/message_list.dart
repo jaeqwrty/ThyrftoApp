@@ -195,12 +195,14 @@ class _MessagesListState extends ConsumerState<MessagesList> {
       'countered' => 'Counter offer · ₱${amount.toStringAsFixed(2)}',
       'accepted' => 'Offer accepted · ₱${amount.toStringAsFixed(2)}',
       'declined' => 'Offer declined · ₱${amount.toStringAsFixed(2)}',
+      'cancelled' => 'Reservation released · ₱${amount.toStringAsFixed(2)}',
       _ => 'Offer updated',
     };
     final icon = switch (status) {
       'countered' => Icons.swap_horiz_rounded,
       'accepted' => Icons.check_circle_outline_rounded,
       'declined' => Icons.cancel_outlined,
+      'cancelled' => Icons.lock_open_outlined,
       _ => Icons.local_offer_outlined,
     };
 

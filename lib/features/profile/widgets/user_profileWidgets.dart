@@ -266,6 +266,7 @@ class ListingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrls = listing['image_urls'] as List<dynamic>? ?? [];
     final bool isSold = listing['status'] == 'sold';
+    final bool isReserved = listing['status'] == 'reserved';
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -322,7 +323,7 @@ class ListingCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (isSold)
+                  if (isSold || isReserved)
                     Positioned(
                       top: 8,
                       left: 8,
@@ -332,12 +333,14 @@ class ListingCard extends StatelessWidget {
                           vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.72),
+                          color: isReserved
+                              ? const Color(0xFFA8752A)
+                              : Colors.black.withValues(alpha: 0.72),
                           borderRadius: BorderRadius.circular(999),
                         ),
-                        child: const Text(
-                          'SOLD',
-                          style: TextStyle(
+                        child: Text(
+                          isReserved ? 'RESERVED' : 'SOLD',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 10,
                             fontWeight: FontWeight.w900,

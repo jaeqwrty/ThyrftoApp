@@ -190,8 +190,8 @@ class ListingGridCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrls = listing['image_urls'] as List<dynamic>? ?? [];
     final hasImage = imageUrls.isNotEmpty;
-    // Check if the item is marked as sold
     final bool isSold = listing['status'] == 'sold';
+    final bool isReserved = listing['status'] == 'reserved';
 
     return GestureDetector(
       onTap: () {
@@ -241,8 +241,7 @@ class ListingGridCard extends StatelessWidget {
                             : const ImagePlaceholder(),
                       ),
 
-                      // THE SOLD BADGE
-                      if (isSold)
+                      if (isSold || isReserved)
                         Positioned(
                           top: 8,
                           left:
@@ -251,12 +250,14 @@ class ListingGridCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.7),
+                              color: isReserved
+                                  ? const Color(0xFFA8752A)
+                                  : Colors.black.withValues(alpha: 0.7),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const Text(
-                              'SOLD',
-                              style: TextStyle(
+                            child: Text(
+                              isReserved ? 'RESERVED' : 'SOLD',
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,

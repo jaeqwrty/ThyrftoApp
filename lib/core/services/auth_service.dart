@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:thryfto/core/services/database_service.dart';
+import 'package:thryfto/core/services/offer_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -613,15 +614,47 @@ class AuthService {
 
   Future<void> _cleanupOwnedAccountData(String userId) async {
     final databaseService = DatabaseService();
+    final offerService = OfferService();
     final listings = await _firestore
         .collection('listings')
         .where('seller_id', isEqualTo: userId)
         .get();
 
     for (final listing in listings.docs) {
+      final listingData = listing.data();
+      if (listingData['status'] == 'reserved') {
+        final reservedOfferId = listingData['reserved_offer_id']?.toString();
+        if (reservedOfferId == null || reservedOfferId.isEmpty) {
+          throw Exception('Reserved listing ${listing.id} is missing its offer');
+        }
+        await offerService.releaseReservationForOffer(reservedOfferId);
+      }
+
       final deleted = await databaseService.deleteListing(listing.id);
       if (!deleted) {
         throw Exception('Failed to delete listing ${listing.id}');
+      }
+    }
+
+    // Reopen another seller's listing before removing this buyer's accepted
+    // offer, otherwise the listing could be orphaned in a reserved state.
+    final buyerOffers = await _firestore
+        .collection('offers')
+        .where('buyer_id', isEqualTo: userId)
+        .get();
+    for (final offerDoc in buyerOffers.docs) {
+      final offer = offerDoc.data();
+      if (offer['status'] != 'accepted') continue;
+
+      final listingId = offer['listing_id']?.toString();
+      if (listingId == null) continue;
+      final listing = await _firestore.collection('listings').doc(listingId).get();
+      final listingData = listing.data();
+      if (listing.exists &&
+          listingData?['status'] == 'reserved' &&
+          listingData?['reserved_offer_id'] == offerDoc.id &&
+          listingData?['reserved_for_user_id'] == userId) {
+        await offerService.releaseReservationForOffer(offerDoc.id);
       }
     }
 
