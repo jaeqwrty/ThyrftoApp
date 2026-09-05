@@ -52,6 +52,10 @@ List<Map<String, dynamic>> _groupNotifications(List<Map<String, dynamic>> notifi
     } else if (type == 'like') {
       // Group likes by listing
       groupKey = 'like_${relatedListingId ?? 'unknown'}';
+    } else if (type == 'offer') {
+      final offerId = notification['additional_data']?['offer_id'];
+      final offerStatus = notification['additional_data']?['offer_status'];
+      groupKey = 'offer_${offerId ?? 'unknown'}_${offerStatus ?? 'update'}';
     } else {
       groupKey = '${type}_${notification['recipient_id']}';
     }

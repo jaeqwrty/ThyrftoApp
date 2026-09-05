@@ -165,6 +165,10 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       } else if (type == 'like') {
         // Group likes by listing
         groupKey = 'like_${relatedListingId ?? 'unknown'}';
+      } else if (type == 'offer') {
+        final offerId = notification['additional_data']?['offer_id'];
+        final offerStatus = notification['additional_data']?['offer_status'];
+        groupKey = 'offer_${offerId ?? 'unknown'}_${offerStatus ?? 'update'}';
       } else {
         groupKey = '${type}_${notification['recipient_id']}';
       }
@@ -493,6 +497,10 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         return othersCount == 1
             ? "$firstName and 1 other rated you"
             : "$firstName and $othersCount others rated you";
+      case 'offer':
+        return othersCount == 1
+            ? "$firstName and 1 other updated offers"
+            : "$firstName and $othersCount others updated offers";
       case 'follow':
       case 'favorite':
         return othersCount == 1
@@ -566,6 +574,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       case 'favorite': return Icons.notifications_active;
       case 'new_listing': return Icons.shopping_bag;
       case 'rating': return Icons.star;
+      case 'offer': return Icons.local_offer_outlined;
       default: return Icons.notifications;
     }
   }
@@ -581,6 +590,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       case 'favorite': return _ink;
       case 'new_listing': return AppColors.success;
       case 'rating': return AppColors.rating;
+      case 'offer': return _accent;
       default: return AppColors.textSecondary;
     }
   }
@@ -632,11 +642,13 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
           break;
           
         case 'message':
-          // Navigate to conversation page
+        case 'offer':
+          // Open the conversation associated with the interaction.
           if (senderId != null && mounted) {
             final currentUserId = FirebaseAuth.instance.currentUser?.uid;
             if (currentUserId != null) {
-              final conversationId = additionalData?['conversation_id'] as String?;
+              final conversationId = additionalData?['chat_id'] as String? ??
+                  additionalData?['conversation_id'] as String?;
               final currentUser = await _getCurrentUser();
               final otherUser = await _db.getUserProfile(senderId);
               

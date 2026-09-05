@@ -388,6 +388,9 @@ service cloud.firestore {
         && request.resource.data.last_action_by == request.auth.uid
         && request.resource.data.amount is number
         && request.resource.data.amount > 0
+        && (request.resource.data.status == 'declined'
+          || (exists(/databases/$(database)/documents/listings/$(resource.data.listing_id))
+            && get(/databases/$(database)/documents/listings/$(resource.data.listing_id)).data.status == 'active'))
         && (
           (request.auth.uid == resource.data.seller_id
             && resource.data.status == 'pending'

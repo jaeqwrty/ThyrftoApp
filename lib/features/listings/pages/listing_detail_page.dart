@@ -6,6 +6,7 @@ import 'package:thryfto/core/services/chat_service.dart';
 import 'package:thryfto/core/services/database_service.dart';
 import 'package:thryfto/core/services/listing_status_service.dart';
 import 'package:thryfto/core/services/location_service.dart';
+import 'package:thryfto/core/services/offer_service.dart';
 import 'package:thryfto/core/utils/common_dialogs.dart';
 import 'package:thryfto/core/utils/snackbar_utils.dart';
 import 'package:thryfto/features/chat/pages/conversation_page.dart';
@@ -41,6 +42,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   final DatabaseService _db = DatabaseService();
   final ChatService _chatService = ChatService();
   final ListingStatusService _statusService = ListingStatusService();
+  final OfferService _offerService = OfferService();
 
   int _currentImageIndex = 0;
   bool _isLiked = false;
@@ -48,6 +50,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   int _likeCount = 0;
   bool _isSoldProcessing = false;
   bool _isOpeningChat = false;
+  bool _isMakingOffer = false;
 
   @override
   void initState() {
@@ -569,63 +572,60 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   }
 
   Widget _buildBuyerBottomBar() {
+    final isSold = widget.listing['status'] == 'sold';
     return _buildBottomShell(
-      child: SizedBox(
-        height: 52,
-        child: ElevatedButton(
-          onPressed: _isOpeningChat ? null : _openChat,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _ink,
-            disabledBackgroundColor: _ink.withValues(alpha: 0.62),
-            foregroundColor: Colors.white,
-            disabledForegroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: isSold || _isMakingOffer ? null : _showMakeOfferDialog,
+              icon: _isMakingOffer
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.local_offer_outlined, size: 18),
+              label: Text(_isMakingOffer ? 'Sending…' : 'Make Offer'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _wine,
+                side: const BorderSide(color: _wine),
+                minimumSize: const Size.fromHeight(52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
-            elevation: 0,
           ),
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
-            child: _isOpeningChat
-                ? const Row(
-                    key: ValueKey('opening-chat'),
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: _isOpeningChat ? null : _openChat,
+              icon: _isOpeningChat
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
                       ),
-                      SizedBox(width: 10),
-                      Text(
-                        'Opening chat…',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  )
-                : const Row(
-                    key: ValueKey('message-seller'),
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.message_outlined, size: 18),
-                      SizedBox(width: 8),
-                      Text(
-                        'Message Seller',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
+                    )
+                  : const Icon(Icons.message_outlined, size: 18),
+              label: Text(_isOpeningChat ? 'Opening…' : 'Message'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _ink,
+                disabledBackgroundColor: _ink.withValues(alpha: 0.62),
+                foregroundColor: Colors.white,
+                disabledForegroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -973,6 +973,126 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _showMakeOfferDialog() async {
+    final controller = TextEditingController();
+    String? errorText;
+    final price = (widget.listing['price'] as num?)?.toDouble() ??
+        double.tryParse(widget.listing['price']?.toString() ?? '') ??
+        0;
+
+    final amount = await showDialog<double>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: const Text('Make an Offer'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.listing['title']?.toString() ?? 'Listing',
+                style: const TextStyle(
+                  color: _ink,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Asking price: ₱${price.toStringAsFixed(2)}',
+                style: const TextStyle(color: _mutedInk, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: 'Your offer',
+                  prefixText: '₱ ',
+                  errorText: errorText,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final value = double.tryParse(
+                  controller.text.trim().replaceAll(',', ''),
+                );
+                if (value == null || value <= 0) {
+                  setModalState(() => errorText = 'Enter a valid offer amount');
+                  return;
+                }
+                Navigator.pop(dialogContext, value);
+              },
+              child: const Text('Send Offer'),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+
+    if (amount != null && mounted) {
+      await _submitOffer(amount);
+    }
+  }
+
+  Future<void> _submitOffer(double amount) async {
+    if (_isMakingOffer) return;
+    setState(() => _isMakingOffer = true);
+
+    try {
+      final sellerId = widget.listing['seller_id']?.toString();
+      if (sellerId == null) throw StateError('Seller information is missing');
+
+      final chatId = await _chatService.getOrCreateChat(sellerId);
+      if (chatId == null) throw StateError('Could not open a seller conversation');
+
+      await _offerService.createOffer(
+        listing: widget.listing,
+        chatId: chatId,
+        amount: amount,
+      );
+
+      if (!mounted) return;
+      setState(() => _isMakingOffer = false);
+      SnackbarUtils.showSuccess(context, 'Offer sent to the seller');
+      Navigator.push(
+        context,
+        AppPageRoute.fadeThrough(
+          builder: (context) => ConversationPage(
+            chatId: chatId,
+            otherUserId: sellerId,
+            otherUserName: widget.listing['seller_name'] ?? 'Seller',
+            currentUser: widget.user,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      SnackbarUtils.showError(context, _cleanOfferError(e));
+    } finally {
+      if (mounted && _isMakingOffer) {
+        setState(() => _isMakingOffer = false);
+      }
+    }
+  }
+
+  String _cleanOfferError(Object error) {
+    return error
+        .toString()
+        .replaceFirst('Bad state: ', '')
+        .replaceFirst('Invalid argument(s): ', '');
   }
 
   Future<void> _openChat() async {

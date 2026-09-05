@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:thryfto/core/providers/chat_providers.dart';
 import 'package:thryfto/shared/widgets/skeleton_loaders.dart';
+import 'package:thryfto/features/chat/widgets/offer_message_card.dart';
 
 class MessagesList extends ConsumerStatefulWidget {
   final String chatId;
@@ -152,9 +153,9 @@ class _MessagesListState extends ConsumerState<MessagesList> {
         : '';
 
     return GestureDetector(
-      onLongPress: isMe
+      onLongPress: isMe && messageType != 'offer'
           ? () => widget.onDeleteMessage(messageId)
-          : null, // Added widget. prefix
+          : null,
       child: Align(
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
@@ -163,7 +164,12 @@ class _MessagesListState extends ConsumerState<MessagesList> {
               BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.74),
           child: messageType == 'image'
               ? _buildImageMessage(messageData, timeText, isMe)
-              : _buildTextMessage(messageData, isMe, timeText),
+              : messageType == 'offer'
+                  ? OfferMessageCard(
+                      offerId: messageData['offerId']?.toString() ?? '',
+                      currentUserId: widget.currentUserId,
+                    )
+                  : _buildTextMessage(messageData, isMe, timeText),
         ),
       ),
     );

@@ -103,23 +103,28 @@ class OfferService {
     batch.update(_firestore.collection('chats').doc(chatId), {
       'lastMessage': 'Offer: ${_formatAmount(amount)}',
       'lastMessageTime': FieldValue.serverTimestamp(),
+      'deletedFor': FieldValue.arrayRemove([buyerId, sellerId]),
     });
 
     await batch.commit();
 
-    await _notificationService.createNotification(
-      recipientId: sellerId,
-      type: 'offer',
-      title: 'New offer on $title',
-      body: '${_formatAmount(amount)} offer received',
-      relatedListingId: listingId,
-      relatedUserId: buyerId,
-      additionalData: {
-        'offer_id': offerRef.id,
-        'offer_status': 'pending',
-        'chat_id': chatId,
-      },
-    );
+    try {
+      await _notificationService.createNotification(
+        recipientId: sellerId,
+        type: 'offer',
+        title: 'New offer on $title',
+        body: '${_formatAmount(amount)} offer received',
+        relatedListingId: listingId,
+        relatedUserId: buyerId,
+        additionalData: {
+          'offer_id': offerRef.id,
+          'offer_status': 'pending',
+          'chat_id': chatId,
+        },
+      );
+    } catch (_) {
+      // The offer is already committed; notification delivery is best-effort.
+    }
 
     return offerRef.id;
   }
@@ -163,6 +168,19 @@ class OfferService {
         throw StateError('This offer can no longer be changed by you');
       }
 
+      if (action != 'declined') {
+        final listingId = data['listing_id']?.toString();
+        if (listingId == null) {
+          throw StateError('The listing for this offer is unavailable');
+        }
+        final listing = await transaction.get(
+          _firestore.collection('listings').doc(listingId),
+        );
+        if (!listing.exists || listing.data()?['status'] != 'active') {
+          throw StateError('This listing is no longer available for offers');
+        }
+      }
+
       final nextAmount = action == 'countered' ? counterAmount! : currentAmount;
       transaction.update(offerRef, {
         'amount': nextAmount,
@@ -181,6 +199,10 @@ class OfferService {
         transaction.update(_firestore.collection('chats').doc(chatId), {
           'lastMessage': label,
           'lastMessageTime': FieldValue.serverTimestamp(),
+          'deletedFor': FieldValue.arrayRemove([
+            data['buyer_id'],
+            data['seller_id'],
+          ]),
         });
       }
 
@@ -209,19 +231,23 @@ class OfferService {
         ? '${_formatAmount(amount)} counter offer on $title'
         : '${_formatAmount(amount)} offer on $title';
 
-    await _notificationService.createNotification(
-      recipientId: recipientId,
-      type: 'offer',
-      title: notificationTitle,
-      body: notificationBody,
-      relatedListingId: updatedOffer['listing_id']?.toString(),
-      relatedUserId: userId,
-      additionalData: {
-        'offer_id': offerId,
-        'offer_status': status,
-        'chat_id': updatedOffer['chat_id'],
-      },
-    );
+    try {
+      await _notificationService.createNotification(
+        recipientId: recipientId,
+        type: 'offer',
+        title: notificationTitle,
+        body: notificationBody,
+        relatedListingId: updatedOffer['listing_id']?.toString(),
+        relatedUserId: userId,
+        additionalData: {
+          'offer_id': offerId,
+          'offer_status': status,
+          'chat_id': updatedOffer['chat_id'],
+        },
+      );
+    } catch (_) {
+      // The state transition is already committed; do not invite a retry.
+    }
   }
 
   String _formatAmount(double amount) => '₱${amount.toStringAsFixed(2)}';
