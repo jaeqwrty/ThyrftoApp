@@ -17,11 +17,13 @@ import 'package:thryfto/shared/widgets/share_modal.dart';
 class ListingDetailPage extends StatefulWidget {
   final Map<String, dynamic> listing;
   final Map<String, dynamic> user;
+  final String? heroTag;
 
   const ListingDetailPage({
     super.key,
     required this.listing,
     required this.user,
+    this.heroTag,
   });
 
   @override
@@ -45,6 +47,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   bool _isBookmarked = false;
   int _likeCount = 0;
   bool _isSoldProcessing = false;
+  bool _isOpeningChat = false;
 
   @override
   void initState() {
@@ -177,27 +180,41 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
           itemCount: imageUrls.length,
           onPageChanged: (index) => setState(() => _currentImageIndex = index),
           itemBuilder: (context, index) {
-            return CachedNetworkImage(
-              imageUrl: imageUrls[index].toString(),
-              fit: BoxFit.cover,
-              memCacheWidth: 1600,
-              fadeInDuration: const Duration(milliseconds: 180),
-              placeholder: (context, _) => _buildImagePlaceholder(),
-              errorWidget: (context, _, __) => _buildImagePlaceholder(),
+            Widget image = InteractiveViewer(
+              minScale: 1,
+              maxScale: 4,
+              child: CachedNetworkImage(
+                imageUrl: imageUrls[index].toString(),
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                memCacheWidth: 1600,
+                fadeInDuration: const Duration(milliseconds: 180),
+                placeholder: (context, _) => _buildImagePlaceholder(),
+                errorWidget: (context, _, __) => _buildImagePlaceholder(),
+              ),
             );
+
+            if (index == 0 && widget.heroTag != null) {
+              image = Hero(tag: widget.heroTag!, child: image);
+            }
+
+            return image;
           },
         ),
-        const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0x99000000),
-                Color(0x22000000),
-                Color(0xAA000000),
-              ],
-              stops: [0, 0.48, 1],
+        const IgnorePointer(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x99000000),
+                  Color(0x22000000),
+                  Color(0xAA000000),
+                ],
+                stops: [0, 0.48, 1],
+              ),
             ),
           ),
         ),
@@ -549,20 +566,61 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
 
   Widget _buildBuyerBottomBar() {
     return _buildBottomShell(
-      child: ElevatedButton.icon(
-        onPressed: _openChat,
-        icon: const Icon(Icons.message_outlined, size: 18),
-        label: const Text(
-          'Message Seller',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _ink,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          elevation: 0,
+      child: SizedBox(
+        height: 52,
+        child: ElevatedButton(
+          onPressed: _isOpeningChat ? null : _openChat,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _ink,
+            disabledBackgroundColor: _ink.withValues(alpha: 0.62),
+            foregroundColor: Colors.white,
+            disabledForegroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            elevation: 0,
+          ),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: _isOpeningChat
+                ? const Row(
+                    key: ValueKey('opening-chat'),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        'Opening chat…',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  )
+                : const Row(
+                    key: ValueKey('message-seller'),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.message_outlined, size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Message Seller',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
         ),
       ),
     );
@@ -914,47 +972,35 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   }
 
   Future<void> _openChat() async {
-    if (!mounted) return;
+    if (!mounted || _isOpeningChat) return;
+    setState(() => _isOpeningChat = true);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
+    try {
+      final chatId =
+          await _chatService.getOrCreateChat(widget.listing['seller_id']);
+
+      if (!mounted) return;
+      if (chatId != null) {
+        setState(() => _isOpeningChat = false);
+        Navigator.push(
+          context,
+          AppPageRoute.fadeThrough(
+            builder: (context) => ConversationPage(
+              chatId: chatId,
+              otherUserId: widget.listing['seller_id'],
+              otherUserName: widget.listing['seller_name'] ?? 'Seller',
+              currentUser: widget.user,
             ),
-            SizedBox(width: 12),
-            Text('Opening chat...'),
-          ],
-        ),
-        duration: Duration(seconds: 1),
-      ),
-    );
-
-    final chatId =
-        await _chatService.getOrCreateChat(widget.listing['seller_id']);
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).clearSnackBars();
-
-    if (chatId != null) {
-      Navigator.push(
-        context,
-        AppPageRoute.fadeThrough(
-          builder: (context) => ConversationPage(
-            chatId: chatId,
-            otherUserId: widget.listing['seller_id'],
-            otherUserName: widget.listing['seller_name'] ?? 'Seller',
-            currentUser: widget.user,
           ),
-        ),
-      );
-    } else {
+        );
+      } else {
+        setState(() => _isOpeningChat = false);
+        SnackbarUtils.showError(
+            context, 'Failed to open chat. Please try again.');
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isOpeningChat = false);
       SnackbarUtils.showError(
           context, 'Failed to open chat. Please try again.');
     }

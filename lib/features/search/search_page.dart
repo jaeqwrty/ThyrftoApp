@@ -536,6 +536,7 @@ class _SearchPageState extends State<SearchPage> {
   Widget _buildListingCard(Map<String, dynamic> listing) {
     final imageUrls = listing['image_urls'] as List<dynamic>? ?? [];
     final hasImage = imageUrls.isNotEmpty;
+    final heroTag = 'search-listing-${listing['id']}';
 
     final showDistance =
         (_sortBy == 'distance_near' || _sortBy == 'distance_far') &&
@@ -551,6 +552,7 @@ class _SearchPageState extends State<SearchPage> {
             builder: (context) => ListingDetailPage(
               listing: listing,
               user: widget.user,
+              heroTag: heroTag,
             ),
           ),
         );
@@ -578,17 +580,20 @@ class _SearchPageState extends State<SearchPage> {
                 fit: StackFit.expand,
                 children: [
                   hasImage
-                      ? CachedNetworkImage(
-                          imageUrl: imageUrls[0].toString(),
-                          fit: BoxFit.cover,
-                          memCacheWidth: 600,
-                          fadeInDuration: const Duration(milliseconds: 160),
-                          placeholder: (context, _) => const ColoredBox(
-                            color: Color(0xFFF1EDF4),
-                            child: Center(child: ImagePlaceholder()),
+                      ? Hero(
+                          tag: heroTag,
+                          child: CachedNetworkImage(
+                            imageUrl: imageUrls[0].toString(),
+                            fit: BoxFit.cover,
+                            memCacheWidth: 600,
+                            fadeInDuration: const Duration(milliseconds: 160),
+                            placeholder: (context, _) => const ColoredBox(
+                              color: Color(0xFFF1EDF4),
+                              child: Center(child: ImagePlaceholder()),
+                            ),
+                            errorWidget: (context, _, __) =>
+                                const ImagePlaceholder(),
                           ),
-                          errorWidget: (context, _, __) =>
-                              const ImagePlaceholder(),
                         )
                       : const ImagePlaceholder(),
                   const Positioned.fill(

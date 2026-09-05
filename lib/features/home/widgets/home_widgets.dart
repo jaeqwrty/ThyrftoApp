@@ -96,6 +96,7 @@ class _PostCardState extends State<PostCard> {
         final imageUrls = widget.listing['image_urls'] as List?;
         final imageCount = imageUrls?.length ?? 0;
         final locationDisplay = _sellerLocation(seller);
+        final heroTag = 'home-listing-${widget.listing['id']}';
 
         return RepaintBoundary(
               child: Container(
@@ -145,6 +146,7 @@ class _PostCardState extends State<PostCard> {
                       imageUrls: imageUrls,
                       imageCount: imageCount,
                       distanceText: distanceText,
+                      heroTag: heroTag,
                       onTap: () {
                         Navigator.push(
                           context,
@@ -152,6 +154,7 @@ class _PostCardState extends State<PostCard> {
                             builder: (context) => ListingDetailPage(
                               listing: widget.listing,
                               user: widget.user,
+                              heroTag: heroTag,
                             ),
                           ),
                         );
@@ -180,6 +183,7 @@ class _PostCardState extends State<PostCard> {
                             builder: (context) => ListingDetailPage(
                               listing: widget.listing,
                               user: widget.user,
+                              heroTag: heroTag,
                             ),
                           ),
                         );
@@ -386,6 +390,7 @@ class PostImage extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback onDoubleTapLike;
   final String? distanceText;
+  final String heroTag;
 
   const PostImage({
     super.key,
@@ -394,6 +399,7 @@ class PostImage extends StatefulWidget {
     required this.imageCount,
     required this.onTap,
     required this.onDoubleTapLike,
+    required this.heroTag,
     this.distanceText,
   });
 
@@ -498,17 +504,20 @@ class _PostImageState extends State<PostImage>
             child: ColoredBox(
               color: const Color(0xFFF8FAFC),
               child: hasImages
-                  ? CachedNetworkImage(
-                      imageUrl: widget.imageUrls![0].toString(),
-                      fit: BoxFit.cover,
-                      memCacheWidth: 1200,
-                      fadeInDuration: const Duration(milliseconds: 180),
-                      placeholder: (context, _) => const ColoredBox(
-                        color: Color(0xFFF1EDF4),
-                        child: Center(child: ImagePlaceholder(size: 45)),
+                  ? Hero(
+                      tag: widget.heroTag,
+                      child: CachedNetworkImage(
+                        imageUrl: widget.imageUrls![0].toString(),
+                        fit: BoxFit.cover,
+                        memCacheWidth: 1200,
+                        fadeInDuration: const Duration(milliseconds: 180),
+                        placeholder: (context, _) => const ColoredBox(
+                          color: Color(0xFFF1EDF4),
+                          child: Center(child: ImagePlaceholder(size: 45)),
+                        ),
+                        errorWidget: (context, _, __) =>
+                            const ImagePlaceholder(size: 45),
                       ),
-                      errorWidget: (context, _, __) =>
-                          const ImagePlaceholder(size: 45),
                     )
                   : const ImagePlaceholder(size: 45),
             ),
