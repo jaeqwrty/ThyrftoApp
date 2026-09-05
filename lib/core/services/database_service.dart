@@ -390,6 +390,9 @@ class DatabaseService {
             .where('listing_id', isEqualTo: listingId),
       );
       await _deleteQueryDocuments(
+        _firestore.collection('offers').where('listing_id', isEqualTo: listingId),
+      );
+      await _deleteQueryDocuments(
         _firestore
             .collection('notifications')
             .where('related_listing_id', isEqualTo: listingId),

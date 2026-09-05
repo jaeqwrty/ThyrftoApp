@@ -15,6 +15,7 @@ class NotificationService {
     'follow',
     'new_listing',
     'rating',
+    'offer',
   };
 
   /// Create a notification using one canonical client-side schema.

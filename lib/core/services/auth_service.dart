@@ -647,7 +647,16 @@ class AuthService {
       _firestore.collection('listing_views').where('viewer_id', isEqualTo: userId),
     );
     await _deleteQueryDocuments(
+      _firestore.collection('offers').where('buyer_id', isEqualTo: userId),
+    );
+    await _deleteQueryDocuments(
+      _firestore.collection('offers').where('seller_id', isEqualTo: userId),
+    );
+    await _deleteQueryDocuments(
       _firestore.collection('notifications').where('recipient_id', isEqualTo: userId),
+    );
+    await _deleteQueryDocuments(
+      _firestore.collection('notifications').where('sender_id', isEqualTo: userId),
     );
     await _deleteQueryDocuments(
       _firestore.collectionGroup('ratings').where('reviewer_id', isEqualTo: userId),

@@ -40,7 +40,8 @@ service cloud.firestore {
         && data.sender_name.size() <= 160
         && (data.sender_profile_image == null || data.sender_profile_image is string)
         && data.type in [
-          'like', 'comment', 'share', 'message', 'follow', 'new_listing', 'rating'
+          'like', 'comment', 'share', 'message', 'follow', 'new_listing', 'rating',
+          'offer'
         ]
         && data.title is string
         && data.title.size() > 0
@@ -89,6 +90,19 @@ service cloud.firestore {
         ||
         (data.type == 'rating'
           && exists(/databases/$(database)/documents/users/$(data.recipient_id)/ratings/$(request.auth.uid)))
+        ||
+        (data.type == 'offer'
+          && data.related_listing_id is string
+          && data.additional_data.offer_id is string
+          && data.additional_data.offer_status is string
+          && exists(/databases/$(database)/documents/offers/$(data.additional_data.offer_id))
+          && get(/databases/$(database)/documents/offers/$(data.additional_data.offer_id)).data.listing_id == data.related_listing_id
+          && get(/databases/$(database)/documents/offers/$(data.additional_data.offer_id)).data.status == data.additional_data.offer_status
+          && get(/databases/$(database)/documents/offers/$(data.additional_data.offer_id)).data.last_action_by == request.auth.uid
+          && ((get(/databases/$(database)/documents/offers/$(data.additional_data.offer_id)).data.buyer_id == request.auth.uid
+                && get(/databases/$(database)/documents/offers/$(data.additional_data.offer_id)).data.seller_id == data.recipient_id)
+              || (get(/databases/$(database)/documents/offers/$(data.additional_data.offer_id)).data.seller_id == request.auth.uid
+                && get(/databases/$(database)/documents/offers/$(data.additional_data.offer_id)).data.buyer_id == data.recipient_id)))
         ||
         (data.type == 'message'
           && data.additional_data.chat_id is string
@@ -335,6 +349,66 @@ service cloud.firestore {
       allow update: if false;
     }
     
+    // Marketplace offers. The buyer creates an offer; the seller may accept,
+    // decline, or counter it. A buyer may then accept or decline a counter.
+    match /offers/{offerId} {
+      allow read: if isAuthenticated()
+        && (resource.data.buyer_id == request.auth.uid
+            || resource.data.seller_id == request.auth.uid);
+
+      allow create: if isAuthenticated()
+        && request.resource.data.keys().hasOnly([
+          'listing_id', 'listing_title', 'listing_price', 'seller_id', 'buyer_id',
+          'chat_id', 'initial_amount', 'amount', 'status', 'created_at',
+          'updated_at', 'last_action_by'
+        ])
+        && request.resource.data.buyer_id == request.auth.uid
+        && request.resource.data.seller_id != request.auth.uid
+        && request.resource.data.initial_amount is number
+        && request.resource.data.initial_amount > 0
+        && request.resource.data.amount == request.resource.data.initial_amount
+        && request.resource.data.status == 'pending'
+        && request.resource.data.last_action_by == request.auth.uid
+        && request.resource.data.created_at == request.time
+        && request.resource.data.updated_at == request.time
+        && exists(/databases/$(database)/documents/listings/$(request.resource.data.listing_id))
+        && get(/databases/$(database)/documents/listings/$(request.resource.data.listing_id)).data.seller_id == request.resource.data.seller_id
+        && get(/databases/$(database)/documents/listings/$(request.resource.data.listing_id)).data.status == 'active'
+        && request.resource.data.listing_title == get(/databases/$(database)/documents/listings/$(request.resource.data.listing_id)).data.title
+        && request.resource.data.listing_price == get(/databases/$(database)/documents/listings/$(request.resource.data.listing_id)).data.price
+        && exists(/databases/$(database)/documents/chats/$(request.resource.data.chat_id))
+        && request.resource.data.buyer_id in get(/databases/$(database)/documents/chats/$(request.resource.data.chat_id)).data.participants
+        && request.resource.data.seller_id in get(/databases/$(database)/documents/chats/$(request.resource.data.chat_id)).data.participants;
+
+      allow update: if isAuthenticated()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'amount', 'status', 'updated_at', 'last_action_by'
+        ])
+        && request.resource.data.updated_at == request.time
+        && request.resource.data.last_action_by == request.auth.uid
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0
+        && (
+          (request.auth.uid == resource.data.seller_id
+            && resource.data.status == 'pending'
+            && (
+              (request.resource.data.status in ['accepted', 'declined']
+                && request.resource.data.amount == resource.data.amount)
+              || (request.resource.data.status == 'countered'
+                && request.resource.data.amount != resource.data.amount)
+            ))
+          ||
+          (request.auth.uid == resource.data.buyer_id
+            && resource.data.status == 'countered'
+            && request.resource.data.status in ['accepted', 'declined']
+            && request.resource.data.amount == resource.data.amount)
+        );
+
+      allow delete: if isAuthenticated()
+        && (resource.data.buyer_id == request.auth.uid
+            || resource.data.seller_id == request.auth.uid);
+    }
+
     // Chats collection
     match /chats/{chatId} {
       // Only chat participants can read/write
