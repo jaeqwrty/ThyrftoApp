@@ -644,6 +644,9 @@ class AuthService {
       _firestore.collection('listing_shares').where('shared_by', isEqualTo: userId),
     );
     await _deleteQueryDocuments(
+      _firestore.collection('listing_views').where('viewer_id', isEqualTo: userId),
+    );
+    await _deleteQueryDocuments(
       _firestore.collection('notifications').where('recipient_id', isEqualTo: userId),
     );
     await _deleteQueryDocuments(

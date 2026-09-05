@@ -314,6 +314,26 @@ service cloud.firestore {
       }
     }
     
+    // Unique authenticated listing views.
+    match /listing_views/{viewId} {
+      allow read: if isAuthenticated()
+        && (resource.data.viewer_id == request.auth.uid
+            || isListingOwner(resource.data.listing_id));
+
+      allow create: if isAuthenticated()
+        && viewId == request.auth.uid + '_' + request.resource.data.listing_id
+        && request.resource.data.keys().hasOnly(['listing_id', 'viewer_id', 'viewed_at'])
+        && request.resource.data.viewer_id == request.auth.uid
+        && exists(/databases/$(database)/documents/listings/$(request.resource.data.listing_id))
+        && get(/databases/$(database)/documents/listings/$(request.resource.data.listing_id)).data.seller_id
+          != request.auth.uid;
+
+      allow update: if false;
+      allow delete: if isAuthenticated()
+        && (resource.data.viewer_id == request.auth.uid
+            || isListingOwner(resource.data.listing_id));
+    }
+
     // Listing shares tracking collection
     match /listing_shares/{shareId} {
       // Anyone authenticated can read shares

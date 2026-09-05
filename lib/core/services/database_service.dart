@@ -80,7 +80,6 @@ class DatabaseService {
         'image_urls': imageUrls,
         'status': 'active',
         'likes': 0,
-        'views': 0,
         'created_at': FieldValue.serverTimestamp(),
         'updated_at': FieldValue.serverTimestamp(),
         'location': location,
@@ -385,6 +384,11 @@ class DatabaseService {
       );
       await _deleteQueryDocuments(
         _firestore
+            .collection('listing_views')
+            .where('listing_id', isEqualTo: listingId),
+      );
+      await _deleteQueryDocuments(
+        _firestore
             .collection('notifications')
             .where('related_listing_id', isEqualTo: listingId),
       );
@@ -559,38 +563,60 @@ class DatabaseService {
     });
   }
 
-  // --- Share Logic ---
+  // --- Listing engagement ---
 
-  Future<void> incrementShareCount(String listingId) async {
+  Future<void> recordListingView(String listingId) async {
+    final userId = currentUserId;
+    if (userId == null) return;
+
     try {
-      await _firestore.collection('listings').doc(listingId).update({
-        'shares': FieldValue.increment(1),
+      final listingRef = _firestore.collection('listings').doc(listingId);
+      final viewRef =
+          _firestore.collection('listing_views').doc('${userId}_$listingId');
+
+      await _firestore.runTransaction((transaction) async {
+        final listing = await transaction.get(listingRef);
+        if (!listing.exists || listing.data()?['seller_id'] == userId) return;
+
+        final existingView = await transaction.get(viewRef);
+        if (existingView.exists) return;
+
+        transaction.set(viewRef, {
+          'listing_id': listingId,
+          'viewer_id': userId,
+          'viewed_at': FieldValue.serverTimestamp(),
+        });
       });
     } catch (e) {
-      print('Error incrementing share count: $e');
-      rethrow;
+      print('Error recording listing view: $e');
     }
+  }
+
+  Stream<int> getViewCountStream(String listingId) {
+    return _firestore
+        .collection('listing_views')
+        .where('listing_id', isEqualTo: listingId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length)
+        .handleError((_) => 0);
   }
 
   Stream<int> getShareCountStream(String listingId) {
     return _firestore
-        .collection('listings')
-        .doc(listingId)
+        .collection('listing_shares')
+        .where('listing_id', isEqualTo: listingId)
         .snapshots()
-        .map((snapshot) {
-      if (!snapshot.exists) return 0;
-      final shares = snapshot.data()?['shares'];
-      return shares is int ? shares : (shares as double?)?.toInt() ?? 0;
-    }).handleError((_) => 0);
+        .map((snapshot) => snapshot.docs.length)
+        .handleError((_) => 0);
   }
 
   Future<int> getShareCount(String listingId) async {
     try {
-      final snapshot =
-          await _firestore.collection('listings').doc(listingId).get();
-      if (!snapshot.exists) return 0;
-      final shares = snapshot.data()?['shares'];
-      return shares is int ? shares : (shares as double?)?.toInt() ?? 0;
+      final snapshot = await _firestore
+          .collection('listing_shares')
+          .where('listing_id', isEqualTo: listingId)
+          .get();
+      return snapshot.docs.length;
     } catch (e) {
       return 0;
     }
@@ -598,6 +624,9 @@ class DatabaseService {
 
   Future<void> onListingSharedWithNotification(String listingId) async {
     try {
+      final userId = currentUserId;
+      if (userId == null) return;
+
       final listingDoc =
           await _firestore.collection('listings').doc(listingId).get();
       if (!listingDoc.exists) throw Exception('Listing not found');
@@ -605,16 +634,15 @@ class DatabaseService {
       final sellerId = listingDoc.data()?['seller_id'];
       final listingTitle = listingDoc.data()?['title'] ?? 'a listing';
 
-      await incrementShareCount(listingId);
       await _firestore.collection('listing_shares').add({
         'listing_id': listingId,
-        'shared_by': currentUserId,
+        'shared_by': userId,
         'shared_at': FieldValue.serverTimestamp(),
       });
 
       if (sellerId != null && sellerId != currentUserId) {
         final currentUserDoc =
-            await _firestore.collection('users').doc(currentUserId!).get();
+            await _firestore.collection('users').doc(userId).get();
         final currentUserName = currentUserDoc.data()?['fullName'] ??
             currentUserDoc.data()?['full_name'] ??
             currentUserDoc.data()?['username'] ??
@@ -626,7 +654,7 @@ class DatabaseService {
           title: '$currentUserName shared your listing',
           body: '"$listingTitle"',
           relatedListingId: listingId,
-          relatedUserId: currentUserId,
+          relatedUserId: userId,
         );
       }
     } catch (e) {

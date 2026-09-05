@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:thryfto/core/constants/app_colors.dart';
+import 'package:thryfto/core/services/database_service.dart';
 import 'package:thryfto/core/utils/snackbar_utils.dart';
 
 class ShareModal extends StatelessWidget {
@@ -33,11 +34,18 @@ ${listing['description'] ?? ''}''';
     return 'https://thryfto.app/listing/$listingId';
   }
 
-  void _copyToClipboard(BuildContext context) {
+  Future<void> _copyToClipboard(BuildContext context) async {
     final shareText = '${_getShareText()}\n\n${_getShareLink()}';
-    Clipboard.setData(ClipboardData(text: shareText));
-    Navigator.pop(context);
+    await Clipboard.setData(ClipboardData(text: shareText));
+    final listingId = listing['id']?.toString();
+    if (listingId != null) {
+      try {
+        await DatabaseService().onListingSharedWithNotification(listingId);
+      } catch (_) {}
+    }
+    if (!context.mounted) return;
     SnackbarUtils.showSuccess(context, 'Link copied to clipboard!');
+    Navigator.pop(context);
   }
 
   void _shareViaSheet(BuildContext context) async {
@@ -55,6 +63,12 @@ ${listing['description'] ?? ''}''';
         );
       } else {
         await Share.share(shareText);
+      }
+      final listingId = listing['id']?.toString();
+      if (listingId != null) {
+        try {
+          await DatabaseService().onListingSharedWithNotification(listingId);
+        } catch (_) {}
       }
       if (context.mounted) {
         Navigator.pop(context);

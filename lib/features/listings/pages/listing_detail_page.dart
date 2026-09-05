@@ -53,6 +53,10 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   void initState() {
     super.initState();
     _loadInteractionStatus();
+    final listingId = widget.listing['id'];
+    if (listingId != null) {
+      _db.recordListingView(listingId.toString());
+    }
   }
 
   Future<void> _loadInteractionStatus() async {
