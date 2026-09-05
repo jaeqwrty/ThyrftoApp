@@ -87,7 +87,10 @@ class AuthService {
       }
 
       if (!availabilityResult['available']) {
-        return {'success': false, 'message': 'Username already taken'};
+        return {
+          'success': false,
+          'message': availabilityResult['message'] ?? 'Username already taken',
+        };
       }
 
       // Create user account
@@ -126,7 +129,7 @@ class AuthService {
         'uid': user.uid,
         'email': user.email,
         'fullName': fullName,
-        'username': username,
+        'username': _normalizeUsername(username),
         'cityState': cityState,
       };
 
@@ -256,18 +259,53 @@ class AuthService {
     } catch (_) {}
   }
 
-  /// Check if username is available
-  Future<Map<String, dynamic>> isUsernameAvailable(String username) async {
-    try {
-      final querySnapshot = await _firestore
-          .collection('users')
-          .where('username', isEqualTo: username.toLowerCase())
-          .limit(1)
-          .get();
+  String _normalizeUsername(String username) => username.trim().toLowerCase();
 
+  bool _isValidUsername(String username) {
+    return RegExp(r'^[a-z0-9_]{3,30}$').hasMatch(username);
+  }
+
+  Future<bool> _hasLegacyUsernameConflict(
+    String normalizedUsername, {
+    String? excludingUid,
+  }) async {
+    // Compatibility fallback for profiles created before username reservations.
+    // This can be removed after all legacy profiles have reservation documents.
+    final users = await _firestore.collection('users').get();
+    return users.docs.any((doc) {
+      if (doc.id == excludingUid) return false;
+      final existing = doc.data()['username'];
+      return existing is String &&
+          _normalizeUsername(existing) == normalizedUsername;
+    });
+  }
+
+  /// Check if username is available.
+  Future<Map<String, dynamic>> isUsernameAvailable(String username) async {
+    final normalizedUsername = _normalizeUsername(username);
+    if (!_isValidUsername(normalizedUsername)) {
       return {
         'success': true,
-        'available': querySnapshot.docs.isEmpty,
+        'available': false,
+        'message':
+            'Use 3-30 lowercase letters, numbers, or underscores only.',
+      };
+    }
+
+    try {
+      final reservation = await _firestore
+          .collection('usernames')
+          .doc(normalizedUsername)
+          .get();
+      if (reservation.exists) {
+        return {'success': true, 'available': false};
+      }
+
+      final legacyConflict =
+          await _hasLegacyUsernameConflict(normalizedUsername);
+      return {
+        'success': true,
+        'available': !legacyConflict,
       };
     } catch (e) {
       return {
@@ -277,7 +315,7 @@ class AuthService {
     }
   }
 
-  /// Create user profile in Firestore
+  /// Create a profile and reserve its normalized username atomically.
   Future<bool> createUserProfile({
     required String uid,
     required String fullName,
@@ -285,17 +323,45 @@ class AuthService {
     required String email,
     required String cityState,
   }) async {
+    final normalizedUsername = _normalizeUsername(username);
+    if (!_isValidUsername(normalizedUsername)) return false;
+
     try {
-      await _firestore.collection('users').doc(uid).set({
-        'id': uid,
-        'uid': uid,
-        'fullName': fullName,
-        'username': username,
-        'email': email,
-        'cityState': cityState,
-        'onboardingCompleted': false,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
+      if (await _hasLegacyUsernameConflict(
+        normalizedUsername,
+        excludingUid: uid,
+      )) {
+        return false;
+      }
+
+      final userRef = _firestore.collection('users').doc(uid);
+      final reservationRef =
+          _firestore.collection('usernames').doc(normalizedUsername);
+
+      await _firestore.runTransaction((transaction) async {
+        final reservation = await transaction.get(reservationRef);
+        final reservationOwner = reservation.data()?['uid'];
+        if (reservation.exists && reservationOwner != uid) {
+          throw StateError('Username already reserved');
+        }
+
+        transaction.set(reservationRef, {
+          'uid': uid,
+          'username': normalizedUsername,
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+        transaction.set(userRef, {
+          'id': uid,
+          'uid': uid,
+          'fullName': fullName,
+          'username': normalizedUsername,
+          'username_normalized': normalizedUsername,
+          'email': email,
+          'cityState': cityState,
+          'onboardingCompleted': false,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
       });
 
       return true;
@@ -364,7 +430,7 @@ class AuthService {
     }
   }
 
-  /// Update user profile
+  /// Update user profile, reserving username changes atomically.
   Future<bool> updateUserProfile({
     required String uid,
     String? fullName,
@@ -378,40 +444,70 @@ class AuthService {
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
-      if (fullName != null) {
-        updates['fullName'] = fullName.trim();
-      }
-
-      if (username != null) {
-        // Check if username is already taken by another user
-        final usernameQuery = await _firestore
-            .collection('users')
-            .where('username', isEqualTo: username.toLowerCase())
-            .limit(1)
-            .get();
-
-        if (usernameQuery.docs.isNotEmpty &&
-            usernameQuery.docs.first.id != uid) {
-          return false; // Username taken
-        }
-        updates['username'] = username.trim().toLowerCase();
-      }
-
+      if (fullName != null) updates['fullName'] = fullName.trim();
       if (bio != null) updates['bio'] = bio.trim();
       if (cityState != null) updates['cityState'] = cityState.trim();
+      if (profileImageUrl != null) updates['profileImageUrl'] = profileImageUrl;
 
-      // Handle profile image URL - this is the important fix
-      if (profileImageUrl != null) {
-        if (profileImageUrl.isEmpty) {
-          // Explicitly remove the profile image by setting to empty string
-          updates['profileImageUrl'] = '';
-        } else {
-          // Update with new image URL
-          updates['profileImageUrl'] = profileImageUrl;
-        }
+      final userRef = _firestore.collection('users').doc(uid);
+      if (username == null) {
+        await userRef.update(updates);
+        return true;
       }
 
-      await _firestore.collection('users').doc(uid).update(updates);
+      final normalizedUsername = _normalizeUsername(username);
+      if (!_isValidUsername(normalizedUsername)) return false;
+      if (await _hasLegacyUsernameConflict(
+        normalizedUsername,
+        excludingUid: uid,
+      )) {
+        return false;
+      }
+
+      final newReservationRef =
+          _firestore.collection('usernames').doc(normalizedUsername);
+
+      await _firestore.runTransaction((transaction) async {
+        final userSnapshot = await transaction.get(userRef);
+        if (!userSnapshot.exists) throw StateError('User profile not found');
+
+        final currentUsername = userSnapshot.data()?['username'];
+        final currentNormalized = currentUsername is String
+            ? _normalizeUsername(currentUsername)
+            : '';
+        final newReservation = await transaction.get(newReservationRef);
+
+        DocumentReference<Map<String, dynamic>>? oldReservationRef;
+        DocumentSnapshot<Map<String, dynamic>>? oldReservation;
+        if (currentNormalized != normalizedUsername &&
+            _isValidUsername(currentNormalized)) {
+          oldReservationRef =
+              _firestore.collection('usernames').doc(currentNormalized);
+          oldReservation = await transaction.get(oldReservationRef);
+        }
+
+        final reservationOwner = newReservation.data()?['uid'];
+        if (newReservation.exists && reservationOwner != uid) {
+          throw StateError('Username already reserved');
+        }
+
+        transaction.set(newReservationRef, {
+          'uid': uid,
+          'username': normalizedUsername,
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+        transaction.update(userRef, {
+          ...updates,
+          'username': normalizedUsername,
+          'username_normalized': normalizedUsername,
+        });
+
+        if (oldReservationRef != null &&
+            oldReservation?.data()?['uid'] == uid) {
+          transaction.delete(oldReservationRef);
+        }
+      });
+
       return true;
     } catch (e) {
       print('Error updating user profile: $e');
@@ -552,6 +648,9 @@ class AuthService {
     );
     await _deleteQueryDocuments(
       _firestore.collectionGroup('ratings').where('reviewer_id', isEqualTo: userId),
+    );
+    await _deleteQueryDocuments(
+      _firestore.collection('usernames').where('uid', isEqualTo: userId),
     );
   }
 

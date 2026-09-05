@@ -249,8 +249,16 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       return;
     }
 
-    if (_usernameController.text.trim().isEmpty) {
+    final normalizedUsername = _usernameController.text.trim().toLowerCase();
+    if (normalizedUsername.isEmpty) {
       SnackbarUtils.showWarning(context, 'Username is required');
+      return;
+    }
+    if (!RegExp(r'^[a-z0-9_]{3,30}$').hasMatch(normalizedUsername)) {
+      SnackbarUtils.showWarning(
+        context,
+        'Username must be 3-30 letters, numbers, or underscores',
+      );
       return;
     }
 
@@ -281,7 +289,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       final success = await ref.read(authServiceProvider).updateUserProfile(
             uid: userId,
             fullName: _fullNameController.text.trim(),
-            username: _usernameController.text.trim(),
+            username: normalizedUsername,
             bio: _bioController.text.trim(),
             profileImageUrl: newImageUrl ?? '',
           );

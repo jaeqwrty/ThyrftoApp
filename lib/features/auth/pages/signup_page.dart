@@ -124,8 +124,11 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
           contentPadding: fieldPadding,
           fontSize: fieldFontSize,
           validator: (v) {
-            if (v == null || v.isEmpty) return 'Please enter a username';
-            if (v.length < 3) return 'At least 3 characters';
+            final username = v?.trim().toLowerCase() ?? '';
+            if (username.isEmpty) return 'Please enter a username';
+            if (!RegExp(r'^[a-z0-9_]{3,30}$').hasMatch(username)) {
+              return '3-30 letters, numbers, or underscores';
+            }
             return null;
           },
         );
