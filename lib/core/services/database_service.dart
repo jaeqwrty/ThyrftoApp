@@ -398,6 +398,60 @@ class DatabaseService {
     }
   }
 
+  /// Submit one pending report per reporter/listing pair.
+  Future<String> reportListing({
+    required String listingId,
+    required String reason,
+    String details = '',
+  }) async {
+    final userId = currentUserId;
+    if (userId == null) return 'failed';
+
+    const allowedReasons = {
+      'spam',
+      'prohibited_item',
+      'misleading',
+      'scam',
+      'harassment',
+      'other',
+    };
+    final normalizedDetails = details.trim();
+    if (!allowedReasons.contains(reason) || normalizedDetails.length > 500) {
+      return 'failed';
+    }
+
+    try {
+      final listingRef = _firestore.collection('listings').doc(listingId);
+      final reportRef =
+          _firestore.collection('listing_reports').doc('${userId}_$listingId');
+
+      return await _firestore.runTransaction<String>((transaction) async {
+        final listing = await transaction.get(listingRef);
+        if (!listing.exists) return 'failed';
+        final sellerId = listing.data()?['seller_id'];
+        if (sellerId == null || sellerId == userId) return 'failed';
+
+        final existingReport = await transaction.get(reportRef);
+        if (existingReport.exists) return 'already_reported';
+
+        transaction.set(reportRef, {
+          'listing_id': listingId,
+          'listing_owner_id': sellerId,
+          'reported_by': userId,
+          'reason': reason,
+          'details': normalizedDetails,
+          'status': 'pending',
+          'created_at': FieldValue.serverTimestamp(),
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+        return 'submitted';
+      });
+    } catch (e) {
+      print('Error reporting listing: $e');
+      return 'failed';
+    }
+  }
+
   // Get user's listings
   Stream<List<Map<String, dynamic>>> getUserListings(String userId) {
     return _firestore

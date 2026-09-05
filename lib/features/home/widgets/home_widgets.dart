@@ -119,6 +119,7 @@ class _PostCardState extends State<PostCard> {
                       distanceText: distanceText,
                       locationDisplay: locationDisplay,
                       listing: widget.listing,
+                      db: widget.db,
                       onTap: () async {
                         final sellerId = widget.listing['seller_id'];
                         if (sellerId != null &&
@@ -229,6 +230,7 @@ class PostUserHeader extends StatelessWidget {
   final String? distanceText;
   final String locationDisplay;
   final Map<String, dynamic> listing;
+  final DatabaseService db;
   final VoidCallback? onTap;
 
   const PostUserHeader({
@@ -238,8 +240,101 @@ class PostUserHeader extends StatelessWidget {
     this.distanceText,
     required this.locationDisplay,
     required this.listing,
+    required this.db,
     this.onTap,
   });
+
+  Future<void> _reportListing(BuildContext context) async {
+    final listingId = listing['id']?.toString();
+    if (listingId == null || listing['seller_id'] == db.currentUserId) return;
+
+    const reasons = <String, String>{
+      'spam': 'Spam or duplicate',
+      'prohibited_item': 'Prohibited item',
+      'misleading': 'Misleading information',
+      'scam': 'Possible scam',
+      'harassment': 'Harassment or abusive content',
+      'other': 'Other',
+    };
+
+    final reason = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Why are you reporting this listing?',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              ...reasons.entries.map(
+                (entry) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(entry.value),
+                  onTap: () => Navigator.pop(sheetContext, entry.key),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (reason == null || !context.mounted) return;
+
+    String details = '';
+    if (reason == 'other') {
+      final controller = TextEditingController();
+      final submitted = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Report details'),
+          content: TextField(
+            controller: controller,
+            maxLength: 500,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              hintText: 'Briefly describe the issue',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Submit'),
+            ),
+          ],
+        ),
+      );
+      details = controller.text.trim();
+      controller.dispose();
+      if (submitted != true || details.isEmpty || !context.mounted) return;
+    }
+
+    final result = await db.reportListing(
+      listingId: listingId,
+      reason: reason,
+      details: details,
+    );
+    if (!context.mounted) return;
+
+    if (result == 'submitted') {
+      SnackbarUtils.showSuccess(context, 'Report submitted for review.');
+    } else if (result == 'already_reported') {
+      SnackbarUtils.showWarning(context, 'You already reported this listing.');
+    } else {
+      SnackbarUtils.showError(context, 'Unable to submit report. Try again.');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -332,7 +427,7 @@ class PostUserHeader extends StatelessWidget {
                 shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                 ),
-                builder: (context) => Container(
+                builder: (sheetContext) => Container(
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -351,7 +446,7 @@ class PostUserHeader extends StatelessWidget {
                             color: Colors.black87),
                         title: const Text('Share Listing'),
                         onTap: () {
-                          Navigator.pop(context);
+                          Navigator.pop(sheetContext);
                           showModalBottomSheet(
                             context: context,
                             backgroundColor: Colors.transparent,
@@ -359,17 +454,21 @@ class PostUserHeader extends StatelessWidget {
                           );
                         },
                       ),
-                      ListTile(
-                        leading:
-                            const Icon(Icons.flag_outlined, color: Colors.red),
-                        title: const Text('Report Listing',
-                            style: TextStyle(color: Colors.red)),
-                        onTap: () {
-                          Navigator.pop(context);
-                          SnackbarUtils.showSuccess(
-                              context, 'Thank you! Listing reported.');
-                        },
-                      ),
+                      if (listing['seller_id'] != db.currentUserId)
+                        ListTile(
+                          leading: const Icon(
+                            Icons.flag_outlined,
+                            color: Colors.red,
+                          ),
+                          title: const Text(
+                            'Report Listing',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            _reportListing(context);
+                          },
+                        ),
                     ],
                   ),
                 ),

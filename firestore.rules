@@ -333,6 +333,33 @@ service cloud.firestore {
             || isListingOwner(resource.data.listing_id));
     }
     
+    // Listing reports are immutable client submissions. Moderation status is
+    // updated only by trusted backend/Admin SDK processes.
+    match /listing_reports/{reportId} {
+      allow read: if isAuthenticated()
+        && resource.data.reported_by == request.auth.uid;
+
+      allow create: if isAuthenticated()
+        && reportId == request.auth.uid + '_' + request.resource.data.listing_id
+        && request.resource.data.keys().hasOnly([
+          'listing_id', 'listing_owner_id', 'reported_by', 'reason', 'details',
+          'status', 'created_at', 'updated_at'
+        ])
+        && request.resource.data.reported_by == request.auth.uid
+        && request.resource.data.listing_owner_id != request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.reason in [
+          'spam', 'prohibited_item', 'misleading', 'scam', 'harassment', 'other'
+        ]
+        && request.resource.data.details is string
+        && request.resource.data.details.size() <= 500
+        && exists(/databases/$(database)/documents/listings/$(request.resource.data.listing_id))
+        && get(/databases/$(database)/documents/listings/$(request.resource.data.listing_id)).data.seller_id
+          == request.resource.data.listing_owner_id;
+
+      allow update, delete: if false;
+    }
+
     // Notifications collection
     match /notifications/{notificationId} {
       // Users can only read their own notifications
