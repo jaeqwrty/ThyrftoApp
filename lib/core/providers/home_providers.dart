@@ -1,9 +1,10 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:thryfto/core/services/database_service.dart';
-import 'package:thryfto/core/services/block_service.dart';
-import 'package:thryfto/core/services/favorite_service.dart';
 import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:thryfto/core/services/block_service.dart';
+import 'package:thryfto/core/services/database_service.dart';
+import 'package:thryfto/core/services/favorite_service.dart';
 
 // Service providers
 final databaseServiceProvider = Provider((ref) => DatabaseService());
@@ -19,38 +20,55 @@ final followedSellersProvider = StreamProvider.autoDispose<List<String>>((ref) {
 // State notifier for home listings that prevents rebuilds on like changes
 class HomeListingsNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
   HomeListingsNotifier(this._ref) : super(const AsyncValue.loading()) {
-    _initialize();
+    unawaited(_initialize());
   }
 
   final Ref _ref;
   StreamSubscription? _listingsSubscription;
   StreamSubscription? _followedSubscription;
   List<String> _followedIds = [];
-  List<String>? _previousListingIds;
+  List<Map<String, dynamic>> _latestListings = [];
+  List<String>? _previousListingVersions;
 
-  void _initialize() async {
-    // Listen to followed sellers
-    _followedSubscription = _ref.read(favoritesServiceProvider).getFavoritedSellers().listen((followedIds) {
+  Future<void> _initialize() async {
+    await _listingsSubscription?.cancel();
+    await _followedSubscription?.cancel();
+
+    // Listen to followed sellers and immediately re-sort the current feed.
+    _followedSubscription = _ref
+        .read(favoritesServiceProvider)
+        .getFavoritedSellers()
+        .listen((followedIds) {
       _followedIds = followedIds;
-      _processListings();
+      if (_latestListings.isNotEmpty) {
+        _updateState(_latestListings);
+      }
     });
 
-    // Listen to active listings
+    // Listen to active listings.
     final dbService = _ref.read(databaseServiceProvider);
     final blockService = _ref.read(blockServiceProvider);
-    
-    _listingsSubscription = dbService.getActiveListings().asyncMap((listings) async {
-      return await blockService.filterBlockedListings(listings);
-    }).listen((listings) {
-      // Check if the list structure changed (not just like counts)
-      final currentIds = listings.map((l) => l['id'] as String).toList();
-      
-      if (_previousListingIds == null || !_listEquals(_previousListingIds!, currentIds)) {
-        _previousListingIds = currentIds;
+
+    _listingsSubscription = dbService
+        .getActiveListings()
+        .asyncMap(blockService.filterBlockedListings)
+        .listen((listings) {
+      _latestListings = listings;
+
+      // Rebuild when listing membership/order or persisted listing content changes.
+      // Like/share/view counters intentionally do not touch updated_at, so those
+      // high-frequency interactions continue to use their granular streams.
+      final currentVersions = listings.map(_listingVersion).toList();
+      if (_previousListingVersions == null ||
+          !_listEquals(_previousListingVersions!, currentVersions)) {
+        _previousListingVersions = currentVersions;
         _updateState(listings);
       }
-      // If only internal data changed (like counts), don't update state
     });
+  }
+
+  String _listingVersion(Map<String, dynamic> listing) {
+    return '${listing['id']}|${listing['status']}|${listing['updated_at']}';
   }
 
   bool _listEquals(List<String> a, List<String> b) {
@@ -59,13 +77,6 @@ class HomeListingsNotifier extends StateNotifier<AsyncValue<List<Map<String, dyn
       if (a[i] != b[i]) return false;
     }
     return true;
-  }
-
-  void _processListings() {
-    // Trigger a re-process when followed sellers change
-    if (_listingsSubscription != null) {
-      // The next listing update will be processed
-    }
   }
 
   void _updateState(List<Map<String, dynamic>> listings) {
@@ -86,9 +97,10 @@ class HomeListingsNotifier extends StateNotifier<AsyncValue<List<Map<String, dyn
   }
 
   void refresh() {
-    _previousListingIds = null;
+    _previousListingVersions = null;
+    _latestListings = [];
     state = const AsyncValue.loading();
-    _initialize();
+    unawaited(_initialize());
   }
 
   @override
