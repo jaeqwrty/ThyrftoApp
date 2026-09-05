@@ -75,6 +75,7 @@ class HomePageState extends ConsumerState<HomePage> {
           },
           child: CustomScrollView(
             controller: _scrollController,
+            cacheExtent: 700,
             slivers: [
               _buildAppBar(context),
               SliverList(
@@ -92,8 +93,8 @@ class HomePageState extends ConsumerState<HomePage> {
                     );
                   },
                   childCount: listings.length,
-                  addAutomaticKeepAlives: true,
-                  addRepaintBoundaries: true,
+                  addAutomaticKeepAlives: false,
+                  addRepaintBoundaries: false,
                 ),
               ),
             ],

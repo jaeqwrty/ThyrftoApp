@@ -693,10 +693,7 @@ class LikeButtonOptimized extends StatefulWidget {
 }
 
 class _LikeButtonOptimizedState extends State<LikeButtonOptimized>
-    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
+    with SingleTickerProviderStateMixin {
   bool? _optimisticLiked;
   int? _optimisticCount;
 
@@ -727,8 +724,6 @@ class _LikeButtonOptimizedState extends State<LikeButtonOptimized>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
-
     return StreamBuilder<bool>(
       stream: widget.db.isListingLikedStream(widget.listingId),
       builder: (context, likeSnapshot) {
@@ -816,17 +811,11 @@ class CommentButtonOptimized extends StatefulWidget {
   State<CommentButtonOptimized> createState() => _CommentButtonOptimizedState();
 }
 
-class _CommentButtonOptimizedState extends State<CommentButtonOptimized>
-    with AutomaticKeepAliveClientMixin {
+class _CommentButtonOptimizedState extends State<CommentButtonOptimized> {
   final CommentService _commentService = CommentService();
 
   @override
-  bool get wantKeepAlive => true;
-
-  @override
   Widget build(BuildContext context) {
-    super.build(context);
-
     return StreamBuilder<int>(
       stream: _commentService.getCommentCountStream(widget.listingId),
       builder: (context, snapshot) {
@@ -892,15 +881,9 @@ class BookmarkButtonOptimized extends StatefulWidget {
       _BookmarkButtonOptimizedState();
 }
 
-class _BookmarkButtonOptimizedState extends State<BookmarkButtonOptimized>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
+class _BookmarkButtonOptimizedState extends State<BookmarkButtonOptimized> {
   @override
   Widget build(BuildContext context) {
-    super.build(context);
-
     return StreamBuilder<bool>(
       stream: widget.db.isListingBookmarkedStream(widget.listingId),
       builder: (context, snapshot) {
