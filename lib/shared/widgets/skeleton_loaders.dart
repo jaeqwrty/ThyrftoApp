@@ -1,7 +1,71 @@
 import 'package:flutter/material.dart';
 
-/// Base skeleton widget that implements a smooth, hardware-accelerated pulse animation
-class Skeleton extends StatefulWidget {
+/// Provides one animation ticker to all skeleton blocks beneath it.
+/// This avoids creating an AnimationController for every placeholder rectangle.
+class SkeletonShimmer extends StatefulWidget {
+  final Widget child;
+
+  const SkeletonShimmer({super.key, required this.child});
+
+  @override
+  State<SkeletonShimmer> createState() => _SkeletonShimmerState();
+}
+
+class _SkeletonShimmerState extends State<SkeletonShimmer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1250),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SkeletonShimmerScope(
+      animation: _controller,
+      child: RepaintBoundary(child: widget.child),
+    );
+  }
+}
+
+class _SkeletonShimmerScope extends InheritedWidget {
+  final Animation<double> animation;
+
+  const _SkeletonShimmerScope({
+    required this.animation,
+    required super.child,
+  });
+
+  static Animation<double>? maybeOf(BuildContext context) {
+    return context
+        .dependOnInheritedWidgetOfExactType<_SkeletonShimmerScope>()
+        ?.animation;
+  }
+
+  @override
+  bool updateShouldNotify(_SkeletonShimmerScope oldWidget) {
+    return oldWidget.animation != animation;
+  }
+}
+
+Widget _withSkeletonShimmer(BuildContext context, Widget child) {
+  if (_SkeletonShimmerScope.maybeOf(context) != null) return child;
+  return SkeletonShimmer(child: child);
+}
+
+/// Lightweight skeleton block driven by the nearest shared shimmer ticker.
+class Skeleton extends StatelessWidget {
   final double? height;
   final double? width;
   final double borderRadius;
@@ -18,50 +82,38 @@ class Skeleton extends StatefulWidget {
   });
 
   @override
-  State<Skeleton> createState() => _SkeletonState();
-}
+  Widget build(BuildContext context) {
+    final animation = _SkeletonShimmerScope.maybeOf(context);
+    if (animation == null) return _buildBlock(0.35);
 
-class _SkeletonState extends State<Skeleton> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _opacityAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1000),
-      vsync: this,
-    )..repeat(reverse: true);
-    
-    _opacityAnimation = Tween<double>(begin: 0.35, end: 0.75).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeInOut,
-      ),
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, _) => _buildBlock(animation.value),
     );
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  Widget _buildBlock(double progress) {
+    final center = -2.0 + (progress * 4.0);
 
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _opacityAnimation,
-      child: Container(
-        width: widget.width,
-        height: widget.height,
-        margin: widget.margin,
-        decoration: BoxDecoration(
-          color: const Color(0xFFE5DFEC), // Light grayish purple/lavender matching theme branding
-          shape: widget.shape,
-          borderRadius: widget.shape == BoxShape.rectangle
-              ? BorderRadius.circular(widget.borderRadius)
-              : null,
+    return Container(
+      width: width,
+      height: height,
+      margin: margin,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment(center - 1, 0),
+          end: Alignment(center + 1, 0),
+          colors: const [
+            Color(0xFFE5DFEC),
+            Color(0xFFF6F3F8),
+            Color(0xFFE5DFEC),
+          ],
+          stops: const [0.2, 0.5, 0.8],
         ),
+        shape: shape,
+        borderRadius: shape == BoxShape.rectangle
+            ? BorderRadius.circular(borderRadius)
+            : null,
       ),
     );
   }
@@ -73,7 +125,7 @@ class PostCardSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return _withSkeletonShimmer(context, Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -126,10 +178,13 @@ class PostCardSkeleton extends StatelessWidget {
             ),
           ),
           // Large main image area
-          const Skeleton(
-            width: double.infinity,
-            height: 360,
-            borderRadius: 0,
+          const AspectRatio(
+            aspectRatio: 4 / 3,
+            child: Skeleton(
+              width: double.infinity,
+              height: double.infinity,
+              borderRadius: 0,
+            ),
           ),
           // Actions and text info
           Padding(
@@ -155,7 +210,7 @@ class PostCardSkeleton extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -166,12 +221,12 @@ class PostCardListSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
+    return _withSkeletonShimmer(context, ListView.builder(
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
       itemCount: itemCount,
       itemBuilder: (context, index) => const PostCardSkeleton(),
-    );
+    ));
   }
 }
 
@@ -181,7 +236,7 @@ class ListingCardSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return _withSkeletonShimmer(context, Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -227,7 +282,7 @@ class ListingCardSkeleton extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -238,7 +293,7 @@ class ListingGridSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
+    return _withSkeletonShimmer(context, GridView.builder(
       padding: const EdgeInsets.all(12),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
@@ -248,7 +303,7 @@ class ListingGridSkeleton extends StatelessWidget {
       ),
       itemCount: itemCount,
       itemBuilder: (context, index) => const ListingCardSkeleton(),
-    );
+    ));
   }
 }
 
@@ -258,7 +313,7 @@ class ChatTileSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return _withSkeletonShimmer(context, Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -293,7 +348,7 @@ class ChatTileSkeleton extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -304,11 +359,11 @@ class ChatListSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
+    return _withSkeletonShimmer(context, ListView.builder(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
       itemCount: itemCount,
       itemBuilder: (context, index) => const ChatTileSkeleton(),
-    );
+    ));
   }
 }
 
@@ -319,7 +374,7 @@ class MessageBubbleSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
+    return _withSkeletonShimmer(context, Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4),
@@ -352,7 +407,7 @@ class MessageBubbleSkeleton extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -363,14 +418,14 @@ class MessageListSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
+    return _withSkeletonShimmer(context, ListView.builder(
       padding: const EdgeInsets.fromLTRB(14, 18, 14, 18),
       itemCount: itemCount,
       itemBuilder: (context, index) {
         final isMe = index % 2 == 0;
         return MessageBubbleSkeleton(isMe: isMe);
       },
-    );
+    ));
   }
 }
 
@@ -380,7 +435,7 @@ class ProfileHeaderSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return _withSkeletonShimmer(context, Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -429,7 +484,7 @@ class ProfileHeaderSkeleton extends StatelessWidget {
           const Skeleton(width: 200, height: 13, borderRadius: 4),
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -448,7 +503,7 @@ class UserProfilePageSkeleton extends StatelessWidget {
         leading: const Icon(Icons.arrow_back_rounded, color: Color(0xFF17131F)),
         title: const Skeleton(width: 100, height: 18, borderRadius: 4),
       ),
-      body: Column(
+      body: SkeletonShimmer(child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Padding(
@@ -469,7 +524,7 @@ class UserProfilePageSkeleton extends StatelessWidget {
             child: ListingGridSkeleton(itemCount: 4),
           ),
         ],
-      ),
+      )),
     );
   }
 }
@@ -480,7 +535,7 @@ class NotificationTileSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return _withSkeletonShimmer(context, Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -514,7 +569,7 @@ class NotificationTileSkeleton extends StatelessWidget {
           const Skeleton(width: 40, height: 40, borderRadius: 8),
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -525,10 +580,10 @@ class NotificationListSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
+    return _withSkeletonShimmer(context, ListView.builder(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
       itemCount: itemCount,
       itemBuilder: (context, index) => const NotificationTileSkeleton(),
-    );
+    ));
   }
 }
