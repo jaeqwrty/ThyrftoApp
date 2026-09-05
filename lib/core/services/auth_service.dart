@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:thryfto/core/services/database_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -452,19 +453,143 @@ class AuthService {
     }
   }
 
-  /// Delete user account
-  Future<bool> deleteAccount() async {
-    try {
-      final user = _auth.currentUser;
-      if (user != null) {
-        // Delete user document from Firestore
-        await _firestore.collection('users').doc(user.uid).delete();
+  Future<void> _deleteQueryDocuments(
+    Query<Map<String, dynamic>> query,
+  ) async {
+    const batchSize = 400;
+    while (true) {
+      final snapshot = await query.limit(batchSize).get();
+      if (snapshot.docs.isEmpty) return;
 
-        // Delete user from Firebase Auth
-        await user.delete();
+      final batch = _firestore.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+
+      if (snapshot.docs.length < batchSize) return;
+    }
+  }
+
+  Future<bool> _reauthenticateForAccountDeletion(
+    User user, {
+    String? password,
+  }) async {
+    try {
+      final providers = user.providerData.map((provider) => provider.providerId).toSet();
+
+      if (providers.contains(EmailAuthProvider.PROVIDER_ID)) {
+        final email = user.email;
+        if (email == null || password == null || password.isEmpty) return false;
+
+        final credential = EmailAuthProvider.credential(
+          email: email,
+          password: password,
+        );
+        await user.reauthenticateWithCredential(credential);
         return true;
       }
+
+      if (providers.contains(GoogleAuthProvider.PROVIDER_ID)) {
+        final googleSignIn = GoogleSignIn(
+          serverClientId:
+              '41459314240-5oml340uroesq50e7ri5ujbb1m16tef7.apps.googleusercontent.com',
+        );
+        final googleUser =
+            await googleSignIn.signInSilently() ?? await googleSignIn.signIn();
+        if (googleUser == null) return false;
+
+        final googleAuth = await googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        await user.reauthenticateWithCredential(credential);
+        return true;
+      }
+
       return false;
+    } catch (e) {
+      print('Error reauthenticating for account deletion: $e');
+      return false;
+    }
+  }
+
+  Future<void> _cleanupOwnedAccountData(String userId) async {
+    final databaseService = DatabaseService();
+    final listings = await _firestore
+        .collection('listings')
+        .where('seller_id', isEqualTo: userId)
+        .get();
+
+    for (final listing in listings.docs) {
+      final deleted = await databaseService.deleteListing(listing.id);
+      if (!deleted) {
+        throw Exception('Failed to delete listing ${listing.id}');
+      }
+    }
+
+    await _deleteQueryDocuments(
+      _firestore.collection('likes').where('userId', isEqualTo: userId),
+    );
+    await _deleteQueryDocuments(
+      _firestore.collection('bookmarks').where('userId', isEqualTo: userId),
+    );
+    await _deleteQueryDocuments(
+      _firestore.collection('favorites').where('user_id', isEqualTo: userId),
+    );
+    await _deleteQueryDocuments(
+      _firestore.collection('favorites').where('seller_id', isEqualTo: userId),
+    );
+    await _deleteQueryDocuments(
+      _firestore.collection('blocks').where('blocker_id', isEqualTo: userId),
+    );
+    await _deleteQueryDocuments(
+      _firestore.collection('listing_shares').where('shared_by', isEqualTo: userId),
+    );
+    await _deleteQueryDocuments(
+      _firestore.collection('notifications').where('recipient_id', isEqualTo: userId),
+    );
+    await _deleteQueryDocuments(
+      _firestore.collectionGroup('ratings').where('reviewer_id', isEqualTo: userId),
+    );
+  }
+
+  /// Delete the signed-in user's owned marketplace data and Firebase identity.
+  /// Password accounts must provide their password so Firebase can require a
+  /// fresh authentication before any destructive Firestore cleanup begins.
+  Future<bool> deleteAccount({String? password}) async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+
+    final reauthenticated = await _reauthenticateForAccountDeletion(
+      user,
+      password: password,
+    );
+    if (!reauthenticated) return false;
+
+    final profileRef = _firestore.collection('users').doc(user.uid);
+    final profileSnapshot = await profileRef.get();
+    final profileData = profileSnapshot.data();
+
+    try {
+      await _cleanupOwnedAccountData(user.uid);
+      await profileRef.delete();
+
+      try {
+        await user.delete();
+      } catch (e) {
+        // Keep Firestore/Auth state aligned when the final Auth deletion fails.
+        if (profileData != null) {
+          await profileRef.set(profileData);
+        }
+        rethrow;
+      }
+
+      try {
+        await GoogleSignIn().signOut();
+      } catch (_) {}
+      return true;
     } catch (e) {
       print('Error deleting account: $e');
       return false;

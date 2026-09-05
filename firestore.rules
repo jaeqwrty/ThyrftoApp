@@ -182,9 +182,11 @@ service cloud.firestore {
       allow create: if isAuthenticated() 
         && request.resource.data.user_id == request.auth.uid;
       
-      // Users can only delete their own favorites
-      allow delete: if isAuthenticated() 
-        && resource.data.user_id == request.auth.uid;
+      // The follower can remove the relationship. The seller may also remove
+      // incoming relationships, which is required when deleting their account.
+      allow delete: if isAuthenticated()
+        && (resource.data.user_id == request.auth.uid
+            || resource.data.seller_id == request.auth.uid);
       
       // Favorites cannot be updated
       allow update: if false;
