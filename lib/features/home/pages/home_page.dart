@@ -10,8 +10,14 @@ import 'package:thryfto/shared/widgets/skeleton_loaders.dart';
 class HomePage extends ConsumerStatefulWidget {
   final Map<String, dynamic> user;
   final VoidCallback? onScrollToTop;
+  final ValueChanged<String?>? onExplore;
 
-  const HomePage({super.key, required this.user, this.onScrollToTop});
+  const HomePage({
+    super.key,
+    required this.user,
+    this.onScrollToTop,
+    this.onExplore,
+  });
 
   @override
   ConsumerState<HomePage> createState() => HomePageState();
@@ -79,6 +85,7 @@ class HomePageState extends ConsumerState<HomePage> {
             cacheExtent: 700,
             slivers: [
               _buildAppBar(context),
+              SliverToBoxAdapter(child: _buildDiscoveryStrip()),
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
@@ -116,6 +123,7 @@ class HomePageState extends ConsumerState<HomePage> {
       controller: _scrollController,
       slivers: [
         _buildAppBar(context),
+        SliverToBoxAdapter(child: _buildDiscoveryStrip()),
         SliverFillRemaining(
           child: Center(
             child: Column(
@@ -144,11 +152,120 @@ class HomePageState extends ConsumerState<HomePage> {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Browse categories while sellers add fresh finds.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: _muted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                FilledButton.icon(
+                  onPressed: widget.onExplore == null
+                      ? null
+                      : () => widget.onExplore!(null),
+                  icon: const Icon(Icons.search_rounded, size: 18),
+                  label: const Text('Browse items'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _ink,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDiscoveryStrip() {
+    const categories = [
+      ('Clothing', Icons.checkroom_outlined),
+      ('Shoewear', Icons.hiking_outlined),
+      ('Accessories', Icons.watch_outlined),
+      ('Bags', Icons.shopping_bag_outlined),
+    ];
+
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Material(
+            color: const Color(0xFFF6F3F8),
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              onTap: widget.onExplore == null
+                  ? null
+                  : () => widget.onExplore!(null),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _line),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.search_rounded, color: _muted, size: 21),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Search thrift finds',
+                        style: TextStyle(
+                          color: _muted,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_rounded, color: _muted, size: 18),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 11),
+          SizedBox(
+            height: 36,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: categories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                return ActionChip(
+                  avatar: Icon(category.$2, size: 15, color: _ink),
+                  label: Text(category.$1),
+                  onPressed: widget.onExplore == null
+                      ? null
+                      : () => widget.onExplore!(category.$1),
+                  backgroundColor: Colors.white,
+                  side: const BorderSide(color: _line),
+                  labelStyle: const TextStyle(
+                    color: _ink,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 

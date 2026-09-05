@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:thryfto/core/utils/app_page_route.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -20,10 +21,10 @@ class SearchPage extends StatefulWidget {
   const SearchPage({super.key, required this.user});
 
   @override
-  State<SearchPage> createState() => _SearchPageState();
+  State<SearchPage> createState() => SearchPageState();
 }
 
-class _SearchPageState extends State<SearchPage> {
+class SearchPageState extends State<SearchPage> {
   static const Color _ink = Color(0xFF17131F);
   static const Color _muted = Color(0xFF6B6475);
   static const Color _surface = Color(0xFFFBFAFC);
@@ -34,6 +35,7 @@ class _SearchPageState extends State<SearchPage> {
   final LocationService _locationService = LocationService();
   final BlockService _blockService = BlockService();
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   String _selectedCategory = 'All';
   String _searchQuery = '';
   String _sortBy = 'none';
@@ -42,6 +44,7 @@ class _SearchPageState extends State<SearchPage> {
   Map<String, dynamic>? _userLocation;
   Timer? _searchDebounce;
   StreamSubscription<Map<String, dynamic>?>? _userLocationSubscription;
+  bool _showSortOptions = false;
 
   final List<String> _categories = [
     'All',
@@ -98,10 +101,45 @@ class _SearchPageState extends State<SearchPage> {
     } catch (_) {}
   }
 
+  void openFromMarketplace(String? category) {
+    _searchDebounce?.cancel();
+    final nextCategory = category != null && _categories.contains(category)
+        ? category
+        : 'All';
+
+    setState(() {
+      _selectedCategory = nextCategory;
+      _searchQuery = '';
+    });
+    _searchController.clear();
+
+    if (category == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _searchFocusNode.requestFocus();
+      });
+    } else {
+      _searchFocusNode.unfocus();
+    }
+  }
+
+  void _resetFilters() {
+    _searchDebounce?.cancel();
+    _searchController.clear();
+    _searchFocusNode.unfocus();
+    setState(() {
+      _searchQuery = '';
+      _selectedCategory = 'All';
+      _sortBy = 'none';
+      _priceSortDirection = 'low';
+      _distanceSortDirection = 'near';
+    });
+  }
+
   @override
   void dispose() {
     _searchDebounce?.cancel();
     _userLocationSubscription?.cancel();
+    _searchFocusNode.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -134,9 +172,9 @@ class _SearchPageState extends State<SearchPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Text(
+              const Text(
                 'Discover',
                 style: TextStyle(
                   color: _ink,
@@ -145,8 +183,26 @@ class _SearchPageState extends State<SearchPage> {
                   letterSpacing: 0,
                 ),
               ),
-              Spacer(),
-              Icon(Icons.tune_rounded, color: _muted, size: 22),
+              const Spacer(),
+              IconButton(
+                tooltip: _showSortOptions
+                    ? 'Hide sort options'
+                    : 'Show sort options',
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _showSortOptions = !_showSortOptions);
+                },
+                icon: AnimatedRotation(
+                  turns: _showSortOptions ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  child: const Icon(
+                    Icons.tune_rounded,
+                    color: _muted,
+                    size: 22,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -159,6 +215,7 @@ class _SearchPageState extends State<SearchPage> {
             ),
             child: TextField(
               controller: _searchController,
+              focusNode: _searchFocusNode,
               textInputAction: TextInputAction.search,
               onChanged: (value) {
                 _searchDebounce?.cancel();
@@ -201,16 +258,25 @@ class _SearchPageState extends State<SearchPage> {
               },
             ),
           ),
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildSortChip('Relevance', 'none'),
-                _buildPriceSortChip(),
-                if (_userLocation != null) _buildDistanceSortChip(),
-              ],
-            ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: _showSortOptions
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildSortChip('Relevance', 'none'),
+                          _buildPriceSortChip(),
+                          if (_userLocation != null) _buildDistanceSortChip(),
+                        ],
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
         ],
       ),
@@ -450,8 +516,13 @@ class _SearchPageState extends State<SearchPage> {
                     ? 'No results found'
                     : 'No items in this category',
                 subtitle: _searchQuery.isNotEmpty
-                    ? 'Try a different search term'
-                    : 'Check back later for new items',
+                    ? 'Try a different search term or clear the filters.'
+                    : 'Try another category or reset the filters.',
+                action: OutlinedButton.icon(
+                  onPressed: _resetFilters,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Clear filters'),
+                ),
               );
             }
 

@@ -19,6 +19,7 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
   final GlobalKey<HomePageState> _homePageKey = GlobalKey<HomePageState>();
+  final GlobalKey<SearchPageState> _searchPageKey = GlobalKey<SearchPageState>();
   static const Color _ink = Color(0xFF17131F);
   static const Color _muted = Color(0xFF6B6475);
   static const Color _line = Color(0xFFE5DFEC);
@@ -30,12 +31,27 @@ class _MainNavigationState extends State<MainNavigation> {
   void initState() {
     super.initState();
     _pages = [
-      HomePage(key: _homePageKey, user: widget.user), // Index 0: Home
-      SearchPage(user: widget.user), // Index 1: Search
+      HomePage(
+        key: _homePageKey,
+        user: widget.user,
+        onExplore: _openSearch,
+      ), // Index 0: Home
+      SearchPage(key: _searchPageKey, user: widget.user), // Index 1: Search
       SellPage(user: widget.user), // Index 2: Sell
       ChatListPage(user: widget.user), // Index 3: Chats
       ProfilePage(user: widget.user), // Index 4: Profile
     ];
+  }
+
+  void _openSearch(String? category) {
+    if (_selectedIndex != 1) {
+      HapticFeedback.selectionClick();
+      setState(() => _selectedIndex = 1);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _searchPageKey.currentState?.openFromMarketplace(category);
+    });
   }
 
   void _onItemTapped(int index) {
