@@ -11,6 +11,11 @@ service cloud.firestore {
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
+
+    function isListingOwner(listingId) {
+      return isAuthenticated()
+        && get(/databases/$(database)/documents/listings/$(listingId)).data.seller_id == request.auth.uid;
+    }
     
     function isValidListing() {
       return request.resource.data.keys().hasAll(['title', 'price', 'seller_id']) 
@@ -105,9 +110,10 @@ service cloud.firestore {
         allow update: if isAuthenticated() 
                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reply_count']);
         
-        // Only the comment author can delete their comment
-        // DEV BYPASS: Allow a@test.com to delete any comment
+        // Comment author or listing owner can delete a comment.
+        // Listing-owner access is needed for complete listing deletion.
         allow delete: if (isAuthenticated() && resource.data.user_id == request.auth.uid)
+                      || isListingOwner(listingId)
                       || request.auth.token.email == "a@test.com";
         
         // Replies subcollection
@@ -120,9 +126,9 @@ service cloud.firestore {
                         && request.resource.data.user_id == request.auth.uid
                         && request.resource.data.keys().hasAll(['user_id', 'user_name', 'reply', 'created_at']);
           
-          // Only the reply author can delete their reply
-          // DEV BYPASS: Allow a@test.com to delete any reply
+          // Reply author or listing owner can delete a reply.
           allow delete: if (isAuthenticated() && resource.data.user_id == request.auth.uid)
+                        || isListingOwner(listingId)
                         || request.auth.token.email == "a@test.com";
           
           // No updates allowed on replies
@@ -140,9 +146,10 @@ service cloud.firestore {
       allow create: if isAuthenticated() 
         && request.resource.data.userId == request.auth.uid;
       
-      // Users can only delete their own likes
-      allow delete: if isAuthenticated() 
-        && resource.data.userId == request.auth.uid;
+      // Like owner can remove it; listing owner can remove it during listing cleanup.
+      allow delete: if isAuthenticated()
+        && (resource.data.userId == request.auth.uid
+            || isListingOwner(resource.data.listingId));
       
       // Likes cannot be updated
       allow update: if false;
@@ -157,9 +164,10 @@ service cloud.firestore {
       allow create: if isAuthenticated() 
         && request.resource.data.userId == request.auth.uid;
       
-      // Users can only delete their own bookmarks
-      allow delete: if isAuthenticated() 
-        && resource.data.userId == request.auth.uid;
+      // Bookmark owner can remove it; listing owner can remove it during cleanup.
+      allow delete: if isAuthenticated()
+        && (resource.data.userId == request.auth.uid
+            || isListingOwner(resource.data.listingId));
       
       // Bookmarks cannot be updated
       allow update: if false;
@@ -254,8 +262,12 @@ service cloud.firestore {
       allow create: if isAuthenticated() 
         && request.resource.data.shared_by == request.auth.uid;
       
-      // No updates or deletes
-      allow update, delete: if false;
+      allow update: if false;
+
+      // Sharer can remove their record; listing owner can remove it during cleanup.
+      allow delete: if isAuthenticated()
+        && (resource.data.shared_by == request.auth.uid
+            || isListingOwner(resource.data.listing_id));
     }
     
     // Notifications collection
@@ -271,9 +283,12 @@ service cloud.firestore {
       allow update: if isAuthenticated() 
         && request.auth.uid == resource.data.recipient_id;
       
-      // Users can only delete their own notifications
-      allow delete: if isAuthenticated() 
-        && request.auth.uid == resource.data.recipient_id;
+      // Recipient can delete their notification. A listing owner may also delete
+      // notifications tied to that listing while the listing still exists.
+      allow delete: if isAuthenticated()
+        && (request.auth.uid == resource.data.recipient_id
+            || (resource.data.related_listing_id is string
+                && isListingOwner(resource.data.related_listing_id)));
     }
   }
 }

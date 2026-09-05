@@ -317,27 +317,83 @@ class DatabaseService {
     return;
   }
 
-  // Delete listing
+  Future<void> _deleteQueryDocuments(
+    Query<Map<String, dynamic>> query,
+  ) async {
+    const batchSize = 400;
+    while (true) {
+      final snapshot = await query.limit(batchSize).get();
+      if (snapshot.docs.isEmpty) return;
+
+      final batch = _firestore.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+
+      if (snapshot.docs.length < batchSize) return;
+    }
+  }
+
+  Future<void> _deleteListingComments(
+    DocumentReference<Map<String, dynamic>> listingRef,
+  ) async {
+    const batchSize = 100;
+    final commentsRef = listingRef.collection('comments');
+
+    while (true) {
+      final comments = await commentsRef.limit(batchSize).get();
+      if (comments.docs.isEmpty) return;
+
+      for (final comment in comments.docs) {
+        await _deleteQueryDocuments(comment.reference.collection('replies'));
+      }
+
+      final batch = _firestore.batch();
+      for (final comment in comments.docs) {
+        batch.delete(comment.reference);
+      }
+      await batch.commit();
+
+      if (comments.docs.length < batchSize) return;
+    }
+  }
+
+  // Delete listing and all Firestore data that references it.
   Future<bool> deleteListing(String listingId) async {
     try {
+      final listingRef = _firestore.collection('listings').doc(listingId);
+      final listing = await listingRef.get();
+      if (!listing.exists || listing.data()?['seller_id'] != currentUserId) {
+        return false;
+      }
+
+      // Clean dependents first so security rules can still verify ownership.
+      await _deleteListingComments(listingRef);
+      await _deleteQueryDocuments(
+        _firestore.collection('likes').where('listingId', isEqualTo: listingId),
+      );
+      await _deleteQueryDocuments(
+        _firestore
+            .collection('bookmarks')
+            .where('listingId', isEqualTo: listingId),
+      );
+      await _deleteQueryDocuments(
+        _firestore
+            .collection('listing_shares')
+            .where('listing_id', isEqualTo: listingId),
+      );
+      await _deleteQueryDocuments(
+        _firestore
+            .collection('notifications')
+            .where('related_listing_id', isEqualTo: listingId),
+      );
+
       await deleteListingImages(listingId);
-      await _firestore.collection('listings').doc(listingId).delete();
-      final likes = await _firestore
-          .collection('likes')
-          .where('listingId', isEqualTo: listingId)
-          .get();
-      for (var doc in likes.docs) {
-        await doc.reference.delete();
-      }
-      final bookmarks = await _firestore
-          .collection('bookmarks')
-          .where('listingId', isEqualTo: listingId)
-          .get();
-      for (var doc in bookmarks.docs) {
-        await doc.reference.delete();
-      }
+      await listingRef.delete();
       return true;
     } catch (e) {
+      print('Error deleting listing: $e');
       return false;
     }
   }
