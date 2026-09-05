@@ -64,9 +64,13 @@ class DatabaseService {
       final listingData = {
         'id': listingId,
         'seller_id': userId,
-        'seller_name':
-            userData['full_name'] ?? userData['username'] ?? 'Unknown',
-        'seller_location': userData['cityState'] ?? 'Location not available',
+        'seller_name': userData['fullName'] ??
+            userData['full_name'] ??
+            userData['username'] ??
+            'Unknown',
+        'seller_location': userData['address'] ??
+            userData['cityState'] ??
+            'Location not available',
         'title': title,
         'description': description,
         'price': price,

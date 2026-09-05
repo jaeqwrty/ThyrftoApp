@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:thryfto/core/services/database_service.dart';
 import 'package:thryfto/core/services/favorite_service.dart';
+import 'package:thryfto/core/services/location_service.dart';
 import 'package:thryfto/core/utils/common_modals.dart';
 import 'package:thryfto/core/utils/snackbar_utils.dart';
 
@@ -21,6 +22,7 @@ class SellPage extends StatefulWidget {
 class _SellPageState extends State<SellPage> {
   final DatabaseService _db = DatabaseService();
   final FavoritesService _favoritesService = FavoritesService();
+  final LocationService _locationService = LocationService();
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _priceController = TextEditingController();
@@ -166,6 +168,7 @@ class _SellPageState extends State<SellPage> {
       final userId = widget.user['id'] ?? widget.user['uid'];
       final listingTitle = _titleController.text.trim();
       final listingPrice = double.parse(_priceController.text.trim());
+      final listingLocation = await _locationService.getUserLocation(userId);
 
       final result = await _db.createListing(
         userId: userId,
@@ -176,6 +179,7 @@ class _SellPageState extends State<SellPage> {
         condition: _selectedCondition,
         category: _selectedCategory,
         imageFiles: _selectedImages,
+        location: listingLocation,
       );
 
       setState(() => _isLoading = false);
